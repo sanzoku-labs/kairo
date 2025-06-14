@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: 'Kairo'
-  text: 'Functional TypeScript Library'
-  tagline: 'Eliminate glue code, clarify application logic, and provide a consistent developer experience'
+  text: 'Framework-Agnostic TypeScript Library'
+  tagline: 'Eliminate service repetition and compose business logic elegantly'
   image:
     src: /logo.svg
     alt: Kairo
@@ -17,24 +17,24 @@ hero:
       link: https://github.com/sovanaryththorng/kairo
 
 features:
+  - icon: 🏗️
+    title: Two-Pillar Architecture
+    details: Resources eliminate service layer repetition, Pipelines compose business logic
   - icon: 🔧
     title: Framework Agnostic
-    details: Works seamlessly across React, Node, Bun, and any TypeScript environment
+    details: Works seamlessly across React, Vue, Node, Bun, and any TypeScript environment
   - icon: ⚡
     title: Functional & Composable
     details: Inspired by Gleam - immutable, pure functions that compose elegantly
   - icon: 🎯
     title: Developer Joy
     details: Eliminate boilerplate, improve debugging, and make testing pleasant
-  - icon: 🔄
-    title: Reactive Primitives
-    details: Built-in signals, tasks, and forms for modern reactive applications
   - icon: 🛡️
     title: Type Safe
     details: Full TypeScript support with Result pattern for predictable error handling
   - icon: 📦
     title: Lightweight
-    details: Core bundle < 10kb gzipped with zero runtime dependencies (except Zod)
+    details: Core bundle < 15kb gzipped with zero runtime dependencies (except Zod)
 ---
 
 ## Quick Start
@@ -47,56 +47,104 @@ npm install kairo
 bun add kairo
 ```
 
-Create your first pipeline:
+## Pillar 1: Resources - Eliminate Service Repetition
 
 ```typescript
-import { pipeline, schema } from 'kairo'
+import { resource, schema } from 'kairo'
 import { z } from 'zod'
 
-const UserSchema = schema(
-  z.object({
-    id: z.number(),
-    name: z.string(),
-    email: z.string().email(),
-  })
-)
-
-const getUserPipeline = pipeline('get-user')
-  .input(schema(z.object({ id: z.number() })))
-  .fetch('/api/users/:id')
-  .validate(UserSchema)
-  .map(user => user.name)
-
-// Execute the pipeline
-const result = await getUserPipeline.run({ id: 123 })
-
-if (result.tag === 'Ok') {
-  console.log('User name:', result.value) // ✅ Type-safe!
-} else {
-  console.error('Error:', result.error) // 🛡️ Handled gracefully
+// BEFORE: Repetitive service boilerplate
+class UserService {
+  async getUser(id: string): Promise<User> {
+    try {
+      const response = await fetch(`/api/users/${id}`)
+      if (!response.ok) throw new Error('Failed to fetch')
+      const data = await response.json()
+      return UserSchema.parse(data)
+    } catch (error) {
+      console.error('Error fetching user:', error)
+      throw error
+    }
+  }
+  // ... repeat for create, update, delete
 }
+
+// AFTER: Declarative resource
+const UserAPI = resource('users', {
+  get: {
+    path: '/users/:id',
+    params: z.object({ id: z.string() }),
+    response: UserSchema
+  },
+  create: {
+    path: '/users',
+    method: 'POST',
+    body: CreateUserSchema,
+    response: UserSchema
+  }
+})
+
+// Usage: await UserAPI.get.run({ id: '123' })
+```
+
+## Pillar 2: Pipelines - Compose Business Logic
+
+```typescript
+// BEFORE: Complex business logic mess
+const processOrder = async (orderData) => {
+  try {
+    const validated = OrderSchema.parse(orderData)
+    
+    if (validated.amount > 1000) {
+      const approval = await manualApproval(validated)
+      if (!approval) throw new Error('Not approved')
+    }
+    
+    const inventory = await checkInventory(validated.items)
+    if (!inventory.available) throw new Error('Out of stock')
+    
+    const pricing = calculateDiscount(validated, inventory.pricing)
+    const payment = await processPayment(pricing)
+    
+    return transformOrderResult(payment)
+  } catch (error) {
+    logError(error)
+    throw error
+  }
+}
+
+// AFTER: Declarative pipeline
+const processOrder = pipeline('process-order')
+  .input(OrderSchema)
+  .validate(requiresApproval)
+  .fetch('/api/inventory/check')
+  .map(calculateDiscount)
+  .fetch('/api/payment/process')
+  .map(transformOrderResult)
+  .trace('order-processing')
 ```
 
 ## Why Kairo?
 
 ### Problems We Solve
 
-- **Chaotic error flows** in modern applications
-- **Excessive glue code** between tools (fetch + validation + state + error handling)
-- **Unpredictable behavior** from useEffect and try/catch patterns
-- **Poor testability** of business logic mixed with UI concerns
+1. **Service Layer Repetition** - Stop writing the same fetch + validation + error handling code
+2. **Complex Business Logic** - Eliminate nested try/catch and make workflows readable
+3. **Framework Lock-in** - Build business logic that works across any framework
+4. **Poor Error Handling** - Replace runtime exceptions with predictable Result types
 
 ### Solutions We Provide
 
-- **Unified composition** - fetch + validation + transform + error handling unified
-- **Predictable error modeling** - `Result<Err, Ok>` pattern avoids runtime throws
-- **Lifecycle scoping** - concept of scoped pipelines for cleanup and reactive context
-- **Enhanced debuggability** - `.trace()` makes logic observable and introspectable
-- **Pure composability** - no hidden state, purely functional composition
+- **Declarative Resources** - API definitions that generate type-safe methods
+- **Composable Pipelines** - Business logic workflows that are readable and testable  
+- **Result Pattern** - Predictable error modeling without runtime throws
+- **Framework Agnostic** - No framework adapters needed, pure TypeScript
+- **Enhanced Debugging** - Built-in tracing and introspection
 
 ## Core Philosophy
 
+- **Simple by default, full control available**
+- **Explicit and transparent** (no hidden magic)
+- **Type inference that always works**
+- **Progressive disclosure** (80/20 rule)
 - **Framework-agnostic** composition over configuration
-- **Immutability and purity** (inspired by Gleam)
-- **Developer joy** through clarity and predictability
-- **Testable, composable, and reactive** — but minimal

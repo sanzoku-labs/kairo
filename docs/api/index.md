@@ -1,12 +1,8 @@
 # API Reference
 
-Welcome to the Kairo API reference. This section provides detailed documentation for all Kairo APIs.
+Welcome to the Kairo API reference. This section provides detailed documentation for Kairo's focused Two-Pillar Architecture.
 
-## Core API
-
-### [Pipeline](/api/pipeline)
-
-The main abstraction for composable data processing workflows.
+## Core Foundation
 
 ### [Result](/api/result)
 
@@ -16,25 +12,17 @@ Type-safe error handling without exceptions.
 
 Zod-based validation with Result integration.
 
-## Reactive API
-
-### [Signal](/api/signal)
-
-Lightweight reactive state primitive.
-
-### [Task](/api/task)
-
-Async state management with lifecycle tracking.
-
-### [Form](/api/form)
-
-Form state management with validation.
-
-## Resource API
+## Pillar 1: Resources
 
 ### [Resource](/api/resource)
 
-Declarative API endpoint definitions.
+Declarative API endpoint definitions that eliminate service layer repetition.
+
+## Pillar 2: Pipelines
+
+### [Pipeline](/api/pipeline)
+
+The main abstraction for composable business logic workflows.
 
 ## Functional Programming Utilities
 
@@ -52,9 +40,6 @@ Declarative API endpoint definitions.
 import type {
   Result,
   Pipeline,
-  Signal,
-  Task,
-  Form,
   Resource,
   KairoError,
   ValidationError,

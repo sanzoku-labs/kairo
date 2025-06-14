@@ -1,13 +1,18 @@
 # Kairo
 
-> A functional, composable TypeScript library that eliminates glue code
+> Eliminate service repetition and compose business logic elegantly
 
 [![Documentation](https://img.shields.io/badge/docs-vitepress-blue)](https://sovanaryththorng.github.io/kairo/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Overview
 
-Kairo is a **framework-agnostic**, functional and composable TypeScript library designed to eliminate glue code, clarify application logic, and provide a consistent developer experience across frontend and backend environments.
+Kairo solves two specific pain points through declarative patterns:
+
+1. **Service Layer Repetition** → Resource declarations
+2. **Complex Business Logic** → Pipeline composition
+
+**Framework-agnostic** by design - works with React, Vue, Node, Bun, and any TypeScript environment without requiring adapters.
 
 ## Quick Start
 
@@ -15,68 +20,115 @@ Kairo is a **framework-agnostic**, functional and composable TypeScript library 
 npm install kairo
 ```
 
+### 1. Resources - Eliminate Service Boilerplate
+
 ```typescript
-import { pipeline, schema } from 'kairo'
+import { resource, schema } from 'kairo'
 import { z } from 'zod'
 
-const getUserPipeline = pipeline('get-user')
-  .input(schema(z.object({ id: z.number() })))
-  .fetch('/api/users/:id')
-  .validate(
-    schema(
-      z.object({
-        id: z.number(),
-        name: z.string(),
-        email: z.string().email(),
-      })
-    )
-  )
-  .map(user => user.name)
-
-// Execute the pipeline
-const result = await getUserPipeline.run({ id: 123 })
-
-if (result.tag === 'Ok') {
-  console.log('User name:', result.value) // ✅ Type-safe!
-} else {
-  console.error('Error:', result.error) // 🛡️ Handled gracefully
+// BEFORE: Repetitive service classes
+class UserService {
+  async getUser(id: string): Promise<User> {
+    // ... repetitive fetch, validation, error handling
+  }
 }
+
+// AFTER: Declarative resource
+const UserAPI = resource('users', {
+  get: {
+    path: '/users/:id',
+    params: z.object({ id: z.string() }),
+    response: UserSchema
+  },
+  create: {
+    path: '/users',
+    method: 'POST',
+    body: CreateUserSchema,
+    response: UserSchema
+  }
+})
+
+// Usage with full type safety
+const result = await UserAPI.get.run({ id: '123' })
+```
+
+### 2. Pipelines - Compose Business Logic
+
+```typescript
+// BEFORE: Complex imperative logic with error handling
+const processOrder = async (orderData) => {
+  try {
+    const validated = OrderSchema.parse(orderData)
+    // ... complex business logic with nested try/catch
+  } catch (error) {
+    // ... error handling
+  }
+}
+
+// AFTER: Declarative pipeline
+const processOrder = pipeline('process-order')
+  .input(OrderSchema)
+  .validate(requiresApproval)
+  .fetch('/api/inventory/check')
+  .map(calculateDiscount)
+  .fetch('/api/payment/process')
+  .map(transformOrderResult)
+  .trace('order-processing')
+
+// Execute with Result pattern
+const result = await processOrder.run(orderData)
 ```
 
 ## Key Features
 
-- 🔧 **Framework Agnostic** - Works with React, Node, Bun, and any TypeScript environment
+- 🔧 **Framework Agnostic** - Works with React, Vue, Node, Bun, and any TypeScript environment
+- 🏗️ **Two-Pillar Architecture** - Resources for APIs, Pipelines for business logic
 - ⚡ **Functional & Composable** - Inspired by Gleam with immutable, pure functions
 - 🎯 **Developer Joy** - Eliminate boilerplate and improve debugging experience
-- 🔄 **Reactive Primitives** - Built-in signals, tasks, and forms
 - 🛡️ **Type Safe** - Full TypeScript support with Result pattern for error handling
-- 📦 **Lightweight** - Core bundle < 10kb gzipped
+- 📦 **Lightweight** - Core bundle < 15kb gzipped
 
 ## Core Concepts
 
-### Result Pattern
+### Result Pattern - Error Handling Without Exceptions
 
 ```typescript
 type Result<E, T> = { tag: 'Ok'; value: T } | { tag: 'Err'; error: E }
+
+// Pattern matching for clean error handling
+Result.match(result, {
+  Ok: (user) => console.log('Success:', user),
+  Err: (error) => console.error('Error:', error)
+})
 ```
 
-### Pipelines
+### Resources - Declarative API Definitions
 
 ```typescript
-const pipeline = pipeline('example')
-  .input(schema) // Validate input
-  .fetch('/api/data') // HTTP request
-  .validate(schema) // Validate response
-  .map(transform) // Transform data
-  .trace('completed') // Debug tracing
+const api = resource('api', {
+  getUser: {
+    path: '/users/:id',
+    params: UserParamsSchema,
+    response: UserSchema
+  },
+  createUser: {
+    path: '/users',
+    method: 'POST',
+    body: CreateUserSchema,
+    response: UserSchema
+  }
+})
 ```
 
-### Reactive State
+### Pipelines - Business Logic Composition
 
 ```typescript
-const userSignal = signal(null)
-const userTask = task(getUserPipeline)
-const userForm = form(UserSchema, { onSubmit: createUserPipeline })
+const businessWorkflow = pipeline('workflow')
+  .input(InputSchema)
+  .validate(businessRules)
+  .fetch('/api/process')
+  .map(transformData)
+  .trace('completed')
 ```
 
 ## Documentation
