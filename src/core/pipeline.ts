@@ -1,13 +1,29 @@
 import { Result } from './result'
 import { type Schema, type ValidationError } from './schema'
 import { isNil, isEmpty, cond, resolve, conditionalEffect, tryCatch } from '../utils/fp'
+import { type KairoError } from './errors'
 
-export interface HttpError {
+export interface HttpError extends KairoError {
   code: 'HTTP_ERROR'
   status: number
   statusText: string
   url: string
-  message: string
+}
+
+export interface NetworkError extends KairoError {
+  code: 'NETWORK_ERROR'
+  url: string
+  method: string
+  attempt: number
+  maxAttempts: number
+  retryDelay?: number
+}
+
+export interface TimeoutError extends KairoError {
+  code: 'TIMEOUT_ERROR'
+  duration: number
+  timeout: number
+  operation: string
 }
 
 export interface TraceEntry {
@@ -89,7 +105,9 @@ class FetchStep<TInput = unknown> implements Step<HttpError, unknown> {
       status,
       statusText,
       url,
-      message
+      message,
+      timestamp: Date.now(),
+      context: { url, method: options.method || 'GET', status }
     })
 
     const handleResponse = async (response: Response): Promise<Result<HttpError, unknown>> => {

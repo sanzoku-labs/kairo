@@ -1,16 +1,20 @@
 import { z, ZodError, type ZodSchema, type ZodTypeAny } from 'zod'
 import { Result } from './result'
 import { isNil, isEmpty, path } from '../utils/fp'
+import { type KairoError } from './errors'
 
-export interface ValidationError {
+export interface ValidationError extends KairoError {
   code: 'VALIDATION_ERROR'
-  message: string
-  field?: string
-  expected?: string
+  field?: string | undefined
+  expected?: string | undefined
   actual?: unknown
+  fieldPath: string[]
   issues: Array<{
     path: (string | number)[]
     message: string
+    code: string
+    expected?: string | undefined
+    received?: string | undefined
   }>
 }
 
@@ -28,25 +32,37 @@ function createSchema<T>(zodSchema: ZodSchema<T>): Schema<T> {
         return Result.Ok(data)
       } catch (error) {
         if (error instanceof ZodError) {
+          const firstError = error.errors[0]
+          const fieldPath = firstError?.path.map(String) || []
+          
           const validationError: ValidationError = {
             code: 'VALIDATION_ERROR',
-            message: error.errors[0]?.message || 'Validation failed',
+            message: firstError?.message || 'Validation failed',
+            field: fieldPath.join('.'),
+            fieldPath,
+            expected: firstError && 'expected' in firstError ? String(firstError.expected) : undefined,
+            actual: firstError && firstError.path.length > 0 ? 
+              (input as Record<string, unknown>)?.[String(firstError.path[0])] : input,
             issues: error.errors.map(issue => ({
               path: issue.path,
-              message: issue.message
-            }))
+              message: issue.message,
+              code: issue.code,
+              expected: 'expected' in issue ? String(issue.expected) : undefined,
+              received: 'received' in issue ? String(issue.received) : undefined
+            })),
+            timestamp: Date.now(),
+            context: { input: typeof input === 'object' ? input : { value: input } }
           }
           
-          const firstErrorPath = error.errors[0]?.path.join('.')
-          if (firstErrorPath) {
-            validationError.field = firstErrorPath
-          }
           return Result.Err(validationError)
         }
         return Result.Err({
           code: 'VALIDATION_ERROR',
           message: 'Unknown validation error',
-          issues: []
+          fieldPath: [],
+          issues: [],
+          timestamp: Date.now(),
+          context: { input: typeof input === 'object' ? input : { value: input } }
         })
       }
     },
@@ -137,7 +153,10 @@ export const schema = {
           code: 'VALIDATION_ERROR',
           message: 'Input is not an object',
           field: fieldPath,
-          issues: []
+          fieldPath: fieldPath.split('.'),
+          issues: [],
+          timestamp: Date.now(),
+          context: { input: typeof input === 'object' ? input : { value: input }, expectedField: fieldPath }
         })
       }
 
@@ -152,7 +171,10 @@ export const schema = {
         return Result.Err({
           code: 'VALIDATION_ERROR',
           message: 'Value cannot be empty',
-          issues: []
+          fieldPath: [],
+          issues: [],
+          timestamp: Date.now(),
+          context: { input: typeof input === 'object' ? input : { value: input } }
         })
       }
       return schema.parse(input)
