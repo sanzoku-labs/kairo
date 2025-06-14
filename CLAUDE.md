@@ -556,9 +556,33 @@ const nameSignal = userSignal.map(user => user.name)
 **✅ Phase 1.3 Complete:** Enhanced Tracing System
 **✅ Phase 2.1 Complete:** Signal Primitive
 **✅ Phase 2.2 Complete:** Task Primitive
-**✅ Phase 2.3 Complete:** Form Abstraction (Bundle: ~31KB)
+**✅ Phase 2.3 Complete:** Form Abstraction
+**✅ Phase 3.1 Complete:** Resource Declaration (Bundle: ~35KB)
 
-**Next focus: Phase 3.1** - Resource Declaration for declarative API endpoint definitions.
+**🎉 All core phases complete!** Kairo framework now provides a complete reactive state management and API interaction solution with declarative resource management, form handling, async task management, and comprehensive pipeline-based data flows.
+
+Key Phase 3.1 achievements:
+
+- Declarative Resource system for API endpoint definitions with automatic pipeline generation
+- Type-safe URL interpolation with path parameter extraction and validation
+- Intelligent parameter/body separation for REST methods (GET, POST, PUT, PATCH, DELETE)
+- Comprehensive configuration with caching, retry, and timeout support at method or resource level
+- Full integration with existing Pipeline, Cache, and Retry systems from previous phases
+- Utility helpers for common HTTP method patterns (resourceUtils.get, .post, .put, etc.)
+- Method validation and error handling with Result-based APIs
+- 35 comprehensive tests covering all resource functionality and edge cases
+- Framework-agnostic design that works seamlessly with existing Kairo primitives
+
+Resource features implemented:
+
+- **Declarative API**: `resource('users', { get: {...}, create: {...} })` for endpoint definitions
+- **Auto-pipeline Generation**: Each method automatically creates optimized Pipeline instances
+- **URL Interpolation**: Smart path parameter handling like `/api/users/:id` with type safety
+- **HTTP Method Support**: GET, POST, PUT, PATCH, DELETE with proper body/param separation
+- **Configuration Layers**: Method-level and resource-level config for cache/retry/timeout
+- **Type Inference**: Full TypeScript support with input/output type inference from schemas
+- **Integration**: Seamless integration with Pipeline caching, retry, and timeout mechanisms
+- **Validation**: Built-in method validation and resource creation safety checks
 
 Key Phase 2.1 achievements:
 

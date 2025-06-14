@@ -33,6 +33,16 @@ export type {
   ValidationStrategy,
 } from './core/form'
 
+export { resource, resourceUtils, resourceCache } from './core/resource'
+export type {
+  Resource,
+  ResourceError,
+  ResourceMethod,
+  ResourceMethods,
+  ResourceInput,
+  ResourceOutput,
+} from './core/resource'
+
 export { schema } from './core/schema'
 export type { Schema, ValidationError } from './core/schema'
 
