@@ -1,6 +1,6 @@
 import { Result } from './result'
 import { type Schema, type ValidationError } from './schema'
-import { pipe, isNil, isEmpty, tryCatch } from '../utils/fp'
+import { isNil, isEmpty, tryCatch, cond, resolve, conditionalEffect } from '../utils/fp'
 
 export interface HttpError {
   code: 'HTTP_ERROR'
@@ -48,18 +48,8 @@ class InputStep<T> implements Step<ValidationError, T> {
     const start = performance.now()
     const result = this.schema.parse(input)
     
-    if (isTraceEnabled()) {
-      context.traces.push({
-        timestamp: Date.now(),
-        pipelineName: context.name,
-        stepName: 'input',
-        success: Result.isOk(result),
-        duration: performance.now() - start,
-        input,
-        output: Result.isOk(result) ? result.value : undefined,
-        error: Result.isErr(result) ? result.error : undefined
-      })
-    }
+    const logTrace = createTraceLogger(context)
+    logTrace(createTraceEntry(context, 'input', start, result, input))
     
     return Promise.resolve(result)
   }
@@ -74,29 +64,25 @@ class FetchStep<TInput = unknown> implements Step<HttpError, unknown> {
 
   async execute(input: unknown, context: PipelineContext): Promise<Result<HttpError, unknown>> {
     const start = performance.now()
-    const url = typeof this.urlOrFn === 'function' ? this.urlOrFn(input as TInput) : this.urlOrFn
-    const options = typeof this.options === 'function' ? this.options(input as TInput) : this.options
+    
+    const url = resolve(this.urlOrFn)(input as TInput)
+    const options = resolve(this.options || {})(input as TInput)
     
     try {
       const httpClient = context.httpClient || defaultHttpClient
       
-      const prepareFetchOptions = pipe(
-        (opts: RequestInit | undefined) => ({
-          ...opts,
-          headers: {
-            'Content-Type': 'application/json',
-            ...opts?.headers
-          }
-        }),
-        (opts: RequestInit) => {
-          const shouldAddBody = !opts.body && !isNil(input) && !isEmpty(input)
-          return shouldAddBody 
-            ? { ...opts, body: JSON.stringify(input) }
-            : opts
+      const baseOptions: RequestInit = {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers
         }
-      )
-      
-      const fetchOptions = prepareFetchOptions(options)
+      }
+
+      const shouldAddBody = !baseOptions.body && !isNil(input) && !isEmpty(input)
+      const fetchOptions: RequestInit = shouldAddBody 
+        ? { ...baseOptions, body: JSON.stringify(input) }
+        : baseOptions
       const response = await httpClient.fetch(url, fetchOptions)
 
       if (!response.ok) {
@@ -108,34 +94,16 @@ class FetchStep<TInput = unknown> implements Step<HttpError, unknown> {
           message: `HTTP ${response.status}: ${response.statusText}`
         }
         
-        if (isTraceEnabled()) {
-          context.traces.push({
-            timestamp: Date.now(),
-            pipelineName: context.name,
-            stepName: 'fetch',
-            success: false,
-            duration: performance.now() - start,
-            input: { url, options, body: input },
-            error
-          })
-        }
+        const logTrace = createTraceLogger(context)
+        logTrace(createTraceEntry(context, 'fetch', start, Result.Err(error), { url, options, body: input }, error))
         
         return Result.Err(error)
       }
 
       const data = await response.json()
       
-      if (isTraceEnabled()) {
-        context.traces.push({
-          timestamp: Date.now(),
-          pipelineName: context.name,
-          stepName: 'fetch',
-          success: true,
-          duration: performance.now() - start,
-          input: { url, options, body: input },
-          output: data
-        })
-      }
+      const logTrace = createTraceLogger(context)
+      logTrace(createTraceEntry(context, 'fetch', start, Result.Ok(data), { url, options, body: input }))
       
       return Result.Ok(data)
     } catch (error) {
@@ -147,17 +115,8 @@ class FetchStep<TInput = unknown> implements Step<HttpError, unknown> {
         message: error instanceof Error ? error.message : 'Unknown network error'
       }
       
-      if (isTraceEnabled()) {
-        context.traces.push({
-          timestamp: Date.now(),
-          pipelineName: context.name,
-          stepName: 'fetch',
-          success: false,
-          duration: performance.now() - start,
-          input: { url, options, body: input },
-          error: httpError
-        })
-      }
+      const logTrace = createTraceLogger(context)
+      logTrace(createTraceEntry(context, 'fetch', start, Result.Err(httpError), { url, options, body: input }, httpError))
       
       return Result.Err(httpError)
     }
@@ -172,18 +131,8 @@ class ValidateStep<T> implements Step<ValidationError, T> {
     const start = performance.now()
     const result = this.schema.parse(input)
     
-    if (isTraceEnabled()) {
-      context.traces.push({
-        timestamp: Date.now(),
-        pipelineName: context.name,
-        stepName: 'validate',
-        success: Result.isOk(result),
-        duration: performance.now() - start,
-        input,
-        output: Result.isOk(result) ? result.value : undefined,
-        error: Result.isErr(result) ? result.error : undefined
-      })
-    }
+    const logTrace = createTraceLogger(context)
+    logTrace(createTraceEntry(context, 'validate', start, result, input))
     
     return Promise.resolve(result)
   }
@@ -197,20 +146,9 @@ class MapStep<T, U> implements Step<never, U> {
     const start = performance.now()
     
     const result = tryCatch(() => this.fn(input as T))
-    const duration = performance.now() - start
     
-    if (isTraceEnabled()) {
-      context.traces.push({
-        timestamp: Date.now(),
-        pipelineName: context.name,
-        stepName: 'map',
-        success: Result.isOk(result),
-        duration,
-        input,
-        output: Result.isOk(result) ? result.value : undefined,
-        error: Result.isErr(result) ? result.error : undefined
-      })
-    }
+    const logTrace = createTraceLogger(context)
+    logTrace(createTraceEntry(context, 'map', start, result, input))
     
     if (Result.isErr(result)) {
       throw result.error
@@ -307,24 +245,38 @@ export class Pipeline<Input, Output> {
       context.httpClient = this.deps.httpClient
     }
 
+    const stepExecutors = {
+      mapError: (result: Result<unknown, unknown>, step: Step) => 
+        Result.isErr(result) 
+          ? Promise.resolve(Result.mapError(result, (step as MapErrorStep<unknown, unknown>).fn))
+          : Promise.resolve(result),
+          
+      default: async (result: Result<unknown, unknown>, step: Step) =>
+        Result.isOk(result) 
+          ? await step.execute(result.value, context)
+          : result
+    }
+
     const executeStep = async (
       result: Result<unknown, unknown>,
       step: Step
     ): Promise<Result<unknown, unknown>> => {
-      if (Result.isErr(result) && step.type !== 'mapError') {
-        return result
-      }
+      const stepStrategy = cond<[Result<unknown, unknown>, Step], Promise<Result<unknown, unknown>>>([
+        // Skip step if error and not mapError
+        [([res, s]) => Result.isErr(res) && s.type !== 'mapError', 
+         ([res]) => Promise.resolve(res)],
+        
+        // Handle mapError specifically 
+        [([_, step]) => step.type === 'mapError',
+         ([result, step]) => stepExecutors.mapError(result, step)],
+        
+        // Default case - execute step
+        [() => true,
+         ([result, step]) => stepExecutors.default(result, step)]
+      ])
 
-      if (step.type === 'mapError' && Result.isErr(result)) {
-        const mapErrorStep = step as MapErrorStep<unknown, unknown>
-        return Result.mapError(result, mapErrorStep.fn)
-      }
-
-      if (Result.isOk(result)) {
-        return await step.execute(result.value, context)
-      }
-
-      return result
+      const executor = stepStrategy([result, step])
+      return executor || Promise.resolve(result)
     }
 
     const initialResult = Result.Ok(input as unknown)
@@ -371,3 +323,27 @@ function isTraceEnabled(): boolean {
   }
   return false
 }
+
+const createTraceLogger = (context: PipelineContext) => 
+  conditionalEffect(
+    () => isTraceEnabled(),
+    (trace: TraceEntry) => context.traces.push(trace)
+  )
+
+const createTraceEntry = (
+  context: PipelineContext,
+  stepName: string,
+  start: number,
+  result: Result<unknown, unknown>,
+  input?: unknown,
+  error?: unknown
+): TraceEntry => ({
+  timestamp: Date.now(),
+  pipelineName: context.name,
+  stepName,
+  success: Result.isOk(result),
+  duration: performance.now() - start,
+  input,
+  output: Result.isOk(result) ? result.value : undefined,
+  error: Result.isErr(result) ? result.error : error
+})

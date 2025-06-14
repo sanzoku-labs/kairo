@@ -1,8 +1,8 @@
-# Lucid Framework - Brief de développement
+# Kairo Framework - Brief de développement
 
 ## 🎯 Vision et objectif
 
-Lucid est une librairie TypeScript fonctionnelle et composable qui élimine la "glue code" dans les applications frontend/fullstack modernes. Elle fournit des primitives puissantes pour structurer la logique applicative de manière cohérente, typée et testable.
+Kairo est une librairie TypeScript fonctionnelle et composable qui élimine la "glue code" dans les applications frontend/fullstack modernes. Elle fournit des primitives puissantes pour structurer la logique applicative de manière cohérente, typée et testable.
 
 **Philosophie :** Framework-agnostic, composable, avec un focus sur le plaisir de développer et la maintenabilité.
 
@@ -350,12 +350,12 @@ function pipeline(name: string, deps?: { httpClient?: HttpClient })
 ### Pattern d'erreurs
 ```typescript
 // Classes d'erreur spécifiques et sérialisables
-abstract class LucidError extends Error {
+abstract class KairoError extends Error {
   abstract readonly code: string
   abstract readonly context: Record<string, unknown>
 }
 
-class ValidationError extends LucidError {
+class ValidationError extends KairoError {
   readonly code = 'VALIDATION_ERROR'
   constructor(
     public readonly field: string,
@@ -448,7 +448,7 @@ interface TraceEntry {
   duration?: number
   input?: unknown
   output?: unknown
-  error?: LucidError
+  error?: KairoError
 }
 
 // Configurable via environnement
