@@ -8,6 +8,7 @@
 **Read VISION.md first** to understand the overall philosophy, goals, and strategic direction of Kairo.
 
 **Key principles to keep in mind:**
+
 - **Framework-agnostic**: Every feature should work across React, Node, Bun, etc.
 - **Functional & immutable**: Inspired by Gleam - no mutations, pure functions
 - **Developer joy**: Eliminate glue code, make debugging pleasant
@@ -15,6 +16,7 @@
 - **Lazy by design**: Only execute when explicitly requested
 
 **Success metrics from vision:**
+
 - Bundle size < 10kb gzipped (core)
 - Reduce boilerplate in real codebases
 - Improve debugging experience
@@ -27,6 +29,7 @@ Refer back to VISION.md when making architectural decisions or trade-offs.
 ## 🔄 Development Workflow (MANDATORY)
 
 ### After Every Implementation/Refactoring:
+
 ```bash
 # 1. Lint and format
 bun run lint
@@ -35,7 +38,7 @@ bun run format
 # 2. Type checking
 bun run typecheck
 
-# 3. Build verification  
+# 3. Build verification
 bun run build
 
 # 4. Run tests
@@ -51,6 +54,7 @@ bun run test
 ## 🧰 Code Patterns & Conventions
 
 ### Use Existing FP Utils (PRIORITY)
+
 The project already has functional programming utilities. **Always use these instead of reinventing:**
 
 ```typescript
@@ -60,14 +64,10 @@ import { isOk, isErr, mapResult, flatMapResult } from '../utils/result'
 import { isDefined, isNull, isUndefined } from '../utils/guards'
 
 // ✅ Good - use existing
-const processData = pipe(
-  validate(schema),
-  mapResult(transform),
-  flatMapResult(save)
-)
+const processData = pipe(validate(schema), mapResult(transform), flatMapResult(save))
 
 // ❌ Bad - reinventing
-const processData = (data) => {
+const processData = data => {
   const validated = validate(schema)(data)
   if (validated.tag === 'Ok') {
     const transformed = transform(validated.value)
@@ -78,21 +78,23 @@ const processData = (data) => {
 ```
 
 ### When to Create New FP Utils
+
 Only create new utilities if:
+
 1. The pattern is used 3+ times across the codebase
 2. It doesn't exist in current utils
 3. It follows functional programming principles (pure, composable)
 
 **Pattern for new utils:**
+
 ```typescript
 // src/utils/newUtil.ts
-export const newUtilFunction = <T, U>(param: T) => (input: U): Result<Error, V> => {
-  // Implementation using existing utils when possible
-  return pipe(
-    existingUtil1,
-    existingUtil2
-  )(input)
-}
+export const newUtilFunction =
+  <T, U>(param: T) =>
+  (input: U): Result<Error, V> => {
+    // Implementation using existing utils when possible
+    return pipe(existingUtil1, existingUtil2)(input)
+  }
 ```
 
 ---
@@ -102,6 +104,7 @@ export const newUtilFunction = <T, U>(param: T) => (input: U): Result<Error, V> 
 ### 🎯 Phase 1: Core Stabilization (Current)
 
 #### 1.1 Enhanced Error System
+
 **Goal:** Rich, traceable error types with context
 
 ```typescript
@@ -117,28 +120,26 @@ interface KairoError {
 
 // Error factory with context
 const createError = (code: string, message: string, context = {}) =>
-  pipe(
-    addTimestamp,
-    addTrace,
-    addContext(context)
-  )({ code, message })
+  pipe(addTimestamp, addTrace, addContext(context))({ code, message })
 ```
 
 **Tasks:**
+
 - [ ] Enhance ValidationError with field paths
-- [ ] Add NetworkError with retry context  
+- [ ] Add NetworkError with retry context
 - [ ] Add TimeoutError with duration info
 - [ ] Implement error chaining with `.cause`
 - [ ] Add error serialization for logging
 
 #### 1.2 Advanced Pipeline Steps
+
 **Goal:** More pipeline methods for complex flows
 
 ```typescript
 // New methods to implement
 interface Pipeline<Input, Output> {
   // Existing methods...
-  
+
   retry(times: number, delay?: number): Pipeline<Input, Output>
   timeout(ms: number): Pipeline<Input, Output>
   cache(ttl: number): Pipeline<Input, Output>
@@ -148,11 +149,13 @@ interface Pipeline<Input, Output> {
 ```
 
 **Implementation approach:**
+
 - Use existing FP utils for composition
 - Each method returns new Pipeline instance (immutability)
 - Leverage Result pattern for error handling
 
 #### 1.3 Enhanced Tracing System
+
 **Goal:** Structured, queryable trace data
 
 ```typescript
@@ -178,6 +181,7 @@ interface TraceCollector {
 ```
 
 **Tasks:**
+
 - [ ] Implement structured trace collection
 - [ ] Add trace filtering and querying
 - [ ] Create trace visualization helpers
@@ -188,6 +192,7 @@ interface TraceCollector {
 ### 🎯 Phase 2: Reactive Extensions
 
 #### 2.1 Signal Primitive
+
 **Goal:** Lightweight reactive state with scoping
 
 ```typescript
@@ -201,19 +206,17 @@ interface Signal<T> {
 
 // Usage with existing patterns
 const createSignal = <T>(initial: T): Signal<T> =>
-  pipe(
-    validateInitialValue,
-    createSubscriptionManager,
-    createGetterSetter
-  )(initial)
+  pipe(validateInitialValue, createSubscriptionManager, createGetterSetter)(initial)
 ```
 
 **Implementation strategy:**
+
 - Use existing FP utils for transformations
 - Integrate with pipeline `.asSignal()` method
 - Scope-aware cleanup mechanism
 
-#### 2.2 Task Primitive  
+#### 2.2 Task Primitive
+
 **Goal:** Async state management (pending/success/error)
 
 ```typescript
@@ -228,14 +231,11 @@ interface Task<T> {
 
 // Create from pipeline
 const createTask = <I, O>(pipeline: Pipeline<I, O>): Task<O> =>
-  pipe(
-    createTaskState,
-    attachPipeline,
-    createSignal
-  )(pipeline)
+  pipe(createTaskState, attachPipeline, createSignal)(pipeline)
 ```
 
 #### 2.3 Form Abstraction
+
 **Goal:** Form state + validation + submission pipeline
 
 ```typescript
@@ -253,7 +253,7 @@ interface Form<T> {
 const loginForm = createForm({
   schema: LoginSchema,
   onSubmit: loginPipeline,
-  validation: 'onBlur'
+  validation: 'onBlur',
 })
 ```
 
@@ -262,6 +262,7 @@ const loginForm = createForm({
 ### 🎯 Phase 3: Resource Management
 
 #### 3.1 Resource Declaration
+
 **Goal:** Declarative API endpoint definitions
 
 ```typescript
@@ -278,7 +279,7 @@ const UserResource = resource('user', {
     response: UserSchema
   },
   update: {
-    method: 'PUT', 
+    method: 'PUT',
     path: '/api/user/:id',
     params: z.object({ id: z.string() }),
     body: UpdateUserSchema,
@@ -292,11 +293,13 @@ await UserResource.update.run({ id: '123', name: 'New Name' })
 ```
 
 **Implementation approach:**
+
 - Generate pipelines using existing pipeline primitives
 - Use FP utils for URL interpolation and HTTP methods
 - Integrate with cache and retry mechanisms
 
 #### 3.2 Cache System
+
 **Goal:** Declarative caching with TTL and invalidation
 
 ```typescript
@@ -319,6 +322,7 @@ const cachedUserPipeline = pipeline('get-user')
 ## 🔧 Implementation Guidelines
 
 ### File Organization
+
 ```
 src/
 ├── core/           # Core primitives (stable)
@@ -329,29 +333,24 @@ src/
 ```
 
 ### Testing Strategy
+
 ```typescript
 // Test pattern for new features
 describe('NewFeature', () => {
   // Unit tests for pure functions
   describe('pure functions', () => {
     it('should work with existing FP utils', () => {
-      const result = pipe(
-        newFeature,
-        existingUtil
-      )(input)
-      
+      const result = pipe(newFeature, existingUtil)(input)
+
       expect(isOk(result)).toBe(true)
     })
   })
-  
+
   // Integration tests with pipelines
   describe('pipeline integration', () => {
     it('should compose with existing pipeline methods', async () => {
-      const result = await pipeline('test')
-        .input(schema)
-        .newMethod()
-        .run(input)
-        
+      const result = await pipeline('test').input(schema).newMethod().run(input)
+
       expect(isOk(result)).toBe(true)
     })
   })
@@ -359,21 +358,14 @@ describe('NewFeature', () => {
 ```
 
 ### Type Safety Patterns
+
 ```typescript
 // Use existing type guards
 const processValue = <T>(value: unknown): Result<Error, T> =>
-  pipe(
-    guardType<T>,
-    validate,
-    transform
-  )(value)
+  pipe(guardType<T>, validate, transform)(value)
 
 // Leverage existing Result helpers
-const chainOperations = pipe(
-  mapResult(step1),
-  flatMapResult(step2),
-  mapResult(step3)
-)
+const chainOperations = pipe(mapResult(step1), flatMapResult(step2), mapResult(step3))
 ```
 
 ---
@@ -381,23 +373,27 @@ const chainOperations = pipe(
 ## 📚 Reference: Existing Utils to Use
 
 ### FP Core
+
 - `pipe()` - Function composition
-- `compose()` - Right-to-left composition  
+- `compose()` - Right-to-left composition
 - `curry()` - Function currying
 - `identity()` - Identity function
 
 ### Result Helpers
+
 - `isOk()` - Type guard for Ok results
 - `isErr()` - Type guard for Err results
 - `mapResult()` - Transform Ok values
 - `flatMapResult()` - Chain Result operations
 
 ### Type Guards
+
 - `isDefined()` - Check for non-null/undefined
 - `isNull()` - Null check
 - `isUndefined()` - Undefined check
 
 ### Validation
+
 - `validateSchema()` - Schema validation with Result
 - `parseJson()` - Safe JSON parsing
 

@@ -15,13 +15,15 @@ describe('safe', () => {
       const result = tryCatch(() => {
         throw error
       })
-      
+
       expect(Result.isErr(result)).toBe(true)
       expect(Result.unwrapOr(result, null)).toBe(null)
-      expect(Result.match(result, {
-        Ok: () => null,
-        Err: (e) => e
-      })).toBe(error)
+      expect(
+        Result.match(result, {
+          Ok: () => null,
+          Err: e => e,
+        })
+      ).toBe(error)
     })
 
     it('should handle custom error transformation', () => {
@@ -29,19 +31,21 @@ describe('safe', () => {
         () => {
           throw new Error('Network error')
         },
-        (error) => ({
+        error => ({
           code: 'NETWORK_ERROR',
-          message: (error as Error).message
+          message: (error as Error).message,
         })
       )
-      
+
       expect(Result.isErr(result)).toBe(true)
-      expect(Result.match(result, {
-        Ok: () => null,
-        Err: (e) => e
-      })).toEqual({
+      expect(
+        Result.match(result, {
+          Ok: () => null,
+          Err: e => e,
+        })
+      ).toEqual({
         code: 'NETWORK_ERROR',
-        message: 'Network error'
+        message: 'Network error',
       })
     })
 
@@ -50,10 +54,10 @@ describe('safe', () => {
         if (b === 0) throw new Error('Division by zero')
         return a / b
       }
-      
+
       const result1 = tryCatch(() => divide(10, 2))
       expect(Result.unwrap(result1)).toBe(5)
-      
+
       const result2 = tryCatch(() => divide(10, 0))
       expect(Result.isErr(result2)).toBe(true)
     })
@@ -63,21 +67,24 @@ describe('safe', () => {
         if (id < 0) throw new Error('Invalid user ID')
         return { id, name: 'John' }
       }
-      
+
       const result = tryCatch(() => fetchUser(1))
       expect(Result.unwrap(result)).toEqual({ id: 1, name: 'John' })
-      
+
       const errorResult = tryCatch(() => fetchUser(-1))
       expect(Result.isErr(errorResult)).toBe(true)
     })
 
     it('should compose with Result methods', () => {
       const parseJSON = (str: string) => tryCatch(() => JSON.parse(str) as unknown)
-      
+
       const validResult = parseJSON('{"name": "Alice"}')
-      const transformed = Result.map(validResult, (data: unknown) => (data as { name: string }).name)
+      const transformed = Result.map(
+        validResult,
+        (data: unknown) => (data as { name: string }).name
+      )
       expect(Result.unwrap(transformed)).toBe('Alice')
-      
+
       const invalidResult = parseJSON('invalid json')
       const withDefault = Result.unwrapOr(invalidResult, { name: 'Unknown' })
       expect(withDefault).toEqual({ name: 'Unknown' })

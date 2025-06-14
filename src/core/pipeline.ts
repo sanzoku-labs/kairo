@@ -1,7 +1,7 @@
 import { Result } from './result'
 import { type Schema, type ValidationError } from './schema'
-import { isNil, isEmpty, cond, resolve, conditionalEffect, tryCatch } from '../utils/fp'
-import { type KairoError } from './errors'
+import { isNil, isEmpty, cond, resolve, conditionalEffect, tryCatch, retry } from '../utils/fp'
+import { type KairoError, createError } from './errors'
 
 export interface HttpError extends KairoError {
   code: 'HTTP_ERROR'
@@ -16,7 +16,7 @@ export interface NetworkError extends KairoError {
   method: string
   attempt: number
   maxAttempts: number
-  retryDelay?: number
+  retryDelay?: number | undefined
 }
 
 export interface TimeoutError extends KairoError {
@@ -53,7 +53,7 @@ interface HttpClient {
 }
 
 const defaultHttpClient: HttpClient = {
-  fetch: (url, options) => fetch(url, options)
+  fetch: (url, options) => fetch(url, options),
 }
 
 class InputStep<T> implements Step<ValidationError, T> {
@@ -63,10 +63,10 @@ class InputStep<T> implements Step<ValidationError, T> {
   execute(input: unknown, context: PipelineContext): Promise<Result<ValidationError, T>> {
     const start = performance.now()
     const result = this.schema.parse(input)
-    
+
     const logTrace = createTraceLogger(context)
     logTrace(createTraceEntry(context, 'input', start, result, input))
-    
+
     return Promise.resolve(result)
   }
 }
@@ -81,7 +81,7 @@ class FetchStep<TInput = unknown> implements Step<HttpError, unknown> {
   async execute(input: unknown, context: PipelineContext): Promise<Result<HttpError, unknown>> {
     const start = performance.now()
     const logTrace = createTraceLogger(context)
-    
+
     const url = resolve(this.urlOrFn)(input as TInput)
     const options = resolve(this.options || {})(input as TInput)
     const httpClient = context.httpClient || defaultHttpClient
@@ -91,10 +91,10 @@ class FetchStep<TInput = unknown> implements Step<HttpError, unknown> {
         ...opts,
         headers: {
           'Content-Type': 'application/json',
-          ...opts.headers
-        }
+          ...opts.headers,
+        },
       }
-      
+
       return !isNil(input) && !isEmpty(input)
         ? { ...baseOpts, body: JSON.stringify(input) }
         : baseOpts
@@ -107,7 +107,7 @@ class FetchStep<TInput = unknown> implements Step<HttpError, unknown> {
       url,
       message,
       timestamp: Date.now(),
-      context: { url, method: options.method || 'GET', status }
+      context: { url, method: options.method || 'GET', status },
     })
 
     const handleResponse = async (response: Response): Promise<Result<HttpError, unknown>> => {
@@ -117,12 +117,23 @@ class FetchStep<TInput = unknown> implements Step<HttpError, unknown> {
           response.statusText,
           `HTTP ${response.status}: ${response.statusText}`
         )
-        logTrace(createTraceEntry(context, 'fetch', start, Result.Err(error), { url, options, body: input }, error))
+        logTrace(
+          createTraceEntry(
+            context,
+            'fetch',
+            start,
+            Result.Err(error),
+            { url, options, body: input },
+            error
+          )
+        )
         return Result.Err(error)
       }
 
       const data = await response.json()
-      logTrace(createTraceEntry(context, 'fetch', start, Result.Ok(data), { url, options, body: input }))
+      logTrace(
+        createTraceEntry(context, 'fetch', start, Result.Ok(data), { url, options, body: input })
+      )
       return Result.Ok(data)
     }
 
@@ -136,7 +147,16 @@ class FetchStep<TInput = unknown> implements Step<HttpError, unknown> {
         'Network Error',
         error instanceof Error ? error.message : 'Unknown network error'
       )
-      logTrace(createTraceEntry(context, 'fetch', start, Result.Err(httpError), { url, options, body: input }, httpError))
+      logTrace(
+        createTraceEntry(
+          context,
+          'fetch',
+          start,
+          Result.Err(httpError),
+          { url, options, body: input },
+          httpError
+        )
+      )
       return Result.Err(httpError)
     }
   }
@@ -149,10 +169,10 @@ class ValidateStep<T> implements Step<ValidationError, T> {
   execute(input: unknown, context: PipelineContext): Promise<Result<ValidationError, T>> {
     const start = performance.now()
     const result = this.schema.parse(input)
-    
+
     const logTrace = createTraceLogger(context)
     logTrace(createTraceEntry(context, 'validate', start, result, input))
-    
+
     return Promise.resolve(result)
   }
 }
@@ -163,16 +183,16 @@ class MapStep<T, U> implements Step<never, U> {
 
   execute(input: unknown, context: PipelineContext): Promise<Result<never, U>> {
     const start = performance.now()
-    
+
     const result = tryCatch(() => this.fn(input as T))
-    
+
     const logTrace = createTraceLogger(context)
     logTrace(createTraceEntry(context, 'map', start, result, input))
-    
+
     if (Result.isErr(result)) {
       throw result.error
     }
-    
+
     return Promise.resolve(result as Result<never, U>)
   }
 }
@@ -196,18 +216,31 @@ class TraceStep implements Step<never, unknown> {
   }
 }
 
+interface RetryConfig {
+  times: number
+  delay?: number
+}
+
+interface TimeoutConfig {
+  ms: number
+}
+
 export class Pipeline<Input, Output> {
   constructor(
     private readonly steps: Step[],
     private readonly name: string,
-    private readonly deps?: { httpClient?: HttpClient }
+    private readonly deps?: { httpClient?: HttpClient },
+    private readonly retryConfig?: RetryConfig,
+    private readonly timeoutConfig?: TimeoutConfig
   ) {}
 
   input<I>(schema: Schema<I>): Pipeline<I, I> {
     return new Pipeline<I, I>(
       [...this.steps, new InputStep(schema)],
       this.name,
-      this.deps
+      this.deps,
+      this.retryConfig,
+      this.timeoutConfig
     )
   }
 
@@ -218,7 +251,9 @@ export class Pipeline<Input, Output> {
     return new Pipeline<Input, unknown>(
       [...this.steps, new FetchStep<Input>(url, options)],
       this.name,
-      this.deps
+      this.deps,
+      this.retryConfig,
+      this.timeoutConfig
     )
   }
 
@@ -226,7 +261,9 @@ export class Pipeline<Input, Output> {
     return new Pipeline<Input, O>(
       [...this.steps, new ValidateStep(schema)],
       this.name,
-      this.deps
+      this.deps,
+      this.retryConfig,
+      this.timeoutConfig
     )
   }
 
@@ -234,7 +271,9 @@ export class Pipeline<Input, Output> {
     return new Pipeline<Input, U>(
       [...this.steps, new MapStep(fn)],
       this.name,
-      this.deps
+      this.deps,
+      this.retryConfig,
+      this.timeoutConfig
     )
   }
 
@@ -242,7 +281,9 @@ export class Pipeline<Input, Output> {
     return new Pipeline<Input, Output>(
       [...this.steps, new MapErrorStep(fn)],
       this.name,
-      this.deps
+      this.deps,
+      this.retryConfig,
+      this.timeoutConfig
     )
   }
 
@@ -250,59 +291,157 @@ export class Pipeline<Input, Output> {
     return new Pipeline<Input, Output>(
       [...this.steps, new TraceStep(label)],
       this.name,
-      this.deps
+      this.deps,
+      this.retryConfig,
+      this.timeoutConfig
     )
   }
 
+  retry(times: number, delay?: number): Pipeline<Input, Output> {
+    return new Pipeline<Input, Output>(
+      this.steps,
+      this.name,
+      this.deps,
+      { times, delay: delay || 1000 },
+      this.timeoutConfig
+    )
+  }
+
+  timeout(ms: number): Pipeline<Input, Output> {
+    return new Pipeline<Input, Output>(this.steps, this.name, this.deps, this.retryConfig, { ms })
+  }
+
   async run(input?: Input): Promise<Result<unknown, Output>> {
-    const context: PipelineContext = {
-      name: this.name,
-      traces: []
-    }
-    
-    if (this.deps?.httpClient) {
-      context.httpClient = this.deps.httpClient
+    const start = performance.now()
+
+    const executePipeline = async (): Promise<Result<unknown, Output>> => {
+      const context: PipelineContext = {
+        name: this.name,
+        traces: [],
+      }
+
+      if (this.deps?.httpClient) {
+        context.httpClient = this.deps.httpClient
+      }
+
+      const executeStep = async (
+        result: Result<unknown, unknown>,
+        step: Step
+      ): Promise<Result<unknown, unknown>> => {
+        return (
+          cond<[Result<unknown, unknown>, Step], Promise<Result<unknown, unknown>>>([
+            // Skip step if error and not mapError
+            [
+              ([res, s]) => Result.isErr(res) && s.type !== 'mapError',
+              ([res]) => Promise.resolve(res),
+            ],
+
+            // Handle mapError specifically
+            [
+              ([res, s]) => s.type === 'mapError' && Result.isErr(res),
+              ([result, step]) =>
+                Promise.resolve(
+                  Result.mapError(result, (step as MapErrorStep<unknown, unknown>).fn)
+                ),
+            ],
+
+            // Execute step if result is Ok
+            [
+              ([res]) => Result.isOk(res),
+              async ([result, step]) => {
+                if (Result.isOk(result)) {
+                  return await step.execute(result.value, context)
+                }
+                return result
+              },
+            ],
+
+            // Default case - return result unchanged
+            [() => true, ([result]) => Promise.resolve(result)],
+          ])([result, step]) || Promise.resolve(result)
+        )
+      }
+
+      const initialResult = Result.Ok(input as unknown)
+      const finalResult = await this.steps.reduce(
+        async (accPromise: Promise<Result<unknown, unknown>>, step: Step) => {
+          const acc = await accPromise
+          return executeStep(acc, step)
+        },
+        Promise.resolve(initialResult)
+      )
+
+      this.logTraces(context)
+      return finalResult as Result<unknown, Output>
     }
 
-    const executeStep = async (
-      result: Result<unknown, unknown>,
-      step: Step
-    ): Promise<Result<unknown, unknown>> => {
-      return cond<[Result<unknown, unknown>, Step], Promise<Result<unknown, unknown>>>([
-        // Skip step if error and not mapError
-        [([res, s]) => Result.isErr(res) && s.type !== 'mapError', 
-         ([res]) => Promise.resolve(res)],
-        
-        // Handle mapError specifically 
-        [([res, s]) => s.type === 'mapError' && Result.isErr(res),
-         ([result, step]) => Promise.resolve(Result.mapError(result, (step as MapErrorStep<unknown, unknown>).fn))],
-        
-        // Execute step if result is Ok
-        [([res]) => Result.isOk(res),
-         async ([result, step]) => {
-           if (Result.isOk(result)) {
-             return await step.execute(result.value, context)
-           }
-           return result
-         }],
-        
-        // Default case - return result unchanged
-        [() => true,
-         ([result]) => Promise.resolve(result)]
-      ])([result, step]) || Promise.resolve(result)
+    const executeWithTimeout = async (): Promise<Result<unknown, Output>> => {
+      if (!this.timeoutConfig) {
+        return executePipeline()
+      }
+
+      const timeoutPromise = new Promise<Result<unknown, Output>>((_, reject) => {
+        globalThis.setTimeout(() => {
+          const duration = performance.now() - start
+          const timeoutError: TimeoutError = {
+            ...createError(
+              'TIMEOUT_ERROR',
+              `Pipeline timed out after ${this.timeoutConfig!.ms}ms`,
+              {
+                pipelineName: this.name,
+              }
+            ),
+            code: 'TIMEOUT_ERROR',
+            duration,
+            timeout: this.timeoutConfig!.ms,
+            operation: this.name,
+          }
+          reject(new Error(`Timeout: ${JSON.stringify(timeoutError)}`))
+        }, this.timeoutConfig!.ms)
+      })
+
+      try {
+        return await Promise.race([executePipeline(), timeoutPromise])
+      } catch (error) {
+        if (error instanceof Error && error.message.startsWith('Timeout:')) {
+          const timeoutData = JSON.parse(error.message.replace('Timeout: ', '')) as TimeoutError
+          return Result.Err(timeoutData)
+        }
+        throw error
+      }
     }
 
-    const initialResult = Result.Ok(input as unknown)
-    const finalResult = await this.steps.reduce(
-      async (accPromise: Promise<Result<unknown, unknown>>, step: Step) => {
-        const acc = await accPromise
-        return executeStep(acc, step)
-      },
-      Promise.resolve(initialResult)
+    if (!this.retryConfig) {
+      return executeWithTimeout()
+    }
+
+    const retryPipeline = retry(
+      (_: unknown) => executeWithTimeout(),
+      this.retryConfig.times,
+      this.retryConfig.delay
     )
 
-    this.logTraces(context)
-    return finalResult as Result<unknown, Output>
+    try {
+      const result = await retryPipeline(input)
+      return Result.Ok(result) as Result<unknown, Output>
+    } catch {
+      const networkError: NetworkError = {
+        ...createError(
+          'NETWORK_ERROR',
+          `Pipeline failed after ${this.retryConfig.times} attempts`,
+          {
+            pipelineName: this.name,
+          }
+        ),
+        code: 'NETWORK_ERROR',
+        url: '',
+        method: 'PIPELINE',
+        attempt: this.retryConfig.times,
+        maxAttempts: this.retryConfig.times,
+        retryDelay: this.retryConfig.delay,
+      }
+      return Result.Err(networkError)
+    }
   }
 
   private logTraces(context: PipelineContext): void {
@@ -324,19 +463,21 @@ export function pipeline<T = unknown>(
   name: string,
   deps?: { httpClient?: HttpClient }
 ): Pipeline<T, T> {
-  return new Pipeline<T, T>([], name, deps)
+  return new Pipeline<T, T>([], name, deps, undefined, undefined)
 }
 
-const isTraceEnabled = (): boolean => 
+const isTraceEnabled = (): boolean =>
   cond<typeof globalThis, boolean>([
     [() => typeof globalThis === 'undefined', () => false],
     [() => globalThis.process?.env?.LUCID_TRACE === 'true', () => true],
-    [() => typeof globalThis.localStorage !== 'undefined', 
-     () => globalThis.localStorage?.getItem('lucid:trace') === 'true'],
-    [() => true, () => false]
+    [
+      () => typeof globalThis.localStorage !== 'undefined',
+      () => globalThis.localStorage?.getItem('lucid:trace') === 'true',
+    ],
+    [() => true, () => false],
   ])(globalThis) || false
 
-const createTraceLogger = (context: PipelineContext) => 
+const createTraceLogger = (context: PipelineContext) =>
   conditionalEffect(
     () => isTraceEnabled(),
     (trace: TraceEntry) => context.traces.push(trace)
@@ -357,5 +498,5 @@ const createTraceEntry = (
   duration: performance.now() - start,
   input,
   output: Result.isOk(result) ? result.value : undefined,
-  error: Result.isErr(result) ? result.error : error
+  error: Result.isErr(result) ? result.error : error,
 })

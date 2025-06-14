@@ -16,14 +16,15 @@ export const createError = <T extends KairoError>(
   message: string,
   context: Record<string, unknown> = {},
   cause?: KairoError
-): T => ({
-  code,
-  message,
-  timestamp: Date.now(),
-  context,
-  cause,
-  trace: cause?.trace ? [...cause.trace, code] : [code]
-} as T)
+): T =>
+  ({
+    code,
+    message,
+    timestamp: Date.now(),
+    context,
+    cause,
+    trace: cause?.trace ? [...cause.trace, code] : [code],
+  }) as T
 
 export const chainError = <T extends KairoError, U extends KairoError>(
   newError: T,
@@ -33,7 +34,7 @@ export const chainError = <T extends KairoError, U extends KairoError>(
   timestamp: Date.now(),
   context: newError.context || {},
   cause,
-  trace: cause.trace ? [...cause.trace, newError.code] : [newError.code]
+  trace: cause.trace ? [...cause.trace, newError.code] : [newError.code],
 })
 
 export const isKairoError = (error: unknown): error is KairoError =>
@@ -46,12 +47,12 @@ export const isKairoError = (error: unknown): error is KairoError =>
 export const getErrorChain = (error: KairoError): KairoError[] => {
   const chain: KairoError[] = [error]
   let current = error.cause
-  
+
   while (current) {
     chain.push(current)
     current = current.cause
   }
-  
+
   return chain
 }
 
@@ -61,7 +62,7 @@ export const serializeError = (error: KairoError): Record<string, unknown> => ({
   timestamp: error.timestamp,
   context: error.context,
   trace: error.trace,
-  cause: error.cause ? serializeError(error.cause) : undefined
+  cause: error.cause ? serializeError(error.cause) : undefined,
 })
 
 export const findErrorByCode = (error: KairoError, code: string): KairoError | undefined => {

@@ -47,7 +47,7 @@ describe('array', () => {
     })
 
     it('should handle non-array returns as single-element arrays', () => {
-      const maybeDouble = (x: number) => x % 2 === 0 ? [x, x] : x
+      const maybeDouble = (x: number) => (x % 2 === 0 ? [x, x] : x)
       const result = flatMap(maybeDouble)([1, 2, 3, 4])
       expect(result).toEqual([1, 2, 2, 3, 4, 4])
     })
@@ -79,19 +79,28 @@ describe('array', () => {
         { id: 1, name: 'John' },
         { id: 2, name: 'Jane' },
         { id: 1, name: 'John' },
-        { id: 3, name: 'Bob' }
+        { id: 3, name: 'Bob' },
       ]
       const unique = uniq(arr)
       expect(unique).toEqual([
         { id: 1, name: 'John' },
         { id: 2, name: 'Jane' },
-        { id: 3, name: 'Bob' }
+        { id: 3, name: 'Bob' },
       ])
     })
 
     it('should handle arrays with deep equality', () => {
-      expect(uniq([[1, 2], [3, 4], [1, 2], [5, 6]])).toEqual([
-        [1, 2], [3, 4], [5, 6]
+      expect(
+        uniq([
+          [1, 2],
+          [3, 4],
+          [1, 2],
+          [5, 6],
+        ])
+      ).toEqual([
+        [1, 2],
+        [3, 4],
+        [5, 6],
       ])
     })
 
@@ -111,7 +120,7 @@ describe('array', () => {
       expect(grouped).toEqual({
         '3': ['one', 'two'],
         '5': ['three'],
-        '4': ['four', 'five']
+        '4': ['four', 'five'],
       })
     })
 
@@ -120,20 +129,20 @@ describe('array', () => {
         { name: 'Alice', age: 25 },
         { name: 'Bob', age: 30 },
         { name: 'Charlie', age: 25 },
-        { name: 'David', age: 30 }
+        { name: 'David', age: 30 },
       ]
-      const byAge = (user: typeof users[0]) => user.age.toString()
+      const byAge = (user: (typeof users)[0]) => user.age.toString()
       const grouped = groupBy(byAge)(users)
-      
+
       expect(grouped).toEqual({
         '25': [
           { name: 'Alice', age: 25 },
-          { name: 'Charlie', age: 25 }
+          { name: 'Charlie', age: 25 },
         ],
         '30': [
           { name: 'Bob', age: 30 },
-          { name: 'David', age: 30 }
-        ]
+          { name: 'David', age: 30 },
+        ],
       })
     })
 
@@ -146,8 +155,8 @@ describe('array', () => {
       const byFirstLetter = (s: string) => s[0] || ''
       const grouped = groupBy(byFirstLetter)(['apple', 'apricot', 'banana', 'avocado'])
       expect(grouped).toEqual({
-        'a': ['apple', 'apricot', 'avocado'],
-        'b': ['banana']
+        a: ['apple', 'apricot', 'avocado'],
+        b: ['banana'],
       })
     })
   })

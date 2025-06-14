@@ -11,7 +11,7 @@ describe('Result', () => {
     it('should preserve value through map operations', () => {
       const result = Result.Ok(10)
       const mapped = Result.map(result, x => x * 2)
-      
+
       expect(Result.isOk(mapped)).toBe(true)
       expect(mapped).toEqual({ tag: 'Ok', value: 20 })
     })
@@ -21,23 +21,23 @@ describe('Result', () => {
       result = map((x: number) => x * 2)(result as Result<unknown, number>)
       result = map((x: number) => x + 1)(result as Result<unknown, number>)
       result = map((x: number) => x.toString())(result as Result<unknown, number>)
-      
+
       expect(result).toEqual({ tag: 'Ok', value: '11' })
     })
 
     it('should handle flatMap correctly', () => {
       const result = Result.Ok(10)
-      const flatMapped = Result.flatMap(result, x => 
+      const flatMapped = Result.flatMap(result, x =>
         x > 5 ? Result.Ok(x * 2) : Result.Err('too small')
       )
-      
+
       expect(flatMapped).toEqual({ tag: 'Ok', value: 20 })
     })
 
     it('should not apply mapError on Ok result', () => {
       const result = Result.Ok(42)
       const mapped = Result.mapError(result, () => 'new error')
-      
+
       expect(mapped).toEqual({ tag: 'Ok', value: 42 })
     })
   })
@@ -51,7 +51,7 @@ describe('Result', () => {
     it('should short-circuit map operations', () => {
       const result = Result.Err('error')
       const mapped = Result.map(result, (x: unknown) => (x as number) * 2)
-      
+
       expect(Result.isErr(mapped)).toBe(true)
       expect(mapped).toEqual({ tag: 'Err', error: 'error' })
     })
@@ -59,14 +59,14 @@ describe('Result', () => {
     it('should short-circuit flatMap operations', () => {
       const result = Result.Err('initial error')
       const flatMapped = Result.flatMap(result, (x: unknown) => Result.Ok((x as number) * 2))
-      
+
       expect(flatMapped).toEqual({ tag: 'Err', error: 'initial error' })
     })
 
     it('should apply mapError on Err result', () => {
       const result = Result.Err('error')
       const mapped = Result.mapError(result, err => `transformed: ${err}`)
-      
+
       expect(mapped).toEqual({ tag: 'Err', error: 'transformed: error' })
     })
   })
@@ -76,9 +76,9 @@ describe('Result', () => {
       const result = Result.Ok(42)
       const value = Result.match(result, {
         Ok: x => `success: ${x}`,
-        Err: err => `error: ${String(err)}`
+        Err: err => `error: ${String(err)}`,
       })
-      
+
       expect(value).toBe('success: 42')
     })
 
@@ -86,18 +86,18 @@ describe('Result', () => {
       const result = Result.Err('failed')
       const value = Result.match(result, {
         Ok: (x: number) => `success: ${x}`,
-        Err: err => `error: ${String(err)}`
+        Err: err => `error: ${String(err)}`,
       })
-      
+
       expect(value).toBe('error: failed')
     })
 
     it('should work with curried match function', () => {
       const handler = match<string, number, string>({
         Ok: x => `ok: ${x}`,
-        Err: err => `err: ${String(err)}`
+        Err: err => `err: ${String(err)}`,
       })
-      
+
       expect(handler(Result.Ok(10))).toBe('ok: 10')
       expect(handler(Result.Err('oops'))).toBe('err: oops')
     })
@@ -134,14 +134,14 @@ describe('Result', () => {
     it('should convert resolved promise to Ok', async () => {
       const promise = Promise.resolve(42)
       const result = await Result.fromPromise(promise)
-      
+
       expect(result).toEqual({ tag: 'Ok', value: 42 })
     })
 
     it('should convert rejected promise to Err', async () => {
       const promise = Promise.reject(new Error('failed'))
       const result = await Result.fromPromise(promise)
-      
+
       expect(Result.isErr(result)).toBe(true)
       if (Result.isErr(result)) {
         expect(result.error).toBeInstanceOf(Error)
@@ -160,7 +160,7 @@ describe('Result', () => {
       const result = Result.fromTry(() => {
         throw new Error('boom')
       })
-      
+
       expect(Result.isErr(result)).toBe(true)
       if (Result.isErr(result)) {
         expect(result.error).toBeInstanceOf(Error)
@@ -173,7 +173,7 @@ describe('Result', () => {
     it('should handle null and undefined values', () => {
       const nullResult = Result.Ok(null)
       const undefinedResult = Result.Ok(undefined)
-      
+
       expect(nullResult).toEqual({ tag: 'Ok', value: null })
       expect(undefinedResult).toEqual({ tag: 'Ok', value: undefined })
     })
@@ -184,13 +184,13 @@ describe('Result', () => {
         message: string
         context: Record<string, unknown>
       }
-      
+
       const error: CustomError = {
         code: 'VALIDATION_ERROR',
         message: 'Invalid input',
-        context: { field: 'email' }
+        context: { field: 'email' },
       }
-      
+
       const result = Result.Err(error)
       if (Result.isErr(result)) {
         expect(result.error).toEqual(error)
@@ -200,7 +200,7 @@ describe('Result', () => {
     it('should compose multiple operations', () => {
       const divide = (a: number, b: number): Result<string, number> =>
         b === 0 ? Result.Err('division by zero') : Result.Ok(a / b)
-      
+
       const compute = (x: number): Result<string, number> => {
         let result: Result<string, number> = Result.Ok(x)
         result = flatMap((n: number) => divide(n, 2))(result)
@@ -208,7 +208,7 @@ describe('Result', () => {
         const mappedResult = map((n: number) => Math.round(n))(result)
         return mappedResult as Result<string, number>
       }
-      
+
       expect(compute(20)).toEqual({ tag: 'Ok', value: 5 })
       expect(compute(10)).toEqual({ tag: 'Ok', value: 3 })
     })

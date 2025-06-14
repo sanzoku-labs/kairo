@@ -30,14 +30,14 @@ describe('object', () => {
       }
       const user: User = { id: 1, name: 'John', email: 'john@example.com', age: 30 }
       const publicInfo = pick<User, 'id' | 'name'>('id', 'name')(user)
-      
+
       // Type test - should compile
       const id: number = publicInfo.id
       const name: string = publicInfo.name
       // Type test - email should not exist
       // @ts-expect-error - property does not exist
       expect(publicInfo.email).toBeUndefined()
-      
+
       expect(id).toBe(1)
       expect(name).toBe('John')
     })
@@ -95,12 +95,12 @@ describe('object', () => {
       const defaults = { theme: 'dark', fontSize: 14 }
       const userPrefs = { fontSize: 16, language: 'en' }
       const settings = merge(defaults, userPrefs)
-      
+
       // Type test
       const theme: string = settings.theme
       const fontSize: number = settings.fontSize
       const language: string = settings.language
-      
+
       expect(theme).toBe('dark')
       expect(fontSize).toBe(16)
       expect(language).toBe('en')
@@ -120,10 +120,10 @@ describe('object', () => {
       const obj = {
         a: 1,
         b: { c: 2, d: { e: 3 } },
-        f: [1, 2, { g: 4 }]
+        f: [1, 2, { g: 4 }],
       }
       const cloned = deepClone(obj)
-      
+
       expect(cloned).toEqual(obj)
       expect(cloned).not.toBe(obj)
       expect(cloned.b).not.toBe(obj.b)
@@ -135,7 +135,7 @@ describe('object', () => {
     it('should handle arrays', () => {
       const arr = [1, [2, 3], { a: 4 }]
       const cloned = deepClone(arr)
-      
+
       expect(cloned).toEqual(arr)
       expect(cloned).not.toBe(arr)
       expect(cloned[1]).not.toBe(arr[1])
@@ -145,7 +145,7 @@ describe('object', () => {
     it('should handle Date objects', () => {
       const date = new Date('2023-01-01')
       const cloned = deepClone(date)
-      
+
       expect(cloned).toEqual(date)
       expect(cloned).not.toBe(date)
       expect(cloned.getTime()).toBe(date.getTime())
@@ -154,7 +154,7 @@ describe('object', () => {
     it('should handle RegExp objects', () => {
       const regex = /test/gi
       const cloned = deepClone(regex)
-      
+
       expect(cloned).toEqual(regex)
       expect(cloned).not.toBe(regex)
       expect(cloned.source).toBe(regex.source)
@@ -164,10 +164,10 @@ describe('object', () => {
     it('should handle Map objects', () => {
       const map = new Map<string, unknown>([
         ['a', 1],
-        ['b', { c: 2 }]
+        ['b', { c: 2 }],
       ])
       const cloned = deepClone(map)
-      
+
       expect(cloned).toEqual(map)
       expect(cloned).not.toBe(map)
       expect(cloned.get('b')).not.toBe(map.get('b'))
@@ -177,11 +177,11 @@ describe('object', () => {
     it('should handle Set objects', () => {
       const set = new Set([1, { a: 2 }, [3, 4]])
       const cloned = deepClone(set)
-      
+
       expect(cloned).toEqual(set)
       expect(cloned).not.toBe(set)
       expect(cloned.size).toBe(set.size)
-      
+
       const clonedArray = Array.from(cloned)
       const originalArray = Array.from(set)
       expect(clonedArray[1]).not.toBe(originalArray[1])
@@ -194,19 +194,16 @@ describe('object', () => {
       const obj = {
         a: {
           b: {
-            c: 42
-          }
-        }
+            c: 42,
+          },
+        },
       }
       expect(path(['a', 'b', 'c'])(obj)).toBe(42)
     })
 
     it('should handle array indices', () => {
       const obj = {
-        users: [
-          { name: 'Alice' },
-          { name: 'Bob' }
-        ]
+        users: [{ name: 'Alice' }, { name: 'Bob' }],
       }
       expect(path(['users', 1, 'name'])(obj)).toBe('Bob')
     })
@@ -232,9 +229,9 @@ describe('object', () => {
         config: {
           servers: [
             { host: 'localhost', port: 3000 },
-            { host: 'example.com', port: 8080 }
-          ]
-        }
+            { host: 'example.com', port: 8080 },
+          ],
+        },
       }
       expect(path(['config', 'servers', 0, 'host'])(data)).toBe('localhost')
       expect(path(['config', 'servers', 1, 'port'])(data)).toBe(8080)

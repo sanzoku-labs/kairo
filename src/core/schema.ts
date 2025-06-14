@@ -34,26 +34,29 @@ function createSchema<T>(zodSchema: ZodSchema<T>): Schema<T> {
         if (error instanceof ZodError) {
           const firstError = error.errors[0]
           const fieldPath = firstError?.path.map(String) || []
-          
+
           const validationError: ValidationError = {
             code: 'VALIDATION_ERROR',
             message: firstError?.message || 'Validation failed',
             field: fieldPath.join('.'),
             fieldPath,
-            expected: firstError && 'expected' in firstError ? String(firstError.expected) : undefined,
-            actual: firstError && firstError.path.length > 0 ? 
-              (input as Record<string, unknown>)?.[String(firstError.path[0])] : input,
+            expected:
+              firstError && 'expected' in firstError ? String(firstError.expected) : undefined,
+            actual:
+              firstError && firstError.path.length > 0
+                ? (input as Record<string, unknown>)?.[String(firstError.path[0])]
+                : input,
             issues: error.errors.map(issue => ({
               path: issue.path,
               message: issue.message,
               code: issue.code,
               expected: 'expected' in issue ? String(issue.expected) : undefined,
-              received: 'received' in issue ? String(issue.received) : undefined
+              received: 'received' in issue ? String(issue.received) : undefined,
             })),
             timestamp: Date.now(),
-            context: { input: typeof input === 'object' ? input : { value: input } }
+            context: { input: typeof input === 'object' ? input : { value: input } },
           }
-          
+
           return Result.Err(validationError)
         }
         return Result.Err({
@@ -62,7 +65,7 @@ function createSchema<T>(zodSchema: ZodSchema<T>): Schema<T> {
           fieldPath: [],
           issues: [],
           timestamp: Date.now(),
-          context: { input: typeof input === 'object' ? input : { value: input } }
+          context: { input: typeof input === 'object' ? input : { value: input } },
         })
       }
     },
@@ -75,7 +78,7 @@ function createSchema<T>(zodSchema: ZodSchema<T>): Schema<T> {
       return { success: false, error: result.error }
     },
 
-    zod: zodSchema
+    zod: zodSchema,
   }
 }
 
@@ -156,7 +159,10 @@ export const schema = {
           fieldPath: fieldPath.split('.'),
           issues: [],
           timestamp: Date.now(),
-          context: { input: typeof input === 'object' ? input : { value: input }, expectedField: fieldPath }
+          context: {
+            input: typeof input === 'object' ? input : { value: input },
+            expectedField: fieldPath,
+          },
         })
       }
 
@@ -174,10 +180,10 @@ export const schema = {
           fieldPath: [],
           issues: [],
           timestamp: Date.now(),
-          context: { input: typeof input === 'object' ? input : { value: input } }
+          context: { input: typeof input === 'object' ? input : { value: input } },
         })
       }
       return schema.parse(input)
     }
-  }
+  },
 }

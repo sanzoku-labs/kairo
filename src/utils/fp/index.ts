@@ -8,15 +8,54 @@ export { tryCatch } from './safe'
 export { cond, condWith, when, unless, switchCase, guard, branch } from './control'
 
 // Function utilities
-export { resolve, resolveAll, resolveWith, resolveIf, memoizeResolver, apply, tap, delay, retry } from './function'
+export {
+  resolve,
+  resolveAll,
+  resolveWith,
+  resolveIf,
+  memoizeResolver,
+  apply,
+  tap,
+  delay,
+  retry,
+} from './function'
 export type { Resolvable } from './function'
 
 // Maybe/Option utilities
-export { isSome, isNone, maybe, chain, withDefault, unwrap, fromTry, fromPromise, all, first, toResult, partition } from './maybe'
+export {
+  isSome,
+  isNone,
+  maybe,
+  chain,
+  withDefault,
+  unwrap,
+  fromTry,
+  fromPromise,
+  all,
+  first,
+  toResult,
+  partition,
+} from './maybe'
 export { map as maybeMap, filter as maybeFilter, when as maybeWhen } from './maybe'
 export type { Maybe } from './maybe'
 
 // Effect system utilities
-export { effect, conditionalEffect, effectWhen, effectUnless, log, debug, trace, asyncEffect, effects, throttleEffect, debounceEffect, measure, countCalls, collect, catchEffect } from './effects'
+export {
+  effect,
+  conditionalEffect,
+  effectWhen,
+  effectUnless,
+  log,
+  debug,
+  trace,
+  asyncEffect,
+  effects,
+  throttleEffect,
+  debounceEffect,
+  measure,
+  countCalls,
+  collect,
+  catchEffect,
+} from './effects'
 
 export type { UnaryFunction, Predicate } from './types'

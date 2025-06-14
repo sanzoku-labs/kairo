@@ -3,14 +3,14 @@ import { z } from 'zod'
 
 // Example 1: Simple data transformation pipeline
 const calculateDiscount = pipeline<number>('calculate-discount')
-  .map(price => price * 0.9)  // 10% discount
-  .map(price => Math.round(price * 100) / 100)  // Round to 2 decimals
+  .map(price => price * 0.9) // 10% discount
+  .map(price => Math.round(price * 100) / 100) // Round to 2 decimals
   .trace('final price')
 
 // Example 2: Login flow with validation and API call
 const loginSchema = schema.object({
   email: z.string().email(),
-  password: z.string().min(8)
+  password: z.string().min(8),
 })
 
 const userResponseSchema = schema.object({
@@ -18,44 +18,46 @@ const userResponseSchema = schema.object({
   name: z.string(),
   email: z.string().email(),
   role: z.enum(['admin', 'user']),
-  token: z.string()
+  token: z.string(),
 })
 
 export const login = pipeline('user-login')
   .input(loginSchema)
   .fetch('/api/login', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' }
+    headers: { 'Content-Type': 'application/json' },
   })
   .validate(userResponseSchema)
   .map(response => ({
     user: {
       id: response.id,
       name: response.name,
-      role: response.role
+      role: response.role,
     },
     token: response.token,
-    isAdmin: response.role === 'admin'
+    isAdmin: response.role === 'admin',
   }))
 
 // Example 3: Data processing with error handling
 export const processUserData = pipeline<{ userId: number }>('process-user')
   .fetch(input => `/api/users/${input.userId}`)
-  .validate(schema.object({
-    id: z.number(),
-    name: z.string(),
-    email: z.string().email(),
-    age: z.number().positive()
-  }))
+  .validate(
+    schema.object({
+      id: z.number(),
+      name: z.string(),
+      email: z.string().email(),
+      age: z.number().positive(),
+    })
+  )
   .map(user => ({
     ...user,
     isAdult: user.age >= 18,
-    displayName: user.name.toUpperCase()
+    displayName: user.name.toUpperCase(),
   }))
   .mapError(error => ({
     type: 'USER_PROCESSING_ERROR',
     message: 'Failed to process user data',
-    details: error
+    details: error,
   }))
 
 // Example 4: Using Result type directly
@@ -75,7 +77,7 @@ calculation = Result.map(calculation, n => Math.round(n))
 // Pattern matching
 const message = Result.match(calculation, {
   Ok: value => `Result is ${value}`,
-  Err: error => `Error: ${String(error)}`
+  Err: error => `Error: ${String(error)}`,
 })
 
 // Example 5: Complex pipeline with multiple steps
@@ -83,10 +85,12 @@ const createUserSchema = schema.object({
   name: z.string().min(2),
   email: z.string().email(),
   age: z.number().positive(),
-  preferences: z.object({
-    newsletter: z.boolean(),
-    theme: z.enum(['light', 'dark'])
-  }).optional()
+  preferences: z
+    .object({
+      newsletter: z.boolean(),
+      theme: z.enum(['light', 'dark']),
+    })
+    .optional(),
 })
 
 export const createUser = pipeline('create-user')
@@ -94,19 +98,21 @@ export const createUser = pipeline('create-user')
   .map(data => ({
     ...data,
     createdAt: new Date().toISOString(),
-    preferences: data.preferences || { newsletter: false, theme: 'light' }
+    preferences: data.preferences || { newsletter: false, theme: 'light' },
   }))
   .fetch('/api/users', { method: 'POST' })
-  .validate(schema.object({
-    id: z.number(),
-    name: z.string(),
-    email: z.string(),
-    createdAt: z.string()
-  }))
+  .validate(
+    schema.object({
+      id: z.number(),
+      name: z.string(),
+      email: z.string(),
+      createdAt: z.string(),
+    })
+  )
   .map(user => ({
     success: true,
     userId: user.id,
-    message: `User ${user.name} created successfully!`
+    message: `User ${user.name} created successfully!`,
   }))
 
 // Usage examples
@@ -124,24 +130,27 @@ async function runExamples() {
     type: 'basic',
     url: '',
     redirected: false,
-    clone: function() { return this },
+    clone: function () {
+      return this
+    },
     body: null,
     bodyUsed: false,
     arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
     blob: () => Promise.resolve(new globalThis.Blob([])),
     formData: () => Promise.resolve(new globalThis.FormData()),
     text: () => Promise.resolve(''),
-    json: () => Promise.resolve({
-      id: 1,
-      name: 'John Doe',
-      email: 'john@example.com',
-      role: 'admin',
-      token: 'jwt-token-123'
-    })
+    json: () =>
+      Promise.resolve({
+        id: 1,
+        name: 'John Doe',
+        email: 'john@example.com',
+        role: 'admin',
+        token: 'jwt-token-123',
+      }),
   } as Response
 
   const mockHttpClient = {
-    fetch: (_url: string) => Promise.resolve(mockResponse)
+    fetch: (_url: string) => Promise.resolve(mockResponse),
   }
 
   const loginPipeline = pipeline('user-login', { httpClient: mockHttpClient })
@@ -152,20 +161,20 @@ async function runExamples() {
       user: {
         id: response.id,
         name: response.name,
-        role: response.role
+        role: response.role,
       },
       token: response.token,
-      isAdmin: response.role === 'admin'
+      isAdmin: response.role === 'admin',
     }))
 
   const loginResult = await loginPipeline.run({
     email: 'john@example.com',
-    password: 'securepass123'
+    password: 'securepass123',
   })
 
   Result.match(loginResult, {
     Ok: data => console.log('Login successful:', data),
-    Err: error => console.error('Login failed:', error)
+    Err: error => console.error('Login failed:', error),
   })
 
   // Example 3: Result type usage

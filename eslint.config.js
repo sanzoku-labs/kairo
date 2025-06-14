@@ -7,22 +7,22 @@ export default [
   {
     files: ['**/*.ts', '**/*.tsx'],
     plugins: {
-      '@typescript-eslint': typescript
+      '@typescript-eslint': typescript,
     },
     languageOptions: {
       parser: tsParser,
       parserOptions: {
         ecmaVersion: 'latest',
         sourceType: 'module',
-        project: './tsconfig.json'
+        project: './tsconfig.json',
       },
       globals: {
         console: 'readonly',
         performance: 'readonly',
         fetch: 'readonly',
         Response: 'readonly',
-        RequestInit: 'readonly'
-      }
+        RequestInit: 'readonly',
+      },
     },
     rules: {
       ...typescript.configs['recommended'].rules,
@@ -33,8 +33,8 @@ export default [
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
       'no-redeclare': 'off',
-      '@typescript-eslint/no-redeclare': 'error'
-    }
+      '@typescript-eslint/no-redeclare': 'error',
+    },
   },
   {
     files: ['**/*.config.{js,ts}', 'tests/**/*.ts', 'examples/**/*.ts'],
@@ -42,11 +42,11 @@ export default [
       parser: tsParser,
       parserOptions: {
         ecmaVersion: 'latest',
-        sourceType: 'module'
-      }
-    }
+        sourceType: 'module',
+      },
+    },
   },
   {
-    ignores: ['dist/', 'node_modules/', 'coverage/']
-  }
+    ignores: ['dist/', 'node_modules/', 'coverage/'],
+  },
 ]

@@ -17,7 +17,7 @@ describe('basics', () => {
       const always5 = constant(5)
       expect(always5()).toBe(5)
       expect(always5()).toBe(5)
-      
+
       const alwaysObj = constant({ x: 1 })
       const result1 = alwaysObj()
       const result2 = alwaysObj()
@@ -37,7 +37,7 @@ describe('basics', () => {
       const add = (x: number) => x + 1
       const multiply = (x: number) => x * 2
       const toString = (x: number) => x.toString()
-      
+
       const pipeline = pipe(add, multiply, toString)
       expect(pipeline(5)).toBe('12') // (5 + 1) * 2 = 12
     })
@@ -52,9 +52,9 @@ describe('basics', () => {
       const toLength = (s: string) => s.length
       const isEven = (n: number) => n % 2 === 0
       const pipeline = pipe(toLength, isEven)
-      
+
       expect(pipeline('hello')).toBe(false) // length 5 is odd
-      expect(pipeline('test')).toBe(true)   // length 4 is even
+      expect(pipeline('test')).toBe(true) // length 4 is even
     })
   })
 
@@ -63,7 +63,7 @@ describe('basics', () => {
       const add = (x: number) => x + 1
       const multiply = (x: number) => x * 2
       const toString = (x: number) => x.toString()
-      
+
       const composition = compose(toString, multiply, add)
       expect(composition(5)).toBe('12') // toString((5 + 1) * 2) = '12'
     })
@@ -77,10 +77,10 @@ describe('basics', () => {
     it('should be opposite of pipe', () => {
       const add = (x: number) => x + 1
       const multiply = (x: number) => x * 2
-      
+
       const piped = pipe(add, multiply)
       const composed = compose(multiply, add)
-      
+
       expect(piped(5)).toBe(composed(5))
     })
   })

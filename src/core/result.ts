@@ -1,5 +1,7 @@
 // Internal helper to avoid circular imports
-const safeTry = <T>(fn: () => T): { success: true; value: T } | { success: false; error: unknown } => {
+const safeTry = <T>(
+  fn: () => T
+): { success: true; value: T } | { success: false; error: unknown } => {
   try {
     return { success: true, value: fn() }
   } catch (error) {
@@ -7,7 +9,7 @@ const safeTry = <T>(fn: () => T): { success: true; value: T } | { success: false
   }
 }
 
-export type Result<E, T> = 
+export type Result<E, T> =
   | { readonly tag: 'Ok'; readonly value: T }
   | { readonly tag: 'Err'; readonly error: E }
 
@@ -55,9 +57,9 @@ export const Result = {
 
   match<E, T, U>(
     result: Result<E, T>,
-    handlers: { 
+    handlers: {
       Ok: (value: T) => U
-      Err: (error: E) => U 
+      Err: (error: E) => U
     }
   ): U {
     if (result.tag === 'Ok') {
@@ -88,15 +90,13 @@ export const Result = {
   },
 
   async fromPromise<T>(promise: Promise<T>): Promise<Result<unknown, T>> {
-    return promise
-      .then(value => Result.Ok(value))
-      .catch(error => Result.Err(error))
+    return promise.then(value => Result.Ok(value)).catch(error => Result.Err(error))
   },
 
   fromTry<T>(fn: () => T): Result<unknown, T> {
     const result = safeTry(fn)
     return result.success ? Result.Ok(result.value) : Result.Err(result.error)
-  }
+  },
 }
 
 export function map<E, T, U>(fn: (value: T) => U) {
@@ -117,9 +117,12 @@ export function match<E, T, U>(handlers: { Ok: (value: T) => U; Err: (error: E) 
 
 export function chain<E, T>(...fns: Array<(result: Result<E, unknown>) => Result<E, unknown>>) {
   return (result: Result<E, T>): Result<E, unknown> => {
-    return fns.reduce((acc, fn) => {
-      if (Result.isErr(acc)) return acc
-      return fn(acc)
-    }, result as Result<E, unknown>)
+    return fns.reduce(
+      (acc, fn) => {
+        if (Result.isErr(acc)) return acc
+        return fn(acc)
+      },
+      result as Result<E, unknown>
+    )
   }
 }

@@ -8,6 +8,6 @@ export const tryCatch = <T, E = unknown>(
   try {
     return Result.Ok(fn())
   } catch (error) {
-    return Result.Err(onError ? onError(error) : error as E)
+    return Result.Err(onError ? onError(error) : (error as E))
   }
 }

@@ -19,40 +19,46 @@ export const isNone = <T>(value: Maybe<T>): value is null | undefined => isNil(v
 /**
  * Transform a maybe value if present, otherwise return default
  */
-export const maybe = <T, R>(
-  value: Maybe<T>,
-  transform: UnaryFunction<T, R>,
-  defaultValue: R
-): R => isSome(value) ? transform(value) : defaultValue
+export const maybe = <T, R>(value: Maybe<T>, transform: UnaryFunction<T, R>, defaultValue: R): R =>
+  isSome(value) ? transform(value) : defaultValue
 
 /**
  * Transform a maybe value if present, otherwise return undefined
  */
-export const map = <T, R>(fn: UnaryFunction<T, R>) => 
-  (value: Maybe<T>): Maybe<R> => isSome(value) ? fn(value) : value
+export const map =
+  <T, R>(fn: UnaryFunction<T, R>) =>
+  (value: Maybe<T>): Maybe<R> =>
+    isSome(value) ? fn(value) : value
 
 /**
  * Chain maybe transformations (flatMap for Maybe)
  */
-export const chain = <T, R>(fn: UnaryFunction<T, Maybe<R>>) => 
-  (value: Maybe<T>): Maybe<R> => isSome(value) ? fn(value) : value
+export const chain =
+  <T, R>(fn: UnaryFunction<T, Maybe<R>>) =>
+  (value: Maybe<T>): Maybe<R> =>
+    isSome(value) ? fn(value) : value
 
 /**
  * Filter a maybe value based on predicate
  */
-export const filter = <T>(predicate: Predicate<T>) => 
-  (value: Maybe<T>): Maybe<T> => isSome(value) && predicate(value) ? value : undefined
+export const filter =
+  <T>(predicate: Predicate<T>) =>
+  (value: Maybe<T>): Maybe<T> =>
+    isSome(value) && predicate(value) ? value : undefined
 
 /**
  * Provide a default value for maybe
  */
-export const withDefault = <T>(defaultValue: T) => 
-  (value: Maybe<T>): T => isSome(value) ? value : defaultValue
+export const withDefault =
+  <T>(defaultValue: T) =>
+  (value: Maybe<T>): T =>
+    isSome(value) ? value : defaultValue
 
 /**
  * Get value or throw error with custom message
  */
-export const unwrap = <T>(errorMessage: string = 'Value is null or undefined') => 
+export const unwrap =
+  <T>(errorMessage: string = 'Value is null or undefined') =>
   (value: Maybe<T>): T => {
     if (isNone(value)) {
       throw new Error(errorMessage)
@@ -63,15 +69,15 @@ export const unwrap = <T>(errorMessage: string = 'Value is null or undefined') =
 /**
  * Convert a potentially throwing function to return Maybe
  */
-export const fromTry = <T, Args extends unknown[]>(
-  fn: (...args: Args) => T
-) => (...args: Args): Maybe<T> => {
-  try {
-    return fn(...args)
-  } catch {
-    return undefined
+export const fromTry =
+  <T, Args extends unknown[]>(fn: (...args: Args) => T) =>
+  (...args: Args): Maybe<T> => {
+    try {
+      return fn(...args)
+    } catch {
+      return undefined
+    }
   }
-}
 
 /**
  * Convert a promise to return Maybe (undefined on rejection)
@@ -104,7 +110,8 @@ export const first = <T>(...values: Maybe<T>[]): Maybe<T> => {
 /**
  * Apply a function to value if present, otherwise do nothing
  */
-export const when = <T>(fn: UnaryFunction<T, void>) => 
+export const when =
+  <T>(fn: UnaryFunction<T, void>) =>
   (value: Maybe<T>): Maybe<T> => {
     if (isSome(value)) fn(value)
     return value
@@ -113,11 +120,10 @@ export const when = <T>(fn: UnaryFunction<T, void>) =>
 /**
  * Convert Maybe to Result type
  */
-export const toResult = <T, E>(error: E) => 
-  (value: Maybe<T>): { tag: 'Ok'; value: T } | { tag: 'Err'; error: E } => 
-    isSome(value) 
-      ? { tag: 'Ok', value } 
-      : { tag: 'Err', error }
+export const toResult =
+  <T, E>(error: E) =>
+  (value: Maybe<T>): { tag: 'Ok'; value: T } | { tag: 'Err'; error: E } =>
+    isSome(value) ? { tag: 'Ok', value } : { tag: 'Err', error }
 
 /**
  * Partition array of maybes into present and absent values
@@ -125,7 +131,7 @@ export const toResult = <T, E>(error: E) =>
 export const partition = <T>(values: Maybe<T>[]): [T[], (null | undefined)[]] => {
   const present: T[] = []
   const absent: (null | undefined)[] = []
-  
+
   for (const value of values) {
     if (isSome(value)) {
       present.push(value)
@@ -133,6 +139,6 @@ export const partition = <T>(values: Maybe<T>[]): [T[], (null | undefined)[]] =>
       absent.push(value)
     }
   }
-  
+
   return [present, absent]
 }

@@ -43,7 +43,7 @@ describe('logic', () => {
     it('should negate predicate function', () => {
       const isEven = (n: number) => n % 2 === 0
       const isOdd = not(isEven)
-      
+
       expect(isOdd(3)).toBe(true)
       expect(isOdd(4)).toBe(false)
     })
@@ -51,7 +51,7 @@ describe('logic', () => {
     it('should work with any predicate', () => {
       const isString = (x: unknown): x is string => typeof x === 'string'
       const isNotString = not(isString)
-      
+
       expect(isNotString('hello')).toBe(false)
       expect(isNotString(123)).toBe(true)
     })
@@ -64,7 +64,7 @@ describe('logic', () => {
       expect(equals(true, true)).toBe(true)
       expect(equals(null, null)).toBe(true)
       expect(equals(undefined, undefined)).toBe(true)
-      
+
       expect(equals(5, 6)).toBe(false)
       expect(equals('hello', 'world')).toBe(false)
       expect(equals(true, false)).toBe(false)
@@ -75,53 +75,69 @@ describe('logic', () => {
       expect(equals([1, 2, 3], [1, 2, 3])).toBe(true)
       expect(equals(['a', 'b'], ['a', 'b'])).toBe(true)
       expect(equals([], [])).toBe(true)
-      
+
       expect(equals([1, 2, 3], [1, 2, 4])).toBe(false)
       expect(equals([1, 2], [1, 2, 3])).toBe(false)
       expect(equals([1, 2], [2, 1])).toBe(false)
     })
 
     it('should handle nested arrays', () => {
-      expect(equals([[1, 2], [3, 4]], [[1, 2], [3, 4]])).toBe(true)
-      expect(equals([[1, 2], [3, 4]], [[1, 2], [3, 5]])).toBe(false)
+      expect(
+        equals(
+          [
+            [1, 2],
+            [3, 4],
+          ],
+          [
+            [1, 2],
+            [3, 4],
+          ]
+        )
+      ).toBe(true)
+      expect(
+        equals(
+          [
+            [1, 2],
+            [3, 4],
+          ],
+          [
+            [1, 2],
+            [3, 5],
+          ]
+        )
+      ).toBe(false)
     })
 
     it('should handle objects', () => {
       expect(equals({ a: 1, b: 2 }, { a: 1, b: 2 })).toBe(true)
       expect(equals({ a: 1, b: 2 }, { b: 2, a: 1 })).toBe(true)
       expect(equals({}, {})).toBe(true)
-      
+
       expect(equals({ a: 1 }, { a: 2 })).toBe(false)
       expect(equals({ a: 1 }, { a: 1, b: 2 })).toBe(false)
       expect(equals({ a: 1, b: 2 }, { a: 1 })).toBe(false)
     })
 
     it('should handle nested objects', () => {
-      expect(equals(
-        { a: { b: { c: 1 } } },
-        { a: { b: { c: 1 } } }
-      )).toBe(true)
-      
-      expect(equals(
-        { a: { b: { c: 1 } } },
-        { a: { b: { c: 2 } } }
-      )).toBe(false)
+      expect(equals({ a: { b: { c: 1 } } }, { a: { b: { c: 1 } } })).toBe(true)
+
+      expect(equals({ a: { b: { c: 1 } } }, { a: { b: { c: 2 } } })).toBe(false)
     })
 
     it('should handle mixed nested structures', () => {
       const obj1 = {
         arr: [1, { a: 2 }, [3, 4]],
-        obj: { x: { y: [5, 6] } }
+        obj: { x: { y: [5, 6] } },
       }
       const obj2 = {
         arr: [1, { a: 2 }, [3, 4]],
-        obj: { x: { y: [5, 6] } }
+        obj: { x: { y: [5, 6] } },
       }
       const obj3 = {
         arr: [1, { a: 2 }, [3, 5]],
-        obj: { x: { y: [5, 6] } }
+        obj: { x: { y: [5, 6] } },
       }
-      
+
       expect(equals(obj1, obj2)).toBe(true)
       expect(equals(obj1, obj3)).toBe(false)
     })

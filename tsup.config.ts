@@ -9,5 +9,5 @@ export default defineConfig({
   treeshake: true,
   minify: true,
   sourcemap: true,
-  target: 'es2022'
+  target: 'es2022',
 })
