@@ -3,6 +3,7 @@ import { type Schema, type ValidationError } from './schema'
 import { isNil, isEmpty, cond, resolve, conditionalEffect, tryCatch, retry } from '../utils/fp'
 import { type KairoError, createError } from './errors'
 import { type Signal, createSignal } from './signal'
+import { type Task, createTask } from './task'
 
 export interface HttpError extends KairoError {
   code: 'HTTP_ERROR'
@@ -653,6 +654,10 @@ export class Pipeline<Input, Output> {
       })
 
     return signal
+  }
+
+  asTask(): Task<Output> {
+    return createTask(this)
   }
 
   async run(input?: Input): Promise<Result<unknown, Output>> {

@@ -16,6 +16,9 @@ export type {
 export { createSignal, signal, signalEffect } from './core/signal'
 export type { Signal, SignalError, SignalSubscription } from './core/signal'
 
+export { createTask, task, taskEffect } from './core/task'
+export type { Task, TaskError, TaskState, TaskStateData } from './core/task'
+
 export { schema } from './core/schema'
 export type { Schema, ValidationError } from './core/schema'
 
