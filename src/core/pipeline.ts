@@ -1,5 +1,6 @@
 import { Result } from './result'
 import { type Schema, type ValidationError } from './schema'
+import { pipe, isNil, isEmpty, tryCatch } from '../utils/fp'
 
 export interface HttpError {
   code: 'HTTP_ERROR'
@@ -78,20 +79,24 @@ class FetchStep<TInput = unknown> implements Step<HttpError, unknown> {
     
     try {
       const httpClient = context.httpClient || defaultHttpClient
-      const fetchOptions: RequestInit = {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options?.headers
+      
+      const prepareFetchOptions = pipe(
+        (opts: RequestInit | undefined) => ({
+          ...opts,
+          headers: {
+            'Content-Type': 'application/json',
+            ...opts?.headers
+          }
+        }),
+        (opts: RequestInit) => {
+          const shouldAddBody = !opts.body && !isNil(input) && !isEmpty(input)
+          return shouldAddBody 
+            ? { ...opts, body: JSON.stringify(input) }
+            : opts
         }
-      }
+      )
       
-      if (options?.body) {
-        fetchOptions.body = options.body
-      } else if (input) {
-        fetchOptions.body = JSON.stringify(input)
-      }
-      
+      const fetchOptions = prepareFetchOptions(options)
       const response = await httpClient.fetch(url, fetchOptions)
 
       if (!response.ok) {
@@ -191,37 +196,27 @@ class MapStep<T, U> implements Step<never, U> {
   execute(input: unknown, context: PipelineContext): Promise<Result<never, U>> {
     const start = performance.now()
     
-    try {
-      const output = this.fn(input as T)
-      
-      if (isTraceEnabled()) {
-        context.traces.push({
-          timestamp: Date.now(),
-          pipelineName: context.name,
-          stepName: 'map',
-          success: true,
-          duration: performance.now() - start,
-          input,
-          output
-        })
-      }
-      
-      return Promise.resolve(Result.Ok(output))
-    } catch (error) {
-      if (isTraceEnabled()) {
-        context.traces.push({
-          timestamp: Date.now(),
-          pipelineName: context.name,
-          stepName: 'map',
-          success: false,
-          duration: performance.now() - start,
-          input,
-          error
-        })
-      }
-      
-      throw error
+    const result = tryCatch(() => this.fn(input as T))
+    const duration = performance.now() - start
+    
+    if (isTraceEnabled()) {
+      context.traces.push({
+        timestamp: Date.now(),
+        pipelineName: context.name,
+        stepName: 'map',
+        success: Result.isOk(result),
+        duration,
+        input,
+        output: Result.isOk(result) ? result.value : undefined,
+        error: Result.isErr(result) ? result.error : undefined
+      })
     }
+    
+    if (Result.isErr(result)) {
+      throw result.error
+    }
+    
+    return Promise.resolve(result as Result<never, U>)
   }
 }
 
@@ -312,26 +307,40 @@ export class Pipeline<Input, Output> {
       context.httpClient = this.deps.httpClient
     }
 
-    let currentValue: unknown = input
-    let currentResult: Result<unknown, unknown> = Result.Ok(input as unknown)
-
-    for (const step of this.steps) {
-      if (Result.isErr(currentResult) && step.type !== 'mapError') {
-        continue
+    const executeStep = async (
+      result: Result<unknown, unknown>,
+      step: Step
+    ): Promise<Result<unknown, unknown>> => {
+      if (Result.isErr(result) && step.type !== 'mapError') {
+        return result
       }
 
-      if (step.type === 'mapError' && Result.isErr(currentResult)) {
+      if (step.type === 'mapError' && Result.isErr(result)) {
         const mapErrorStep = step as MapErrorStep<unknown, unknown>
-        currentResult = Result.mapError(currentResult, mapErrorStep.fn)
-        continue
+        return Result.mapError(result, mapErrorStep.fn)
       }
 
-      if (Result.isOk(currentResult)) {
-        currentValue = currentResult.value
-        currentResult = await step.execute(currentValue, context)
+      if (Result.isOk(result)) {
+        return await step.execute(result.value, context)
       }
+
+      return result
     }
 
+    const initialResult = Result.Ok(input as unknown)
+    const finalResult = await this.steps.reduce(
+      async (accPromise: Promise<Result<unknown, unknown>>, step: Step) => {
+        const acc = await accPromise
+        return executeStep(acc, step)
+      },
+      Promise.resolve(initialResult)
+    )
+
+    this.logTraces(context)
+    return finalResult as Result<unknown, Output>
+  }
+
+  private logTraces(context: PipelineContext): void {
     if (isTraceEnabled() && context.traces.length > 0) {
       console.group(`Pipeline: ${this.name}`)
       context.traces.forEach(trace => {
@@ -343,8 +352,6 @@ export class Pipeline<Input, Output> {
       })
       console.groupEnd()
     }
-
-    return currentResult as Result<unknown, Output>
   }
 }
 

@@ -1,4 +1,4 @@
-export { Result, map, flatMap, mapError, match } from './core/result'
+export { Result, map, flatMap, mapError, match, chain } from './core/result'
 export type { OkResult, ErrResult } from './core/result'
 
 export { pipeline } from './core/pipeline'

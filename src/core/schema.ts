@@ -1,5 +1,6 @@
 import { z, ZodError, type ZodSchema, type ZodTypeAny } from 'zod'
 import { Result } from './result'
+import { isNil, isEmpty, path } from '../utils/fp'
 
 export interface ValidationError {
   code: 'VALIDATION_ERROR'
@@ -115,5 +116,46 @@ export const schema = {
 
   from<T>(zodSchema: ZodSchema<T>): Schema<T> {
     return createSchema(zodSchema)
+  },
+
+  // FP utilities for validation
+  validate<T>(schema: Schema<T>) {
+    return (input: unknown): Result<ValidationError, T> => schema.parse(input)
+  },
+
+  isValid<T>(schema: Schema<T>) {
+    return (input: unknown): boolean => {
+      const result = schema.safeParse(input)
+      return result.success
+    }
+  },
+
+  extractField<T>(fieldPath: string, schema: Schema<T>) {
+    return (input: unknown): Result<ValidationError, T> => {
+      if (isNil(input) || typeof input !== 'object') {
+        return Result.Err({
+          code: 'VALIDATION_ERROR',
+          message: 'Input is not an object',
+          field: fieldPath,
+          issues: []
+        })
+      }
+
+      const fieldValue = path(fieldPath.split('.'))(input)
+      return schema.parse(fieldValue)
+    }
+  },
+
+  validateNonEmpty<T>(schema: Schema<T>) {
+    return (input: unknown): Result<ValidationError, T> => {
+      if (isEmpty(input)) {
+        return Result.Err({
+          code: 'VALIDATION_ERROR',
+          message: 'Value cannot be empty',
+          issues: []
+        })
+      }
+      return schema.parse(input)
+    }
   }
 }

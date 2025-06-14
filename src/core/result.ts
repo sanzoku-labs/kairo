@@ -1,3 +1,12 @@
+// Internal helper to avoid circular imports
+const safeTry = <T>(fn: () => T): { success: true; value: T } | { success: false; error: unknown } => {
+  try {
+    return { success: true, value: fn() }
+  } catch (error) {
+    return { success: false, error }
+  }
+}
+
 export type Result<E, T> = 
   | { readonly tag: 'Ok'; readonly value: T }
   | { readonly tag: 'Err'; readonly error: E }
@@ -85,11 +94,8 @@ export const Result = {
   },
 
   fromTry<T>(fn: () => T): Result<unknown, T> {
-    try {
-      return Result.Ok(fn())
-    } catch (error) {
-      return Result.Err(error)
-    }
+    const result = safeTry(fn)
+    return result.success ? Result.Ok(result.value) : Result.Err(result.error)
   }
 }
 
@@ -107,4 +113,13 @@ export function mapError<E, F, T>(fn: (error: E) => F) {
 
 export function match<E, T, U>(handlers: { Ok: (value: T) => U; Err: (error: E) => U }) {
   return (result: Result<E, T>): U => Result.match(result, handlers)
+}
+
+export function chain<E, T>(...fns: Array<(result: Result<E, unknown>) => Result<E, unknown>>) {
+  return (result: Result<E, T>): Result<E, unknown> => {
+    return fns.reduce((acc, fn) => {
+      if (Result.isErr(acc)) return acc
+      return fn(acc)
+    }, result as Result<E, unknown>)
+  }
 }
