@@ -19,6 +19,20 @@ export type { Signal, SignalError, SignalSubscription } from './core/signal'
 export { createTask, task, taskEffect } from './core/task'
 export type { Task, TaskError, TaskState, TaskStateData } from './core/task'
 
+export { form, formUtils, field } from './core/form'
+export type {
+  Form,
+  FormError,
+  FormBuilder,
+  FormState,
+  FormConfig,
+  FieldSchema,
+  FieldSchemas,
+  FieldValues,
+  FieldErrors,
+  ValidationStrategy,
+} from './core/form'
+
 export { schema } from './core/schema'
 export type { Schema, ValidationError } from './core/schema'
 
