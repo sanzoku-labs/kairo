@@ -216,6 +216,144 @@ class TraceStep implements Step<never, unknown> {
   }
 }
 
+class ParallelStep<I, T> implements Step<KairoError, T[]> {
+  type = 'parallel'
+  constructor(private pipelines: Pipeline<I, T>[]) {}
+
+  async execute(input: unknown, context: PipelineContext): Promise<Result<KairoError, T[]>> {
+    const start = performance.now()
+    const logTrace = createTraceLogger(context)
+
+    try {
+      const results = await Promise.all(this.pipelines.map(pipeline => pipeline.run(input as I)))
+
+      const errors: KairoError[] = []
+      const values: T[] = []
+
+      for (const result of results) {
+        if (Result.isErr(result)) {
+          errors.push(result.error as KairoError)
+        } else {
+          values.push(result.value)
+        }
+      }
+
+      if (errors.length > 0) {
+        const parallelError: KairoError = {
+          ...createError(
+            'PARALLEL_ERROR',
+            `${errors.length} out of ${this.pipelines.length} parallel pipelines failed`,
+            { errors, successCount: values.length }
+          ),
+          code: 'PARALLEL_ERROR',
+        }
+        logTrace(
+          createTraceEntry(
+            context,
+            'parallel',
+            start,
+            Result.Err(parallelError),
+            input,
+            parallelError
+          )
+        )
+        return Result.Err(parallelError)
+      }
+
+      logTrace(createTraceEntry(context, 'parallel', start, Result.Ok(values), input))
+      return Result.Ok(values)
+    } catch (error) {
+      const parallelError: KairoError = {
+        ...createError(
+          'PARALLEL_ERROR',
+          error instanceof Error ? error.message : 'Unknown parallel execution error',
+          { pipelineCount: this.pipelines.length }
+        ),
+        code: 'PARALLEL_ERROR',
+      }
+      logTrace(
+        createTraceEntry(
+          context,
+          'parallel',
+          start,
+          Result.Err(parallelError),
+          input,
+          parallelError
+        )
+      )
+      return Result.Err(parallelError)
+    }
+  }
+}
+
+class FallbackStep<I, O, F> implements Step<KairoError, O | F> {
+  type = 'fallback'
+  constructor(
+    private primaryPipeline: Pipeline<I, O>,
+    private fallbackPipeline: Pipeline<I, F>
+  ) {}
+
+  async execute(input: unknown, context: PipelineContext): Promise<Result<KairoError, O | F>> {
+    const start = performance.now()
+    const logTrace = createTraceLogger(context)
+
+    try {
+      const primaryResult = await this.primaryPipeline.run(input as I)
+
+      if (Result.isOk(primaryResult)) {
+        logTrace(createTraceEntry(context, 'fallback', start, primaryResult, input))
+        return Result.Ok(primaryResult.value)
+      }
+
+      const fallbackResult = await this.fallbackPipeline.run(input as I)
+
+      if (Result.isOk(fallbackResult)) {
+        logTrace(createTraceEntry(context, 'fallback', start, fallbackResult, input))
+        return Result.Ok(fallbackResult.value)
+      }
+
+      const fallbackError: KairoError = {
+        ...createError('FALLBACK_ERROR', 'Both primary and fallback pipelines failed', {
+          primaryError: primaryResult.error,
+          fallbackError: fallbackResult.error,
+        }),
+        code: 'FALLBACK_ERROR',
+      }
+      logTrace(
+        createTraceEntry(
+          context,
+          'fallback',
+          start,
+          Result.Err(fallbackError),
+          input,
+          fallbackError
+        )
+      )
+      return Result.Err(fallbackError)
+    } catch (error) {
+      const fallbackError: KairoError = {
+        ...createError(
+          'FALLBACK_ERROR',
+          error instanceof Error ? error.message : 'Unknown fallback execution error',
+          {}
+        ),
+        code: 'FALLBACK_ERROR',
+      }
+      logTrace(
+        createTraceEntry(
+          context,
+          'fallback',
+          start,
+          Result.Err(fallbackError),
+          input,
+          fallbackError
+        )
+      )
+      return Result.Err(fallbackError)
+    }
+  }
+}
+
 interface RetryConfig {
   times: number
   delay?: number
@@ -225,13 +363,49 @@ interface TimeoutConfig {
   ms: number
 }
 
+interface CacheConfig {
+  ttl: number
+}
+
+interface CacheEntry {
+  result: Result<unknown, unknown>
+  timestamp: number
+}
+
+class PipelineCache {
+  private static cache = new Map<string, CacheEntry>()
+
+  static get(key: string): CacheEntry | undefined {
+    return this.cache.get(key)
+  }
+
+  static set(key: string, entry: CacheEntry): void {
+    this.cache.set(key, entry)
+  }
+
+  static clear(): void {
+    this.cache.clear()
+  }
+
+  static cleanup(): void {
+    const now = Date.now()
+    for (const [key, entry] of this.cache.entries()) {
+      // Clean up entries older than 1 hour by default
+      if (now - entry.timestamp > 3600000) {
+        this.cache.delete(key)
+      }
+    }
+  }
+}
+
 export class Pipeline<Input, Output> {
   constructor(
     private readonly steps: Step[],
     private readonly name: string,
     private readonly deps?: { httpClient?: HttpClient },
     private readonly retryConfig?: RetryConfig,
-    private readonly timeoutConfig?: TimeoutConfig
+    private readonly timeoutConfig?: TimeoutConfig,
+    private readonly cacheConfig?: CacheConfig
   ) {}
 
   input<I>(schema: Schema<I>): Pipeline<I, I> {
@@ -240,7 +414,8 @@ export class Pipeline<Input, Output> {
       this.name,
       this.deps,
       this.retryConfig,
-      this.timeoutConfig
+      this.timeoutConfig,
+      this.cacheConfig
     )
   }
 
@@ -253,7 +428,8 @@ export class Pipeline<Input, Output> {
       this.name,
       this.deps,
       this.retryConfig,
-      this.timeoutConfig
+      this.timeoutConfig,
+      this.cacheConfig
     )
   }
 
@@ -263,7 +439,8 @@ export class Pipeline<Input, Output> {
       this.name,
       this.deps,
       this.retryConfig,
-      this.timeoutConfig
+      this.timeoutConfig,
+      this.cacheConfig
     )
   }
 
@@ -273,7 +450,8 @@ export class Pipeline<Input, Output> {
       this.name,
       this.deps,
       this.retryConfig,
-      this.timeoutConfig
+      this.timeoutConfig,
+      this.cacheConfig
     )
   }
 
@@ -283,7 +461,8 @@ export class Pipeline<Input, Output> {
       this.name,
       this.deps,
       this.retryConfig,
-      this.timeoutConfig
+      this.timeoutConfig,
+      this.cacheConfig
     )
   }
 
@@ -293,7 +472,8 @@ export class Pipeline<Input, Output> {
       this.name,
       this.deps,
       this.retryConfig,
-      this.timeoutConfig
+      this.timeoutConfig,
+      this.cacheConfig
     )
   }
 
@@ -303,16 +483,66 @@ export class Pipeline<Input, Output> {
       this.name,
       this.deps,
       { times, delay: delay || 1000 },
-      this.timeoutConfig
+      this.timeoutConfig,
+      this.cacheConfig
     )
   }
 
   timeout(ms: number): Pipeline<Input, Output> {
-    return new Pipeline<Input, Output>(this.steps, this.name, this.deps, this.retryConfig, { ms })
+    return new Pipeline<Input, Output>(
+      this.steps,
+      this.name,
+      this.deps,
+      this.retryConfig,
+      { ms },
+      this.cacheConfig
+    )
+  }
+
+  cache(ttl: number): Pipeline<Input, Output> {
+    return new Pipeline<Input, Output>(
+      this.steps,
+      this.name,
+      this.deps,
+      this.retryConfig,
+      this.timeoutConfig,
+      { ttl }
+    )
+  }
+
+  static parallel<I, T>(pipelines: Pipeline<I, T>[]): Pipeline<I, T[]> {
+    return new Pipeline<I, T[]>(
+      [new ParallelStep(pipelines)],
+      `parallel(${pipelines.map(p => p.name).join(',')})`,
+      undefined,
+      undefined,
+      undefined,
+      undefined
+    )
+  }
+
+  fallback<T>(fallbackPipeline: Pipeline<Input, T>): Pipeline<Input, Output | T> {
+    return new Pipeline<Input, Output | T>(
+      [new FallbackStep(this, fallbackPipeline)],
+      `${this.name}.fallback(${fallbackPipeline.name})`,
+      this.deps,
+      this.retryConfig,
+      this.timeoutConfig,
+      this.cacheConfig
+    )
   }
 
   async run(input?: Input): Promise<Result<unknown, Output>> {
     const start = performance.now()
+
+    // Cache logic
+    if (this.cacheConfig) {
+      const cacheKey = `pipeline:${this.name}:${JSON.stringify(input || {})}`
+      const cached = PipelineCache.get(cacheKey)
+      if (cached && Date.now() - cached.timestamp < this.cacheConfig.ttl) {
+        return cached.result as Result<unknown, Output>
+      }
+    }
 
     const executePipeline = async (): Promise<Result<unknown, Output>> => {
       const context: PipelineContext = {
@@ -411,14 +641,30 @@ export class Pipeline<Input, Output> {
       }
     }
 
-    if (!this.retryConfig) {
-      return executeWithTimeout()
+    const finalResult = !this.retryConfig
+      ? await executeWithTimeout()
+      : await this.executeWithRetry(executeWithTimeout, input)
+
+    // Cache successful results
+    if (this.cacheConfig && Result.isOk(finalResult)) {
+      const cacheKey = `pipeline:${this.name}:${JSON.stringify(input || {})}`
+      PipelineCache.set(cacheKey, {
+        result: finalResult,
+        timestamp: Date.now(),
+      })
     }
 
+    return finalResult
+  }
+
+  private async executeWithRetry(
+    executeWithTimeout: () => Promise<Result<unknown, Output>>,
+    input: Input | undefined
+  ): Promise<Result<unknown, Output>> {
     const retryPipeline = retry(
       (_: unknown) => executeWithTimeout(),
-      this.retryConfig.times,
-      this.retryConfig.delay
+      this.retryConfig!.times,
+      this.retryConfig!.delay
     )
 
     try {
@@ -428,7 +674,7 @@ export class Pipeline<Input, Output> {
       const networkError: NetworkError = {
         ...createError(
           'NETWORK_ERROR',
-          `Pipeline failed after ${this.retryConfig.times} attempts`,
+          `Pipeline failed after ${this.retryConfig!.times} attempts`,
           {
             pipelineName: this.name,
           }
@@ -436,9 +682,9 @@ export class Pipeline<Input, Output> {
         code: 'NETWORK_ERROR',
         url: '',
         method: 'PIPELINE',
-        attempt: this.retryConfig.times,
-        maxAttempts: this.retryConfig.times,
-        retryDelay: this.retryConfig.delay,
+        attempt: this.retryConfig!.times,
+        maxAttempts: this.retryConfig!.times,
+        retryDelay: this.retryConfig!.delay,
       }
       return Result.Err(networkError)
     }
@@ -463,7 +709,7 @@ export function pipeline<T = unknown>(
   name: string,
   deps?: { httpClient?: HttpClient }
 ): Pipeline<T, T> {
-  return new Pipeline<T, T>([], name, deps, undefined, undefined)
+  return new Pipeline<T, T>([], name, deps, undefined, undefined, undefined)
 }
 
 const isTraceEnabled = (): boolean =>
