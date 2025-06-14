@@ -1,6 +1,6 @@
 import { Result } from './result'
 import { type Schema, type ValidationError } from './schema'
-import { isNil, isEmpty, tryCatch, cond, resolve, conditionalEffect } from '../utils/fp'
+import { isNil, isEmpty, cond, resolve, conditionalEffect, tryCatch } from '../utils/fp'
 
 export interface HttpError {
   code: 'HTTP_ERROR'
@@ -64,60 +64,61 @@ class FetchStep<TInput = unknown> implements Step<HttpError, unknown> {
 
   async execute(input: unknown, context: PipelineContext): Promise<Result<HttpError, unknown>> {
     const start = performance.now()
+    const logTrace = createTraceLogger(context)
     
     const url = resolve(this.urlOrFn)(input as TInput)
     const options = resolve(this.options || {})(input as TInput)
-    
-    try {
-      const httpClient = context.httpClient || defaultHttpClient
-      
-      const baseOptions: RequestInit = {
-        ...options,
+    const httpClient = context.httpClient || defaultHttpClient
+
+    const buildFetchOptions = (opts: RequestInit): RequestInit => {
+      const baseOpts = {
+        ...opts,
         headers: {
           'Content-Type': 'application/json',
-          ...options.headers
+          ...opts.headers
         }
       }
+      
+      return !isNil(input) && !isEmpty(input)
+        ? { ...baseOpts, body: JSON.stringify(input) }
+        : baseOpts
+    }
 
-      const shouldAddBody = !baseOptions.body && !isNil(input) && !isEmpty(input)
-      const fetchOptions: RequestInit = shouldAddBody 
-        ? { ...baseOptions, body: JSON.stringify(input) }
-        : baseOptions
-      const response = await httpClient.fetch(url, fetchOptions)
+    const createHttpError = (status: number, statusText: string, message: string): HttpError => ({
+      code: 'HTTP_ERROR',
+      status,
+      statusText,
+      url,
+      message
+    })
 
+    const handleResponse = async (response: Response): Promise<Result<HttpError, unknown>> => {
       if (!response.ok) {
-        const error: HttpError = {
-          code: 'HTTP_ERROR',
-          status: response.status,
-          statusText: response.statusText,
-          url,
-          message: `HTTP ${response.status}: ${response.statusText}`
-        }
-        
-        const logTrace = createTraceLogger(context)
+        const error = createHttpError(
+          response.status,
+          response.statusText,
+          `HTTP ${response.status}: ${response.statusText}`
+        )
         logTrace(createTraceEntry(context, 'fetch', start, Result.Err(error), { url, options, body: input }, error))
-        
         return Result.Err(error)
       }
 
       const data = await response.json()
-      
-      const logTrace = createTraceLogger(context)
       logTrace(createTraceEntry(context, 'fetch', start, Result.Ok(data), { url, options, body: input }))
-      
       return Result.Ok(data)
+    }
+
+    try {
+      const fetchOptions = buildFetchOptions(options)
+      const response = await httpClient.fetch(url, fetchOptions)
+      return await handleResponse(response)
     } catch (error) {
-      const httpError: HttpError = {
-        code: 'HTTP_ERROR',
-        status: 0,
-        statusText: 'Network Error',
-        url,
-        message: error instanceof Error ? error.message : 'Unknown network error'
-      }
-      
-      const logTrace = createTraceLogger(context)
+      const httpError = createHttpError(
+        0,
+        'Network Error',
+        error instanceof Error ? error.message : 'Unknown network error'
+      )
       logTrace(createTraceEntry(context, 'fetch', start, Result.Err(httpError), { url, options, body: input }, httpError))
-      
       return Result.Err(httpError)
     }
   }
@@ -245,38 +246,32 @@ export class Pipeline<Input, Output> {
       context.httpClient = this.deps.httpClient
     }
 
-    const stepExecutors = {
-      mapError: (result: Result<unknown, unknown>, step: Step) => 
-        Result.isErr(result) 
-          ? Promise.resolve(Result.mapError(result, (step as MapErrorStep<unknown, unknown>).fn))
-          : Promise.resolve(result),
-          
-      default: async (result: Result<unknown, unknown>, step: Step) =>
-        Result.isOk(result) 
-          ? await step.execute(result.value, context)
-          : result
-    }
-
     const executeStep = async (
       result: Result<unknown, unknown>,
       step: Step
     ): Promise<Result<unknown, unknown>> => {
-      const stepStrategy = cond<[Result<unknown, unknown>, Step], Promise<Result<unknown, unknown>>>([
+      return cond<[Result<unknown, unknown>, Step], Promise<Result<unknown, unknown>>>([
         // Skip step if error and not mapError
         [([res, s]) => Result.isErr(res) && s.type !== 'mapError', 
          ([res]) => Promise.resolve(res)],
         
         // Handle mapError specifically 
-        [([_, step]) => step.type === 'mapError',
-         ([result, step]) => stepExecutors.mapError(result, step)],
+        [([res, s]) => s.type === 'mapError' && Result.isErr(res),
+         ([result, step]) => Promise.resolve(Result.mapError(result, (step as MapErrorStep<unknown, unknown>).fn))],
         
-        // Default case - execute step
+        // Execute step if result is Ok
+        [([res]) => Result.isOk(res),
+         async ([result, step]) => {
+           if (Result.isOk(result)) {
+             return await step.execute(result.value, context)
+           }
+           return result
+         }],
+        
+        // Default case - return result unchanged
         [() => true,
-         ([result, step]) => stepExecutors.default(result, step)]
-      ])
-
-      const executor = stepStrategy([result, step])
-      return executor || Promise.resolve(result)
+         ([result]) => Promise.resolve(result)]
+      ])([result, step]) || Promise.resolve(result)
     }
 
     const initialResult = Result.Ok(input as unknown)
@@ -314,15 +309,14 @@ export function pipeline<T = unknown>(
   return new Pipeline<T, T>([], name, deps)
 }
 
-function isTraceEnabled(): boolean {
-  if (typeof globalThis !== 'undefined') {
-    if (globalThis.process?.env?.LUCID_TRACE === 'true') return true
-    if (typeof globalThis.localStorage !== 'undefined') {
-      return globalThis.localStorage?.getItem('lucid:trace') === 'true'
-    }
-  }
-  return false
-}
+const isTraceEnabled = (): boolean => 
+  cond<typeof globalThis, boolean>([
+    [() => typeof globalThis === 'undefined', () => false],
+    [() => globalThis.process?.env?.LUCID_TRACE === 'true', () => true],
+    [() => typeof globalThis.localStorage !== 'undefined', 
+     () => globalThis.localStorage?.getItem('lucid:trace') === 'true'],
+    [() => true, () => false]
+  ])(globalThis) || false
 
 const createTraceLogger = (context: PipelineContext) => 
   conditionalEffect(
