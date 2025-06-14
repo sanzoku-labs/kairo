@@ -6,3 +6,6 @@ export type { Pipeline, HttpError, TraceEntry } from './core/pipeline'
 
 export { schema } from './core/schema'
 export type { Schema, ValidationError } from './core/schema'
+
+// Export functional utilities
+export * from './utils/fp'

@@ -5,7 +5,7 @@ export type Result<E, T> =
 export type OkResult<T> = { readonly tag: 'Ok'; readonly value: T }
 export type ErrResult<E> = { readonly tag: 'Err'; readonly error: E }
 
-// eslint-disable-next-line no-redeclare
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 export const Result = {
   Ok<T>(value: T): OkResult<T> {
     return { tag: 'Ok', value }
