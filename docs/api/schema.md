@@ -9,12 +9,14 @@ import { schema } from 'kairo'
 import { z } from 'zod'
 
 // Basic schema creation
-const UserSchema = schema(z.object({
-  id: z.number(),
-  name: z.string(),
-  email: z.string().email(),
-  age: z.number().min(0).max(120)
-}))
+const UserSchema = schema(
+  z.object({
+    id: z.number(),
+    name: z.string(),
+    email: z.string().email(),
+    age: z.number().min(0).max(120),
+  })
+)
 
 // String schema
 const EmailSchema = schema(z.string().email())
@@ -28,15 +30,17 @@ const TagsSchema = schema(z.array(z.string()))
 ### Basic Validation
 
 ```typescript
-const UserSchema = schema(z.object({
-  name: z.string().min(1),
-  email: z.string().email()
-}))
+const UserSchema = schema(
+  z.object({
+    name: z.string().min(1),
+    email: z.string().email(),
+  })
+)
 
 // Valid data
 const validResult = UserSchema.parse({
   name: 'John Doe',
-  email: 'john@example.com'
+  email: 'john@example.com',
 })
 
 if (validResult.tag === 'Ok') {
@@ -47,7 +51,7 @@ if (validResult.tag === 'Ok') {
 // Invalid data
 const invalidResult = UserSchema.parse({
   name: '',
-  email: 'not-an-email'
+  email: 'not-an-email',
 })
 
 if (invalidResult.tag === 'Err') {
@@ -66,7 +70,7 @@ const result = UserSchema.parse(unknownData)
 // Handle both success and error cases
 const message = match(result, {
   Ok: user => `Hello, ${user.name}!`,
-  Err: error => `Validation failed: ${error.message}`
+  Err: error => `Validation failed: ${error.message}`,
 })
 ```
 
@@ -92,14 +96,20 @@ const result = await getUserPipeline.run({ id: 123 })
 ```typescript
 const apiPipeline = pipeline('api-call')
   .fetch('/api/data')
-  .validate(schema(z.object({
-    items: z.array(z.object({
-      id: z.string(),
-      value: z.number()
-    })),
-    total: z.number(),
-    hasMore: z.boolean()
-  })))
+  .validate(
+    schema(
+      z.object({
+        items: z.array(
+          z.object({
+            id: z.string(),
+            value: z.number(),
+          })
+        ),
+        total: z.number(),
+        hasMore: z.boolean(),
+      })
+    )
+  )
 
 // API response is validated and typed
 const result = await apiPipeline.run()
@@ -113,78 +123,92 @@ if (result.tag === 'Ok') {
 ### Nested Objects
 
 ```typescript
-const AddressSchema = schema(z.object({
-  street: z.string(),
-  city: z.string(),
-  zipCode: z.string(),
-  country: z.string()
-}))
-
-const UserSchema = schema(z.object({
-  id: z.number(),
-  name: z.string(),
-  email: z.string().email(),
-  address: AddressSchema.zod, // Use .zod to get underlying Zod schema
-  preferences: z.object({
-    theme: z.enum(['light', 'dark']),
-    notifications: z.boolean()
+const AddressSchema = schema(
+  z.object({
+    street: z.string(),
+    city: z.string(),
+    zipCode: z.string(),
+    country: z.string(),
   })
-}))
+)
+
+const UserSchema = schema(
+  z.object({
+    id: z.number(),
+    name: z.string(),
+    email: z.string().email(),
+    address: AddressSchema.zod, // Use .zod to get underlying Zod schema
+    preferences: z.object({
+      theme: z.enum(['light', 'dark']),
+      notifications: z.boolean(),
+    }),
+  })
+)
 ```
 
 ### Arrays and Collections
 
 ```typescript
-const ProductSchema = schema(z.object({
-  id: z.string(),
-  name: z.string(),
-  price: z.number().positive(),
-  tags: z.array(z.string()),
-  variants: z.array(z.object({
-    size: z.string(),
-    color: z.string(),
-    stock: z.number().min(0)
-  }))
-}))
+const ProductSchema = schema(
+  z.object({
+    id: z.string(),
+    name: z.string(),
+    price: z.number().positive(),
+    tags: z.array(z.string()),
+    variants: z.array(
+      z.object({
+        size: z.string(),
+        color: z.string(),
+        stock: z.number().min(0),
+      })
+    ),
+  })
+)
 
-const CartSchema = schema(z.object({
-  items: z.array(z.object({
-    productId: z.string(),
-    quantity: z.number().positive(),
-    selectedVariant: z.object({
-      size: z.string(),
-      color: z.string()
-    })
-  })),
-  total: z.number().positive()
-}))
+const CartSchema = schema(
+  z.object({
+    items: z.array(
+      z.object({
+        productId: z.string(),
+        quantity: z.number().positive(),
+        selectedVariant: z.object({
+          size: z.string(),
+          color: z.string(),
+        }),
+      })
+    ),
+    total: z.number().positive(),
+  })
+)
 ```
 
 ### Union Types
 
 ```typescript
-const EventSchema = schema(z.discriminatedUnion('type', [
-  z.object({
-    type: z.literal('user_created'),
-    userId: z.string(),
-    userData: UserSchema.zod
-  }),
-  z.object({
-    type: z.literal('user_updated'),
-    userId: z.string(),
-    changes: z.record(z.unknown())
-  }),
-  z.object({
-    type: z.literal('user_deleted'),
-    userId: z.string()
-  })
-]))
+const EventSchema = schema(
+  z.discriminatedUnion('type', [
+    z.object({
+      type: z.literal('user_created'),
+      userId: z.string(),
+      userData: UserSchema.zod,
+    }),
+    z.object({
+      type: z.literal('user_updated'),
+      userId: z.string(),
+      changes: z.record(z.unknown()),
+    }),
+    z.object({
+      type: z.literal('user_deleted'),
+      userId: z.string(),
+    }),
+  ])
+)
 
 // Usage with type narrowing
 const result = EventSchema.parse(eventData)
 if (result.tag === 'Ok') {
   const event = result.value
-  
+
   switch (event.type) {
     case 'user_created':
       console.log('New user:', event.userData.name)
@@ -205,16 +229,14 @@ if (result.tag === 'Ok') {
 
 ```typescript
 const PasswordSchema = schema(
-  z.string()
+  z
+    .string()
     .min(8, 'Password must be at least 8 characters')
     .refine(
       password => /[A-Z]/.test(password),
       'Password must contain at least one uppercase letter'
     )
-    .refine(
-      password => /[0-9]/.test(password),
-      'Password must contain at least one number'
-    )
+    .refine(password => /[0-9]/.test(password), 'Password must contain at least one number')
     .refine(
       password => /[^A-Za-z0-9]/.test(password),
       'Password must contain at least one special character'
@@ -226,24 +248,21 @@ const PasswordSchema = schema(
 
 ```typescript
 const RegistrationSchema = schema(
-  z.object({
-    password: z.string().min(8),
-    confirmPassword: z.string(),
-    email: z.string().email(),
-    agreeToTerms: z.boolean()
-  }).refine(
-    data => data.password === data.confirmPassword,
-    {
+  z
+    .object({
+      password: z.string().min(8),
+      confirmPassword: z.string(),
+      email: z.string().email(),
+      agreeToTerms: z.boolean(),
+    })
+    .refine(data => data.password === data.confirmPassword, {
       message: 'Passwords do not match',
-      path: ['confirmPassword']
-    }
-  ).refine(
-    data => data.agreeToTerms,
-    {
+      path: ['confirmPassword'],
+    })
+    .refine(data => data.agreeToTerms, {
       message: 'You must agree to the terms',
-      path: ['agreeToTerms']
-    }
-  )
+      path: ['agreeToTerms'],
+    })
 )
 ```
 
@@ -251,25 +270,27 @@ const RegistrationSchema = schema(
 
 ```typescript
 const CreateUserSchema = schema(
-  z.object({
-    name: z.string(),
-    email: z.string().email(),
-    userType: z.enum(['individual', 'business']),
-    // Conditional fields based on userType
-    businessName: z.string().optional(),
-    taxId: z.string().optional()
-  }).refine(
-    data => {
-      if (data.userType === 'business') {
-        return data.businessName && data.taxId
+  z
+    .object({
+      name: z.string(),
+      email: z.string().email(),
+      userType: z.enum(['individual', 'business']),
+      // Conditional fields based on userType
+      businessName: z.string().optional(),
+      taxId: z.string().optional(),
+    })
+    .refine(
+      data => {
+        if (data.userType === 'business') {
+          return data.businessName && data.taxId
+        }
+        return true
+      },
+      {
+        message: 'Business name and tax ID are required for business accounts',
+        path: ['businessName'],
       }
-      return true
-    },
-    {
-      message: 'Business name and tax ID are required for business accounts',
-      path: ['businessName']
-    }
-  )
+    )
 )
 ```
 
@@ -280,29 +301,29 @@ const CreateUserSchema = schema(
 ```typescript
 // Transform data during validation
 const DateSchema = schema(
-  z.string()
+  z
+    .string()
     .transform(str => new Date(str))
     .refine(date => !isNaN(date.getTime()), 'Invalid date')
 )
 
 // Preprocess input
 const NumberSchema = schema(
-  z.preprocess(
-    val => typeof val === 'string' ? parseFloat(val) : val,
-    z.number()
-  )
+  z.preprocess(val => (typeof val === 'string' ? parseFloat(val) : val), z.number())
 )
 ```
 
 ### Optional and Default Values
 
 ```typescript
-const UserPreferencesSchema = schema(z.object({
-  theme: z.enum(['light', 'dark']).default('light'),
-  language: z.string().default('en'),
-  notifications: z.boolean().default(true),
-  customSettings: z.record(z.unknown()).optional()
-}))
+const UserPreferencesSchema = schema(
+  z.object({
+    theme: z.enum(['light', 'dark']).default('light'),
+    language: z.string().default('en'),
+    notifications: z.boolean().default(true),
+    customSettings: z.record(z.unknown()).optional(),
+  })
+)
 
 const result = UserPreferencesSchema.parse({})
 if (result.tag === 'Ok') {
@@ -320,10 +341,10 @@ const result = UserSchema.parse(invalidData)
 
 if (result.tag === 'Err') {
   const error = result.error
-  
+
   console.log('Validation failed:', error.message)
   console.log('Field errors:', error.issues)
-  
+
   // Access specific field errors
   error.issues.forEach(issue => {
     console.log(`Field ${issue.path.join('.')}: ${issue.message}`)
@@ -334,20 +355,26 @@ if (result.tag === 'Err') {
 ### Custom Error Messages
 
 ```typescript
-const UserSchema = schema(z.object({
-  name: z.string({
-    required_error: 'Name is required',
-    invalid_type_error: 'Name must be a string'
-  }).min(1, 'Name cannot be empty'),
-  
-  age: z.number({
-    required_error: 'Age is required',
-    invalid_type_error: 'Age must be a number'
-  }).min(0, 'Age cannot be negative').max(120, 'Age seems unrealistic'),
-  
-  email: z.string()
-    .email('Please enter a valid email address')
-}))
+const UserSchema = schema(
+  z.object({
+    name: z
+      .string({
+        required_error: 'Name is required',
+        invalid_type_error: 'Name must be a string',
+      })
+      .min(1, 'Name cannot be empty'),
+
+    age: z
+      .number({
+        required_error: 'Age is required',
+        invalid_type_error: 'Age must be a number',
+      })
+      .min(0, 'Age cannot be negative')
+      .max(120, 'Age seems unrealistic'),
+
+    email: z.string().email('Please enter a valid email address'),
+  })
+)
 ```
 
 ## Integration with Forms
@@ -357,7 +384,7 @@ import { form } from 'kairo'
 
 const userForm = form({
   schema: UserSchema,
-  validation: 'onBlur'
+  validation: 'onBlur',
 })
 
 // Schema validation is automatically integrated
@@ -374,11 +401,13 @@ if (validation.tag === 'Err') {
 Schemas provide full type inference:
 
 ```typescript
-const UserSchema = schema(z.object({
-  id: z.number(),
-  name: z.string(),
-  tags: z.array(z.string())
-}))
+const UserSchema = schema(
+  z.object({
+    id: z.number(),
+    name: z.string(),
+    tags: z.array(z.string()),
+  })
+)
 
 // TypeScript infers the type
 type User = z.infer<typeof UserSchema.zod>
@@ -417,26 +446,26 @@ describe('UserSchema', () => {
     const validUser = {
       id: 1,
       name: 'John Doe',
-      email: 'john@example.com'
+      email: 'john@example.com',
     }
-    
+
     const result = UserSchema.parse(validUser)
-    
+
     expect(result.tag).toBe('Ok')
     if (result.tag === 'Ok') {
       expect(result.value.name).toBe('John Doe')
     }
   })
-  
+
   it('should reject invalid email', () => {
     const invalidUser = {
       id: 1,
       name: 'John Doe',
-      email: 'not-an-email'
+      email: 'not-an-email',
     }
-    
+
     const result = UserSchema.parse(invalidUser)
-    
+
     expect(result.tag).toBe('Err')
     if (result.tag === 'Err') {
       expect(result.error.issues[0].path).toEqual(['email'])

@@ -18,8 +18,8 @@ const unsubscribe = counter.subscribe(value => {
 })
 
 // Update signal values
-counter.set(5)        // Logs: "Counter updated: 5"
-counter.update(n => n + 1)  // Logs: "Counter updated: 6"
+counter.set(5) // Logs: "Counter updated: 5"
+counter.update(n => n + 1) // Logs: "Counter updated: 6"
 
 // Clean up when done
 unsubscribe()
@@ -32,10 +32,7 @@ const firstName = signal('John')
 const lastName = signal('Doe')
 
 // Computed signal that reacts to changes
-const fullName = signalEffect.combine(
-  [firstName, lastName],
-  (first, last) => `${first} ${last}`
-)
+const fullName = signalEffect.combine([firstName, lastName], (first, last) => `${first} ${last}`)
 
 console.log(fullName.get()) // "John Doe"
 
@@ -64,15 +61,15 @@ const evenSum = numbers
   .map(nums => nums.filter(n => n % 2 === 0))
   .map(evens => evens.reduce((a, b) => a + b, 0))
 
-console.log(doubled.get())  // [2, 4, 6, 8, 10]
-console.log(sum.get())      // 15
-console.log(evenSum.get())  // 6
+console.log(doubled.get()) // [2, 4, 6, 8, 10]
+console.log(sum.get()) // 15
+console.log(evenSum.get()) // 6
 
 // Update source signal
 numbers.set([2, 4, 6, 8])
-console.log(doubled.get())  // [4, 8, 12, 16]
-console.log(sum.get())      // 20
-console.log(evenSum.get())  // 20
+console.log(doubled.get()) // [4, 8, 12, 16]
+console.log(sum.get()) // 20
+console.log(evenSum.get()) // 20
 ```
 
 ## Form State with Signals
@@ -87,17 +84,13 @@ interface LoginForm {
 const formData = signal<LoginForm>({
   email: '',
   password: '',
-  rememberMe: false
+  rememberMe: false,
 })
 
 // Derived validation signals
-const isEmailValid = formData.map(data => 
-  data.email.includes('@') && data.email.length > 3
-)
+const isEmailValid = formData.map(data => data.email.includes('@') && data.email.length > 3)
 
-const isPasswordValid = formData.map(data => 
-  data.password.length >= 8
-)
+const isPasswordValid = formData.map(data => data.password.length >= 8)
 
 const isFormValid = signalEffect.combine(
   [isEmailValid, isPasswordValid],
@@ -105,13 +98,10 @@ const isFormValid = signalEffect.combine(
 )
 
 // Update form fields
-const updateField = <K extends keyof LoginForm>(
-  field: K, 
-  value: LoginForm[K]
-) => {
+const updateField = <K extends keyof LoginForm>(field: K, value: LoginForm[K]) => {
   formData.update(current => ({
     ...current,
-    [field]: value
+    [field]: value,
   }))
 }
 
@@ -164,7 +154,7 @@ taskEffect.onError(fetchUserTask, (error, duration) => {
 await fetchUserTask.run({ userId: '123' })
 
 console.log(fetchUserTask.state) // 'success' | 'error'
-console.log(fetchUserTask.data)  // User data if successful
+console.log(fetchUserTask.data) // User data if successful
 ```
 
 ## Shopping Cart Example
@@ -183,22 +173,17 @@ const discountCode = signal<string | null>(null)
 const isLoading = signal(false)
 
 // Computed values
-const itemCount = cartItems.map(items => 
-  items.reduce((total, item) => total + item.quantity, 0)
-)
+const itemCount = cartItems.map(items => items.reduce((total, item) => total + item.quantity, 0))
 
 const subtotal = cartItems.map(items =>
-  items.reduce((total, item) => total + (item.price * item.quantity), 0)
+  items.reduce((total, item) => total + item.price * item.quantity, 0)
 )
 
-const discount = signalEffect.combine(
-  [discountCode, subtotal],
-  (code, subtotal) => {
-    if (code === 'SAVE10') return subtotal * 0.1
-    if (code === 'SAVE20') return subtotal * 0.2
-    return 0
-  }
-)
+const discount = signalEffect.combine([discountCode, subtotal], (code, subtotal) => {
+  if (code === 'SAVE10') return subtotal * 0.1
+  if (code === 'SAVE20') return subtotal * 0.2
+  return 0
+})
 
 const total = signalEffect.combine(
   [subtotal, discount],
@@ -209,15 +194,11 @@ const total = signalEffect.combine(
 const addItem = (item: Omit<CartItem, 'quantity'>) => {
   cartItems.update(items => {
     const existing = items.find(i => i.id === item.id)
-    
+
     if (existing) {
-      return items.map(i => 
-        i.id === item.id 
-          ? { ...i, quantity: i.quantity + 1 }
-          : i
-      )
+      return items.map(i => (i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i))
     }
-    
+
     return [...items, { ...item, quantity: 1 }]
   })
 }
@@ -231,12 +212,8 @@ const updateQuantity = (itemId: string, quantity: number) => {
     removeItem(itemId)
     return
   }
-  
-  cartItems.update(items =>
-    items.map(i => 
-      i.id === itemId ? { ...i, quantity } : i
-    )
-  )
+
+  cartItems.update(items => items.map(i => (i.id === itemId ? { ...i, quantity } : i)))
 }
 
 // Subscribe to changes
@@ -255,8 +232,8 @@ addItem({ id: '1', name: 'Widget', price: 19.99 })
 addItem({ id: '2', name: 'Gadget', price: 29.99 })
 discountCode.set('SAVE10')
 
-console.log('Total items:', itemCount.get())  // 2
-console.log('Total price:', total.get())      // ~45.00 with discount
+console.log('Total items:', itemCount.get()) // 2
+console.log('Total price:', total.get()) // ~45.00 with discount
 ```
 
 ## Real-time Data Updates
@@ -265,34 +242,37 @@ console.log('Total price:', total.get())      // ~45.00 with discount
 // WebSocket connection signal
 const wsConnection = signal<WebSocket | null>(null)
 const connectionStatus = signal<'connecting' | 'connected' | 'disconnected'>('disconnected')
-const messages = signal<Array<{ id: string, text: string, timestamp: Date }>>([])
+const messages = signal<Array<{ id: string; text: string; timestamp: Date }>>([])
 
 // Connect to WebSocket
 const connect = () => {
   connectionStatus.set('connecting')
-  
+
   const ws = new WebSocket('wss://api.example.com/ws')
-  
+
   ws.onopen = () => {
     wsConnection.set(ws)
     connectionStatus.set('connected')
   }
-  
-  ws.onmessage = (event) => {
+
+  ws.onmessage = event => {
     const message = JSON.parse(event.data)
-    messages.update(current => [...current, {
-      id: message.id,
-      text: message.text,
-      timestamp: new Date(message.timestamp)
-    }])
+    messages.update(current => [
+      ...current,
+      {
+        id: message.id,
+        text: message.text,
+        timestamp: new Date(message.timestamp),
+      },
+    ])
   }
-  
+
   ws.onclose = () => {
     wsConnection.set(null)
     connectionStatus.set('disconnected')
   }
-  
-  ws.onerror = (error) => {
+
+  ws.onerror = error => {
     console.error('WebSocket error:', error)
     connectionStatus.set('disconnected')
   }
@@ -326,43 +306,49 @@ connect()
 
 ```typescript
 const searchQuery = signal('')
-const searchResults = signal<Array<{ id: string, title: string }>>([])
+const searchResults = signal<Array<{ id: string; title: string }>>([])
 const isSearching = signal(false)
 
 // Search task
 const searchTask = pipeline('search')
   .input(schema(z.object({ query: z.string() })))
   .fetch('/api/search?q=:query')
-  .validate(schema(z.object({
-    results: z.array(z.object({
-      id: z.string(),
-      title: z.string()
-    }))
-  })))
+  .validate(
+    schema(
+      z.object({
+        results: z.array(
+          z.object({
+            id: z.string(),
+            title: z.string(),
+          })
+        ),
+      })
+    )
+  )
   .map(response => response.results)
   .asTask()
 
 // Debounced search effect
 let searchTimeout: NodeJS.Timeout | null = null
 
-signalEffect.onChange(searchQuery, (newQuery) => {
+signalEffect.onChange(searchQuery, newQuery => {
   // Clear previous timeout
   if (searchTimeout) {
     clearTimeout(searchTimeout)
   }
-  
+
   // Set new timeout
   searchTimeout = setTimeout(async () => {
     if (newQuery.trim().length > 0) {
       isSearching.set(true)
       await searchTask.run({ query: newQuery })
-      
+
       if (searchTask.state === 'success') {
         searchResults.set(searchTask.data || [])
       } else {
         searchResults.set([])
       }
-      
+
       isSearching.set(false)
     } else {
       searchResults.set([])
@@ -372,7 +358,7 @@ signalEffect.onChange(searchQuery, (newQuery) => {
 
 // Usage
 const searchInput = document.getElementById('search') as HTMLInputElement
-searchInput?.addEventListener('input', (e) => {
+searchInput?.addEventListener('input', e => {
   searchQuery.set((e.target as HTMLInputElement).value)
 })
 
@@ -380,9 +366,7 @@ searchInput?.addEventListener('input', (e) => {
 searchResults.subscribe(results => {
   const resultsEl = document.getElementById('search-results')
   if (resultsEl) {
-    resultsEl.innerHTML = results
-      .map(r => `<div class="result">${r.title}</div>`)
-      .join('')
+    resultsEl.innerHTML = results.map(r => `<div class="result">${r.title}</div>`).join('')
   }
 })
 
@@ -410,7 +394,7 @@ const steps = signal<WizardStep[]>([
   { id: 'personal', title: 'Personal Info', isValid: false, isComplete: false },
   { id: 'address', title: 'Address', isValid: false, isComplete: false },
   { id: 'payment', title: 'Payment', isValid: false, isComplete: false },
-  { id: 'review', title: 'Review', isValid: false, isComplete: false }
+  { id: 'review', title: 'Review', isValid: false, isComplete: false },
 ])
 
 // Computed properties
@@ -421,8 +405,7 @@ const currentStepData = signalEffect.combine(
 
 const canGoNext = signalEffect.combine(
   [currentStepData, currentStep, steps],
-  (stepData, current, allSteps) => 
-    stepData.isValid && current < allSteps.length - 1
+  (stepData, current, allSteps) => stepData.isValid && current < allSteps.length - 1
 )
 
 const canGoPrevious = currentStep.map(current => current > 0)
@@ -437,12 +420,10 @@ const goNext = () => {
   if (canGoNext.get()) {
     // Mark current step as complete
     const current = currentStep.get()
-    steps.update(steps => 
-      steps.map((step, index) => 
-        index === current ? { ...step, isComplete: true } : step
-      )
+    steps.update(steps =>
+      steps.map((step, index) => (index === current ? { ...step, isComplete: true } : step))
     )
-    
+
     currentStep.update(current => current + 1)
   }
 }
@@ -456,22 +437,18 @@ const goPrevious = () => {
 const updateStepData = (stepId: string, data: any) => {
   wizardData.update(current => ({
     ...current,
-    [stepId]: { ...current[stepId], ...data }
+    [stepId]: { ...current[stepId], ...data },
   }))
 }
 
 const validateStep = (stepId: string, isValid: boolean) => {
-  steps.update(steps =>
-    steps.map(step => 
-      step.id === stepId ? { ...step, isValid } : step
-    )
-  )
+  steps.update(steps => steps.map(step => (step.id === stepId ? { ...step, isValid } : step)))
 }
 
 // React to wizard changes
 currentStepData.subscribe(stepData => {
   console.log('Current step:', stepData.title)
-  
+
   // Update UI to show current step
   const stepElements = document.querySelectorAll('.wizard-step')
   stepElements.forEach((el, index) => {
@@ -509,14 +486,12 @@ const appState = signal<AppState>({
   theme: 'light',
   language: 'en',
   notifications: [],
-  isOnline: navigator.onLine
+  isOnline: navigator.onLine,
 })
 
 // Selectors (derived signals)
 const currentUser = appState.map(state => state.user)
-const unreadNotifications = appState.map(state => 
-  state.notifications.filter(n => !n.read)
-)
+const unreadNotifications = appState.map(state => state.notifications.filter(n => !n.read))
 const isDarkTheme = appState.map(state => state.theme === 'dark')
 
 // Actions
@@ -526,10 +501,10 @@ const setUser = (user: User | null) => {
 
 const setTheme = (theme: 'light' | 'dark') => {
   appState.update(state => ({ ...state, theme }))
-  
+
   // Apply theme to document
   document.documentElement.setAttribute('data-theme', theme)
-  
+
   // Save to localStorage
   localStorage.setItem('theme', theme)
 }
@@ -539,21 +514,19 @@ const addNotification = (notification: Omit<Notification, 'id' | 'timestamp'>) =
     ...notification,
     id: crypto.randomUUID(),
     timestamp: new Date(),
-    read: false
+    read: false,
   }
-  
+
   appState.update(state => ({
     ...state,
-    notifications: [...state.notifications, newNotification]
+    notifications: [...state.notifications, newNotification],
   }))
 }
 
 const markNotificationRead = (id: string) => {
   appState.update(state => ({
     ...state,
-    notifications: state.notifications.map(n =>
-      n.id === id ? { ...n, read: true } : n
-    )
+    notifications: state.notifications.map(n => (n.id === id ? { ...n, read: true } : n)),
   }))
 }
 
@@ -604,11 +577,11 @@ const userEmail = signal('')
 const userAge = signal(0)
 
 // ❌ Bad - overly broad signal
-const everything = signal({ 
-  user: {}, 
-  cart: {}, 
-  ui: {}, 
-  api: {} 
+const everything = signal({
+  user: {},
+  cart: {},
+  ui: {},
+  api: {},
 })
 ```
 
@@ -616,10 +589,7 @@ const everything = signal({
 
 ```typescript
 // ✅ Good - computed from source signals
-const fullName = signalEffect.combine(
-  [firstName, lastName],
-  (first, last) => `${first} ${last}`
-)
+const fullName = signalEffect.combine([firstName, lastName], (first, last) => `${first} ${last}`)
 
 // ❌ Bad - manually updating derived state
 const fullName = signal('')

@@ -5,30 +5,40 @@ import { resource, resourceUtils, type ResourceMethod } from '../src/core/resour
 import { z } from 'zod'
 
 // Test schemas
-const UserSchema = schema.from(z.object({
-  id: z.number(),
-  name: z.string(),
-  email: z.string().email(),
-}))
+const UserSchema = schema.from(
+  z.object({
+    id: z.number(),
+    name: z.string(),
+    email: z.string().email(),
+  })
+)
 
-const CreateUserSchema = schema.from(z.object({
-  name: z.string(),
-  email: z.string().email(),
-}))
+const CreateUserSchema = schema.from(
+  z.object({
+    name: z.string(),
+    email: z.string().email(),
+  })
+)
 
-const UpdateUserSchema = schema.from(z.object({
-  name: z.string().optional(),
-  email: z.string().email().optional(),
-}))
+const UpdateUserSchema = schema.from(
+  z.object({
+    name: z.string().optional(),
+    email: z.string().email().optional(),
+  })
+)
 
-const UserParamsSchema = schema.from(z.object({
-  id: z.string(),
-}))
+const UserParamsSchema = schema.from(
+  z.object({
+    id: z.string(),
+  })
+)
 
-const DeleteResponseSchema = schema.from(z.object({
-  success: z.boolean(),
-  message: z.string(),
-}))
+const DeleteResponseSchema = schema.from(
+  z.object({
+    success: z.boolean(),
+    message: z.string(),
+  })
+)
 
 // Mock HTTP client
 const mockHttpClient = {
@@ -46,11 +56,15 @@ describe('Resource', () => {
         list: {
           method: 'GET',
           path: '/api/users',
-          response: schema.from(z.array(z.object({
-            id: z.number(),
-            name: z.string(),
-            email: z.string().email(),
-          }))),
+          response: schema.from(
+            z.array(
+              z.object({
+                id: z.number(),
+                name: z.string(),
+                email: z.string().email(),
+              })
+            )
+          ),
         },
         get: {
           method: 'GET',
@@ -213,7 +227,8 @@ describe('Resource', () => {
     it('should execute PUT request with params and body', async () => {
       mockHttpClient.fetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ id: 1, name: 'John Updated', email: 'john.updated@example.com' }),
+        json: () =>
+          Promise.resolve({ id: 1, name: 'John Updated', email: 'john.updated@example.com' }),
       } as Response)
 
       const UserResource = resource(
@@ -383,12 +398,10 @@ describe('Resource', () => {
   describe('retry integration', () => {
     it('should apply method-level retry configuration', async () => {
       // First call fails, second succeeds
-      mockHttpClient.fetch
-        .mockRejectedValueOnce(new Error('Network error'))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ id: 1, name: 'John Doe', email: 'john@example.com' }),
-        } as Response)
+      mockHttpClient.fetch.mockRejectedValueOnce(new Error('Network error')).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ id: 1, name: 'John Doe', email: 'john@example.com' }),
+      } as Response)
 
       const UserResource = resource(
         'users',
@@ -471,12 +484,9 @@ describe('Resource', () => {
 
   describe('resourceUtils helpers', () => {
     it('should create GET method configuration', () => {
-      const getMethod = resourceUtils.get(
-        '/api/users/:id',
-        UserParamsSchema,
-        UserSchema,
-        { cache: { ttl: 60000 } }
-      )
+      const getMethod = resourceUtils.get('/api/users/:id', UserParamsSchema, UserSchema, {
+        cache: { ttl: 60000 },
+      })
 
       expect(getMethod).toEqual({
         method: 'GET',
@@ -488,12 +498,9 @@ describe('Resource', () => {
     })
 
     it('should create POST method configuration', () => {
-      const postMethod = resourceUtils.post(
-        '/api/users',
-        CreateUserSchema,
-        UserSchema,
-        { retry: { times: 3 } }
-      )
+      const postMethod = resourceUtils.post('/api/users', CreateUserSchema, UserSchema, {
+        retry: { times: 3 },
+      })
 
       expect(postMethod).toEqual({
         method: 'POST',
@@ -737,15 +744,19 @@ describe('Resource', () => {
           getByUserAndId: {
             method: 'GET',
             path: '/api/users/:userId/posts/:postId',
-            params: schema.from(z.object({
-              userId: z.string(),
-              postId: z.string(),
-            })),
-            response: schema.from(z.object({
-              id: z.number(),
-              title: z.string(),
-              content: z.string(),
-            })),
+            params: schema.from(
+              z.object({
+                userId: z.string(),
+                postId: z.string(),
+              })
+            ),
+            response: schema.from(
+              z.object({
+                id: z.number(),
+                title: z.string(),
+                content: z.string(),
+              })
+            ),
           },
         },
         {
@@ -799,7 +810,7 @@ describe('Resource', () => {
 
       expect(ComprehensiveResource.name).toBe('comprehensive')
       expect(ComprehensiveResource.baseUrl).toBe('https://api.example.com')
-      
+
       const getMethod = ComprehensiveResource.getMethod('get')
       expect(getMethod.cache?.ttl).toBe(60000)
       expect(getMethod.retry?.times).toBe(3)

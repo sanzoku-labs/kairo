@@ -38,10 +38,10 @@ const processTextPipeline = pipeline('process-text')
   .map(text => text.toLowerCase())
   .map(text => text.split(' '))
   .map(words => words.filter(word => word.length > 2))
-  .map(words => ({ 
+  .map(words => ({
     wordCount: words.length,
     words: words,
-    joinedText: words.join('-')
+    joinedText: words.join('-'),
   }))
 
 // Usage
@@ -60,11 +60,13 @@ if (result.tag === 'Ok') {
 ## Validation Pipeline
 
 ```typescript
-const UserInputSchema = schema(z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email format'),
-  age: z.number().min(18, 'Must be at least 18 years old')
-}))
+const UserInputSchema = schema(
+  z.object({
+    name: z.string().min(2, 'Name must be at least 2 characters'),
+    email: z.string().email('Invalid email format'),
+    age: z.number().min(18, 'Must be at least 18 years old'),
+  })
+)
 
 const validateUserPipeline = pipeline('validate-user')
   .input(UserInputSchema)
@@ -72,21 +74,21 @@ const validateUserPipeline = pipeline('validate-user')
     ...user,
     displayName: user.name.toUpperCase(),
     emailDomain: user.email.split('@')[1],
-    isAdult: user.age >= 18
+    isAdult: user.age >= 18,
   }))
 
 // Valid input
 const validResult = await validateUserPipeline.run({
   name: 'John Doe',
   email: 'john@example.com',
-  age: 25
+  age: 25,
 })
 
 // Invalid input
 const invalidResult = await validateUserPipeline.run({
   name: 'A',
   email: 'not-an-email',
-  age: 16
+  age: 16,
 })
 
 if (invalidResult.tag === 'Err') {
@@ -115,10 +117,10 @@ const conditionalPipeline = pipeline('conditional-processing')
 
 // Test different inputs
 const results = await Promise.all([
-  conditionalPipeline.run(-5),   // { value: 5, operation: 'made positive' }
-  conditionalPipeline.run(0),    // { value: 1, operation: 'converted zero to one' }
-  conditionalPipeline.run(200),  // { value: 2, operation: 'scaled down' }
-  conditionalPipeline.run(50)    // { value: 50, operation: 'no change' }
+  conditionalPipeline.run(-5), // { value: 5, operation: 'made positive' }
+  conditionalPipeline.run(0), // { value: 1, operation: 'converted zero to one' }
+  conditionalPipeline.run(200), // { value: 2, operation: 'scaled down' }
+  conditionalPipeline.run(50), // { value: 50, operation: 'no change' }
 ])
 ```
 
@@ -126,10 +128,14 @@ const results = await Promise.all([
 
 ```typescript
 const safeDividePipeline = pipeline('safe-divide')
-  .input(schema(z.object({
-    numerator: z.number(),
-    denominator: z.number()
-  })))
+  .input(
+    schema(
+      z.object({
+        numerator: z.number(),
+        denominator: z.number(),
+      })
+    )
+  )
   .map(({ numerator, denominator }) => {
     if (denominator === 0) {
       // This will create an error result
@@ -139,20 +145,20 @@ const safeDividePipeline = pipeline('safe-divide')
       numerator,
       denominator,
       result: numerator / denominator,
-      remainder: numerator % denominator
+      remainder: numerator % denominator,
     }
   })
 
 // Success case
 const successResult = await safeDividePipeline.run({
   numerator: 10,
-  denominator: 3
+  denominator: 3,
 })
 
 // Error case
 const errorResult = await safeDividePipeline.run({
   numerator: 10,
-  denominator: 0
+  denominator: 0,
 })
 
 if (errorResult.tag === 'Err') {
@@ -173,20 +179,24 @@ const validateNamePipeline = pipeline('validate-name')
   .map(name => ({
     name,
     firstName: name.split(' ')[0],
-    lastName: name.split(' ').slice(1).join(' ')
+    lastName: name.split(' ').slice(1).join(' '),
   }))
 
 // Compose them in a larger pipeline
 const createUserPipeline = pipeline('create-user')
-  .input(schema(z.object({
-    name: z.string(),
-    email: z.string()
-  })))
-  .map(async (input) => {
+  .input(
+    schema(
+      z.object({
+        name: z.string(),
+        email: z.string(),
+      })
+    )
+  )
+  .map(async input => {
     // Run sub-pipelines
     const [nameResult, emailResult] = await Promise.all([
       validateNamePipeline.run(input.name),
-      validateEmailPipeline.run(input.email)
+      validateEmailPipeline.run(input.email),
     ])
 
     // Handle results
@@ -196,13 +206,13 @@ const createUserPipeline = pipeline('create-user')
     return {
       ...nameResult.value,
       ...emailResult.value,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     }
   })
 
 const userResult = await createUserPipeline.run({
   name: 'John Doe',
-  email: 'john@example.com'
+  email: 'john@example.com',
 })
 ```
 
@@ -214,13 +224,13 @@ const NumberListSchema = schema(z.array(z.number()))
 const processNumbersPipeline = pipeline('process-numbers')
   .input(NumberListSchema)
   .map(numbers => numbers.filter(n => n > 0)) // Remove negative numbers
-  .map(numbers => numbers.map(n => n * 2))    // Double each number
+  .map(numbers => numbers.map(n => n * 2)) // Double each number
   .map(numbers => ({
     numbers,
     sum: numbers.reduce((a, b) => a + b, 0),
     average: numbers.length > 0 ? numbers.reduce((a, b) => a + b, 0) / numbers.length : 0,
     max: Math.max(...numbers),
-    min: Math.min(...numbers)
+    min: Math.min(...numbers),
   }))
 
 const result = await processNumbersPipeline.run([1, -2, 3, 4, -5, 6])
@@ -240,33 +250,37 @@ if (result.tag === 'Ok') {
 ## Pipeline with Side Effects
 
 ```typescript
-const LoggingSchema = schema(z.object({
-  userId: z.string(),
-  action: z.string(),
-  data: z.record(z.unknown())
-}))
+const LoggingSchema = schema(
+  z.object({
+    userId: z.string(),
+    action: z.string(),
+    data: z.record(z.unknown()),
+  })
+)
 
 const auditLogPipeline = pipeline('audit-log')
   .input(LoggingSchema)
   .map(input => ({
     ...input,
     timestamp: new Date().toISOString(),
-    id: crypto.randomUUID()
+    id: crypto.randomUUID(),
   }))
   .map(logEntry => {
     // Side effect: log to console
-    console.log(`[AUDIT] ${logEntry.timestamp}: User ${logEntry.userId} performed ${logEntry.action}`)
-    
+    console.log(
+      `[AUDIT] ${logEntry.timestamp}: User ${logEntry.userId} performed ${logEntry.action}`
+    )
+
     // Side effect: could send to external service
     // await sendToAuditService(logEntry)
-    
+
     return logEntry
   })
 
 await auditLogPipeline.run({
   userId: 'user-123',
   action: 'login',
-  data: { ip: '192.168.1.1', userAgent: 'Chrome/91.0' }
+  data: { ip: '192.168.1.1', userAgent: 'Chrome/91.0' },
 })
 ```
 
@@ -283,7 +297,9 @@ const validateEmailPipeline = pipeline('validate-email')
 // ❌ Bad - doing too much
 const processEverythingPipeline = pipeline('process-everything')
   .input(schema(z.object({ email: z.string(), name: z.string(), age: z.number() })))
-  .map(input => { /* validate email, process name, check age, send notifications, etc. */ })
+  .map(input => {
+    /* validate email, process name, check age, send notifications, etc. */
+  })
 ```
 
 ### 2. Use Descriptive Names
@@ -315,11 +331,13 @@ if (result.tag === 'Ok') {
 
 ```typescript
 // ✅ Good - specific validation
-const UserSchema = schema(z.object({
-  name: z.string().min(1),
-  email: z.string().email(),
-  age: z.number().min(0).max(150)
-}))
+const UserSchema = schema(
+  z.object({
+    name: z.string().min(1),
+    email: z.string().email(),
+    age: z.number().min(0).max(150),
+  })
+)
 
 // ❌ Bad - too permissive
 const UserSchema = schema(z.record(z.unknown()))

@@ -1,7 +1,7 @@
 import { Result } from './result'
 import { type KairoError, createError } from './errors'
 import { type Schema } from './schema'
-import { type Pipeline, pipeline } from './pipeline'
+import { type Pipeline, pipeline, cache } from './pipeline'
 
 export interface ResourceError extends KairoError {
   code: 'RESOURCE_ERROR'
@@ -17,6 +17,7 @@ export interface ResourceMethod<TParams = unknown, TBody = unknown, TResponse = 
   cache?: {
     ttl: number
     key?: (input: unknown) => string
+    invalidateOn?: string[]
   }
   retry?: {
     times: number
@@ -27,27 +28,19 @@ export interface ResourceMethod<TParams = unknown, TBody = unknown, TResponse = 
 
 export type ResourceMethods = Record<string, ResourceMethod>
 
-export type ResourceInput<M extends ResourceMethod> = M extends ResourceMethod<
-  infer TParams,
-  infer TBody,
-  unknown
->
-  ? TParams extends undefined
-    ? TBody extends undefined
-      ? void
-      : TBody
-    : TBody extends undefined
-    ? TParams
-    : TParams & TBody
-  : never
+export type ResourceInput<M extends ResourceMethod> =
+  M extends ResourceMethod<infer TParams, infer TBody, unknown>
+    ? TParams extends undefined
+      ? TBody extends undefined
+        ? void
+        : TBody
+      : TBody extends undefined
+        ? TParams
+        : TParams & TBody
+    : never
 
-export type ResourceOutput<M extends ResourceMethod> = M extends ResourceMethod<
-  unknown,
-  unknown,
-  infer TResponse
->
-  ? TResponse
-  : never
+export type ResourceOutput<M extends ResourceMethod> =
+  M extends ResourceMethod<unknown, unknown, infer TResponse> ? TResponse : never
 
 export type Resource<TMethods extends ResourceMethods> = {
   [K in keyof TMethods]: Pipeline<ResourceInput<TMethods[K]>, ResourceOutput<TMethods[K]>>
@@ -62,6 +55,7 @@ interface ResourceConfig {
   defaultCache?: {
     ttl: number
     key?: (input: unknown) => string
+    invalidateOn?: string[]
   }
   defaultRetry?: {
     times: number
@@ -128,9 +122,12 @@ const createMethodPipeline = (
   const pathParams = extractPathParams(method.path)
 
   // Create the base pipeline
-  let basePipeline = pipeline(pipelineName, config.httpClient ? { httpClient: config.httpClient } : undefined)
+  let basePipeline = pipeline(
+    pipelineName,
+    config.httpClient ? { httpClient: config.httpClient } : undefined
+  )
 
-  // For now, skip input validation at the pipeline level 
+  // For now, skip input validation at the pipeline level
   // since we need to handle combined param+body inputs properly
   // The validation will be handled in the individual method level
 
@@ -155,7 +152,7 @@ const createMethodPipeline = (
       // For methods that can have a body
       if (['POST', 'PUT', 'PATCH'].includes(method.method) && input) {
         const inputObj = input as Record<string, unknown>
-        
+
         if (pathParams.length > 0 && method.body) {
           // We have both path params and a body schema, separate them
           const { bodyParams } = separateParams(inputObj, pathParams)
@@ -262,26 +259,28 @@ export const resourceUtils = {
     params: Schema<TParams>,
     response: Schema<TResponse>,
     options: Partial<Omit<ResourceMethod, 'method' | 'path' | 'params' | 'response'>> = {}
-  ): ResourceMethod<TParams, undefined, TResponse> => ({
-    method: 'GET',
-    path,
-    params,
-    response,
-    ...options,
-  } as ResourceMethod<TParams, undefined, TResponse>),
+  ): ResourceMethod<TParams, undefined, TResponse> =>
+    ({
+      method: 'GET',
+      path,
+      params,
+      response,
+      ...options,
+    }) as ResourceMethod<TParams, undefined, TResponse>,
 
   post: <TBody, TResponse>(
     path: string,
     body: Schema<TBody>,
     response: Schema<TResponse>,
     options: Partial<Omit<ResourceMethod, 'method' | 'path' | 'body' | 'response'>> = {}
-  ): ResourceMethod<undefined, TBody, TResponse> => ({
-    method: 'POST',
-    path,
-    body,
-    response,
-    ...options,
-  } as ResourceMethod<undefined, TBody, TResponse>),
+  ): ResourceMethod<undefined, TBody, TResponse> =>
+    ({
+      method: 'POST',
+      path,
+      body,
+      response,
+      ...options,
+    }) as ResourceMethod<undefined, TBody, TResponse>,
 
   put: <TParams, TBody, TResponse>(
     path: string,
@@ -318,13 +317,14 @@ export const resourceUtils = {
     params: Schema<TParams>,
     response: Schema<TResponse>,
     options: Partial<Omit<ResourceMethod, 'method' | 'path' | 'params' | 'response'>> = {}
-  ): ResourceMethod<TParams, undefined, TResponse> => ({
-    method: 'DELETE',
-    path,
-    params,
-    response,
-    ...options,
-  } as ResourceMethod<TParams, undefined, TResponse>),
+  ): ResourceMethod<TParams, undefined, TResponse> =>
+    ({
+      method: 'DELETE',
+      path,
+      params,
+      response,
+      ...options,
+    }) as ResourceMethod<TParams, undefined, TResponse>,
 
   // URL utilities
   interpolateUrl,
@@ -336,7 +336,9 @@ export const resourceUtils = {
       // Validate path has proper format
       if (!method.path.startsWith('/')) {
         return Result.Err(
-          createResourceError('validateMethod', 'Resource path must start with /', { path: method.path })
+          createResourceError('validateMethod', 'Resource path must start with /', {
+            path: method.path,
+          })
         )
       }
 
@@ -344,11 +346,10 @@ export const resourceUtils = {
       const pathParams = extractPathParams(method.path)
       if (pathParams.length > 0 && !method.params) {
         return Result.Err(
-          createResourceError(
-            'validateMethod',
-            'Path parameters require params schema',
-            { pathParams, path: method.path }
-          )
+          createResourceError('validateMethod', 'Path parameters require params schema', {
+            pathParams,
+            path: method.path,
+          })
         )
       }
 
@@ -411,24 +412,51 @@ export const resourceUtils = {
 
 // Cache system integration
 export const resourceCache = {
-  // Global cache configuration
-  setDefaults: (_config: ResourceConfig['defaultCache']) => {
-    // This would integrate with the existing PipelineCache system
-    // Implementation would store default cache config globally
+  // Invalidate cache for specific resource method
+  invalidate: (resourceName: string, methodName: string, input?: unknown): number => {
+    const pipelineName = `${resourceName}.${methodName}`
+    if (input) {
+      // Invalidate specific cache entry
+      const cacheKey = `pipeline:${pipelineName}:${JSON.stringify(input)}`
+      return cache.invalidate(`^${cacheKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+    } else {
+      // Invalidate all cache entries for this pipeline
+      return cache.invalidateByPipeline(pipelineName)
+    }
   },
 
-  // Invalidate cache for specific resource method
-  invalidate: (resourceName: string, methodName: string, _input?: unknown) => {
-    // This would integrate with PipelineCache to invalidate specific entries
-    // const pipelineName = `${resourceName}.${methodName}`
-    // Would need to extend PipelineCache to support invalidation by pattern
-    void resourceName // Suppress unused warning
-    void methodName // Suppress unused warning
+  // Invalidate cache for entire resource
+  invalidateResource: (resourceName: string): number => {
+    return cache.invalidate(`^pipeline:${resourceName}\\.`)
+  },
+
+  // Invalidate cache by pattern
+  invalidateByPattern: (pattern: string | RegExp): number => {
+    return cache.invalidate(pattern)
+  },
+
+  // Invalidate cache by tags (for future enhancement)
+  invalidateByTag: (tag: string): number => {
+    return cache.invalidateByTag(tag)
   },
 
   // Clear all resource caches
-  clear: () => {
-    // This would clear all pipeline caches
-    // Would integrate with existing PipelineCache.clear()
+  clear: (): void => {
+    cache.clear()
+  },
+
+  // Get cache statistics
+  stats: () => ({
+    size: cache.size(),
+    entries: cache.entries().map(([key, entry]) => ({
+      key,
+      timestamp: entry.timestamp,
+      age: Date.now() - entry.timestamp,
+    })),
+  }),
+
+  // Cleanup expired cache entries
+  cleanup: (): void => {
+    cache.cleanup()
   },
 }

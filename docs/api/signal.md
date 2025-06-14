@@ -42,9 +42,7 @@ if (result.tag === 'Ok') {
 counter.update(current => current + 1)
 
 // Update user object
-user.update(current => 
-  current ? { ...current, name: 'Updated Name' } : null
-)
+user.update(current => (current ? { ...current, name: 'Updated Name' } : null))
 ```
 
 ### `value` - Read-only Property
@@ -130,10 +128,7 @@ import { signalEffect } from 'kairo'
 const firstName = signal('John')
 const lastName = signal('Doe')
 
-const fullName = signalEffect.combine(
-  [firstName, lastName],
-  (first, last) => `${first} ${last}`
-)
+const fullName = signalEffect.combine([firstName, lastName], (first, last) => `${first} ${last}`)
 
 console.log(fullName.get()) // "John Doe"
 
@@ -148,11 +143,7 @@ const isLoggedIn = signal(false)
 const guestData = signal({ name: 'Guest' })
 const userData = signal({ name: 'John', email: 'john@example.com' })
 
-const currentUser = signalEffect.conditional(
-  isLoggedIn,
-  userData,
-  guestData
-)
+const currentUser = signalEffect.conditional(isLoggedIn, userData, guestData)
 
 console.log(currentUser.get()) // { name: 'Guest' }
 
@@ -166,10 +157,12 @@ console.log(currentUser.get()) // { name: 'John', email: 'john@example.com' }
 import { schema } from 'kairo'
 import { z } from 'zod'
 
-const UserSchema = schema(z.object({
-  name: z.string(),
-  age: z.number().min(0)
-}))
+const UserSchema = schema(
+  z.object({
+    name: z.string(),
+    age: z.number().min(0),
+  })
+)
 
 const userInput = signal({ name: '', age: -1 })
 const validUser = signalEffect.validated(userInput, UserSchema)
@@ -263,12 +256,12 @@ import { useEffect, useState } from 'react'
 
 function useSignal<T>(signal: Signal<T>): T {
   const [value, setValue] = useState(signal.get())
-  
+
   useEffect(() => {
     const unsubscribe = signal.subscribe(setValue)
     return unsubscribe
   }, [signal])
-  
+
   return value
 }
 
@@ -276,7 +269,7 @@ function useSignal<T>(signal: Signal<T>): T {
 function Counter() {
   const counter = signal(0)
   const count = useSignal(counter)
-  
+
   return (
     <div>
       <p>Count: {count}</p>
@@ -295,15 +288,15 @@ import { ref, watchEffect } from 'vue'
 
 function useSignal<T>(signal: Signal<T>) {
   const value = ref(signal.get())
-  
+
   watchEffect(() => {
     const unsubscribe = signal.subscribe(newValue => {
       value.value = newValue
     })
-    
+
     return unsubscribe
   })
-  
+
   return value
 }
 ```
@@ -356,6 +349,7 @@ const userName = userSignal.map(user => user?.name ?? 'Unknown')
 ## Common Patterns
 
 ### Loading States
+
 ```typescript
 const isLoading = signal(false)
 const data = signal(null)
@@ -364,7 +358,7 @@ const error = signal(null)
 const fetchData = async () => {
   isLoading.set(true)
   error.set(null)
-  
+
   try {
     const result = await api.getData()
     data.set(result)
@@ -377,25 +371,23 @@ const fetchData = async () => {
 ```
 
 ### Computed Properties
+
 ```typescript
 const items = signal([])
 const filter = signal('')
 
-const filteredItems = signalEffect.combine(
-  [items, filter],
-  (allItems, filterText) => 
-    allItems.filter(item => 
-      item.name.toLowerCase().includes(filterText.toLowerCase())
-    )
+const filteredItems = signalEffect.combine([items, filter], (allItems, filterText) =>
+  allItems.filter(item => item.name.toLowerCase().includes(filterText.toLowerCase()))
 )
 ```
 
 ### Settings Management
+
 ```typescript
 const settings = signal({
   theme: 'light',
   language: 'en',
-  notifications: true
+  notifications: true,
 })
 
 const theme = settings.map(s => s.theme)
@@ -405,7 +397,7 @@ const language = settings.map(s => s.language)
 const updateTheme = (newTheme: string) => {
   settings.update(current => ({
     ...current,
-    theme: newTheme
+    theme: newTheme,
   }))
 }
 ```

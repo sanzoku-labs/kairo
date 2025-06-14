@@ -2,9 +2,9 @@
 layout: home
 
 hero:
-  name: "Kairo"
-  text: "Functional TypeScript Library"
-  tagline: "Eliminate glue code, clarify application logic, and provide a consistent developer experience"
+  name: 'Kairo'
+  text: 'Functional TypeScript Library'
+  tagline: 'Eliminate glue code, clarify application logic, and provide a consistent developer experience'
   image:
     src: /logo.svg
     alt: Kairo
@@ -53,11 +53,13 @@ Create your first pipeline:
 import { pipeline, schema } from 'kairo'
 import { z } from 'zod'
 
-const UserSchema = schema(z.object({
-  id: z.number(),
-  name: z.string(),
-  email: z.string().email()
-}))
+const UserSchema = schema(
+  z.object({
+    id: z.number(),
+    name: z.string(),
+    email: z.string().email(),
+  })
+)
 
 const getUserPipeline = pipeline('get-user')
   .input(schema(z.object({ id: z.number() })))

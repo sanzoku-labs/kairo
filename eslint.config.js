@@ -87,6 +87,12 @@ export default [
     },
   },
   {
-    ignores: ['dist/', 'node_modules/', 'coverage/', 'docs/.vitepress/dist/', 'docs/.vitepress/cache/'],
+    ignores: [
+      'dist/',
+      'node_modules/',
+      'coverage/',
+      'docs/.vitepress/dist/',
+      'docs/.vitepress/cache/',
+    ],
   },
 ]

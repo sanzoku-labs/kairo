@@ -22,11 +22,15 @@ import { z } from 'zod'
 const getUserPipeline = pipeline('get-user')
   .input(schema(z.object({ id: z.number() })))
   .fetch('/api/users/:id')
-  .validate(schema(z.object({
-    id: z.number(),
-    name: z.string(),
-    email: z.string().email()
-  })))
+  .validate(
+    schema(
+      z.object({
+        id: z.number(),
+        name: z.string(),
+        email: z.string().email(),
+      })
+    )
+  )
   .map(user => user.name)
 
 // Execute the pipeline
@@ -51,23 +55,24 @@ if (result.tag === 'Ok') {
 ## Core Concepts
 
 ### Result Pattern
+
 ```typescript
-type Result<E, T> = 
-  | { tag: 'Ok', value: T }
-  | { tag: 'Err', error: E }
+type Result<E, T> = { tag: 'Ok'; value: T } | { tag: 'Err'; error: E }
 ```
 
 ### Pipelines
+
 ```typescript
 const pipeline = pipeline('example')
-  .input(schema)      // Validate input
+  .input(schema) // Validate input
   .fetch('/api/data') // HTTP request
-  .validate(schema)   // Validate response
-  .map(transform)     // Transform data
+  .validate(schema) // Validate response
+  .map(transform) // Transform data
   .trace('completed') // Debug tracing
 ```
 
 ### Reactive State
+
 ```typescript
 const userSignal = signal(null)
 const userTask = task(getUserPipeline)

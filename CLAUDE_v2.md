@@ -1,0 +1,422 @@
+# Kairo Framework - Development Roadmap & Workflow
+
+> **Target:** Claude Code working on existing Kairo codebase  
+> **Objective:** Follow roadmap, maintain code quality, use established patterns
+
+## 📖 Context & Vision
+
+**Read VISION.md first** to understand the overall philosophy, goals, and strategic direction of Kairo.
+
+**Key principles to keep in mind:**
+
+- **Framework-agnostic**: Every feature should work across React, Node, Bun, etc.
+- **Functional & immutable**: Inspired by Gleam - no mutations, pure functions
+- **Developer joy**: Eliminate glue code, make debugging pleasant
+- **Composable abstractions**: No hidden state, everything should compose cleanly
+- **Lazy by design**: Only execute when explicitly requested
+
+**Success metrics from vision:**
+
+- Bundle size < 10kb gzipped (core)
+- Reduce boilerplate in real codebases
+- Improve debugging experience
+- Enable better testing practices
+
+Refer back to VISION.md when making architectural decisions or trade-offs.
+
+---
+
+## 🔄 Development Workflow (MANDATORY)
+
+### After Every Implementation/Refactoring:
+
+```bash
+# 1. Lint and format
+bun run lint
+bun run format
+
+# 2. Type checking
+bun run typecheck
+
+# 3. Build verification
+bun run build
+
+# 4. Run tests
+bun run test
+
+# 5. Fix any errors before proceeding
+```
+
+**Never proceed to next feature if any of these steps fail.**
+
+---
+
+## 🧰 Code Patterns & Conventions
+
+### Use Existing FP Utils (PRIORITY)
+
+The project already has functional programming utilities. **Always use these instead of reinventing:**
+
+```typescript
+// Use existing FP utils from src/utils/
+import { pipe, compose, identity, curry } from '../utils/fp'
+import { isOk, isErr, mapResult, flatMapResult } from '../utils/result'
+import { isDefined, isNull, isUndefined } from '../utils/guards'
+
+// ✅ Good - use existing
+const processData = pipe(validate(schema), mapResult(transform), flatMapResult(save))
+
+// ❌ Bad - reinventing
+const processData = data => {
+  const validated = validate(schema)(data)
+  if (validated.tag === 'Ok') {
+    const transformed = transform(validated.value)
+    return save(transformed)
+  }
+  return validated
+}
+```
+
+### When to Create New FP Utils
+
+Only create new utilities if:
+
+1. The pattern is used 3+ times across the codebase
+2. It doesn't exist in current utils
+3. It follows functional programming principles (pure, composable)
+
+**Pattern for new utils:**
+
+```typescript
+// src/utils/newUtil.ts
+export const newUtilFunction =
+  <T, U>(param: T) =>
+  (input: U): Result<Error, V> => {
+    // Implementation using existing utils when possible
+    return pipe(existingUtil1, existingUtil2)(input)
+  }
+```
+
+---
+
+## 🗺️ Roadmap Features (In Priority Order)
+
+### 🎯 Phase 1: Core Stabilization (Current)
+
+#### 1.1 Enhanced Error System
+
+**Goal:** Rich, traceable error types with context
+
+```typescript
+// Implement error composition and chaining
+interface KairoError {
+  code: string
+  message: string
+  context: Record<string, unknown>
+  cause?: KairoError
+  timestamp: number
+  trace?: string[]
+}
+
+// Error factory with context
+const createError = (code: string, message: string, context = {}) =>
+  pipe(addTimestamp, addTrace, addContext(context))({ code, message })
+```
+
+**Tasks:**
+
+- [ ] Enhance ValidationError with field paths
+- [ ] Add NetworkError with retry context
+- [ ] Add TimeoutError with duration info
+- [ ] Implement error chaining with `.cause`
+- [ ] Add error serialization for logging
+
+#### 1.2 Advanced Pipeline Steps
+
+**Goal:** More pipeline methods for complex flows
+
+```typescript
+// New methods to implement
+interface Pipeline<Input, Output> {
+  // Existing methods...
+
+  retry(times: number, delay?: number): Pipeline<Input, Output>
+  timeout(ms: number): Pipeline<Input, Output>
+  cache(ttl: number): Pipeline<Input, Output>
+  parallel<T>(pipelines: Pipeline<Input, T>[]): Pipeline<Input, T[]>
+  fallback<T>(pipeline: Pipeline<Input, T>): Pipeline<Input, Output | T>
+}
+```
+
+**Implementation approach:**
+
+- Use existing FP utils for composition
+- Each method returns new Pipeline instance (immutability)
+- Leverage Result pattern for error handling
+
+#### 1.3 Enhanced Tracing System
+
+**Goal:** Structured, queryable trace data
+
+```typescript
+interface TraceEntry {
+  id: string
+  timestamp: number
+  pipelineName: string
+  stepName: string
+  duration: number
+  success: boolean
+  input?: unknown
+  output?: unknown
+  error?: KairoError
+  metadata: Record<string, unknown>
+}
+
+// Global trace collector
+interface TraceCollector {
+  collect(entry: TraceEntry): void
+  query(filter: TraceFilter): TraceEntry[]
+  export(): TraceData
+}
+```
+
+**Tasks:**
+
+- [ ] Implement structured trace collection
+- [ ] Add trace filtering and querying
+- [ ] Create trace visualization helpers
+- [ ] Add performance metrics tracking
+
+---
+
+### 🎯 Phase 2: Reactive Extensions
+
+#### 2.1 Signal Primitive
+
+**Goal:** Lightweight reactive state with scoping
+
+```typescript
+interface Signal<T> {
+  get(): T
+  set(value: T): void
+  update(fn: (prev: T) => T): void
+  subscribe(fn: (value: T) => void): () => void
+  pipe<U>(fn: (value: T) => U): Signal<U>
+}
+
+// Usage with existing patterns
+const createSignal = <T>(initial: T): Signal<T> =>
+  pipe(validateInitialValue, createSubscriptionManager, createGetterSetter)(initial)
+```
+
+**Implementation strategy:**
+
+- Use existing FP utils for transformations
+- Integrate with pipeline `.asSignal()` method
+- Scope-aware cleanup mechanism
+
+#### 2.2 Task Primitive
+
+**Goal:** Async state management (pending/success/error)
+
+```typescript
+interface Task<T> {
+  readonly state: 'idle' | 'pending' | 'success' | 'error'
+  readonly data?: T
+  readonly error?: KairoError
+  run(input?: unknown): Promise<void>
+  reset(): void
+  signal(): Signal<TaskState<T>>
+}
+
+// Create from pipeline
+const createTask = <I, O>(pipeline: Pipeline<I, O>): Task<O> =>
+  pipe(createTaskState, attachPipeline, createSignal)(pipeline)
+```
+
+#### 2.3 Form Abstraction
+
+**Goal:** Form state + validation + submission pipeline
+
+```typescript
+interface Form<T> {
+  fields: Signal<Partial<T>>
+  errors: Signal<Record<keyof T, string[]>>
+  isValid: Signal<boolean>
+  isSubmitting: Signal<boolean>
+  submit: Task<T>
+  reset(): void
+  setField<K extends keyof T>(key: K, value: T[K]): void
+}
+
+// Usage
+const loginForm = createForm({
+  schema: LoginSchema,
+  onSubmit: loginPipeline,
+  validation: 'onBlur',
+})
+```
+
+---
+
+### 🎯 Phase 3: Resource Management
+
+#### 3.1 Resource Declaration
+
+**Goal:** Declarative API endpoint definitions
+
+```typescript
+interface Resource<Methods> {
+  [K in keyof Methods]: Pipeline<Methods[K]['input'], Methods[K]['output']>
+}
+
+// Usage
+const UserResource = resource('user', {
+  get: {
+    method: 'GET',
+    path: '/api/user/:id',
+    params: z.object({ id: z.string() }),
+    response: UserSchema
+  },
+  update: {
+    method: 'PUT',
+    path: '/api/user/:id',
+    params: z.object({ id: z.string() }),
+    body: UpdateUserSchema,
+    response: UserSchema
+  }
+})
+
+// Auto-generated pipelines
+await UserResource.get.run({ id: '123' })
+await UserResource.update.run({ id: '123', name: 'New Name' })
+```
+
+**Implementation approach:**
+
+- Generate pipelines using existing pipeline primitives
+- Use FP utils for URL interpolation and HTTP methods
+- Integrate with cache and retry mechanisms
+
+#### 3.2 Cache System
+
+**Goal:** Declarative caching with TTL and invalidation
+
+```typescript
+interface CacheConfig {
+  ttl: number
+  key: (input: unknown) => string
+  invalidateOn?: string[]
+}
+
+// Pipeline integration
+const cachedUserPipeline = pipeline('get-user')
+  .input(IdSchema)
+  .cache({ ttl: 300000, key: input => `user:${input.id}` })
+  .fetch('/api/user/:id')
+  .validate(UserSchema)
+```
+
+---
+
+## 🔧 Implementation Guidelines
+
+### File Organization
+
+```
+src/
+├── core/           # Core primitives (stable)
+├── extensions/     # New features (signals, tasks, forms)
+├── utils/          # FP utilities (USE THESE!)
+├── types/          # Type definitions
+└── examples/       # Usage examples
+```
+
+### Testing Strategy
+
+```typescript
+// Test pattern for new features
+describe('NewFeature', () => {
+  // Unit tests for pure functions
+  describe('pure functions', () => {
+    it('should work with existing FP utils', () => {
+      const result = pipe(newFeature, existingUtil)(input)
+
+      expect(isOk(result)).toBe(true)
+    })
+  })
+
+  // Integration tests with pipelines
+  describe('pipeline integration', () => {
+    it('should compose with existing pipeline methods', async () => {
+      const result = await pipeline('test').input(schema).newMethod().run(input)
+
+      expect(isOk(result)).toBe(true)
+    })
+  })
+})
+```
+
+### Type Safety Patterns
+
+```typescript
+// Use existing type guards
+const processValue = <T>(value: unknown): Result<Error, T> =>
+  pipe(guardType<T>, validate, transform)(value)
+
+// Leverage existing Result helpers
+const chainOperations = pipe(mapResult(step1), flatMapResult(step2), mapResult(step3))
+```
+
+---
+
+## 📚 Reference: Existing Utils to Use
+
+### FP Core
+
+- `pipe()` - Function composition
+- `compose()` - Right-to-left composition
+- `curry()` - Function currying
+- `identity()` - Identity function
+
+### Result Helpers
+
+- `isOk()` - Type guard for Ok results
+- `isErr()` - Type guard for Err results
+- `mapResult()` - Transform Ok values
+- `flatMapResult()` - Chain Result operations
+
+### Type Guards
+
+- `isDefined()` - Check for non-null/undefined
+- `isNull()` - Null check
+- `isUndefined()` - Undefined check
+
+### Validation
+
+- `validateSchema()` - Schema validation with Result
+- `parseJson()` - Safe JSON parsing
+
+**Before implementing new utilities, check if existing ones can be composed to achieve the goal.**
+
+---
+
+## ⚠️ Critical Rules
+
+1. **Always use existing FP utils** before creating new ones
+2. **Run full workflow** after every change
+3. **No mutations** - all operations return new instances
+4. **Result pattern** - never throw exceptions in public APIs
+5. **Type safety** - leverage existing type guards and helpers
+6. **Test coverage** - maintain 100% on core features
+7. **Documentation** - update examples when adding features
+
+---
+
+## 🎯 Current Priority
+
+**Focus on Phase 1.1 (Enhanced Error System)** - this provides foundation for all other features.
+
+Start with ValidationError enhancement, then NetworkError, then error chaining. Use existing FP utils wherever possible.
+
+Remember: **Quality over speed. Follow the workflow. Use existing patterns.**

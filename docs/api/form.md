@@ -8,15 +8,17 @@ Forms provide comprehensive state management for user input with validation, sub
 import { form, schema } from 'kairo'
 import { z } from 'zod'
 
-const LoginSchema = schema(z.object({
-  email: z.string().email(),
-  password: z.string().min(8)
-}))
+const LoginSchema = schema(
+  z.object({
+    email: z.string().email(),
+    password: z.string().min(8),
+  })
+)
 
 const loginForm = form({
   schema: LoginSchema,
   onSubmit: loginPipeline,
-  validation: 'onBlur'
+  validation: 'onBlur',
 })
 ```
 
@@ -42,9 +44,9 @@ type ValidationStrategy = 'onChange' | 'onBlur' | 'onSubmit' | 'manual'
 const form = form({ schema: UserSchema })
 
 // Reactive signals for form state
-const fields = form.fields.get()      // Current field values
-const errors = form.errors.get()      // Validation errors
-const isValid = form.isValid.get()    // Overall validity
+const fields = form.fields.get() // Current field values
+const errors = form.errors.get() // Validation errors
+const isValid = form.isValid.get() // Overall validity
 const isSubmitting = form.isSubmitting.get() // Submission state
 ```
 
@@ -70,25 +72,25 @@ const emailErrors = form.getFieldErrors('email')
 // Validate on every change
 const form1 = form({
   schema: UserSchema,
-  validation: 'onChange'
+  validation: 'onChange',
 })
 
 // Validate when field loses focus
 const form2 = form({
   schema: UserSchema,
-  validation: 'onBlur'
+  validation: 'onBlur',
 })
 
 // Validate only on submission
 const form3 = form({
   schema: UserSchema,
-  validation: 'onSubmit'
+  validation: 'onSubmit',
 })
 
 // Manual validation control
 const form4 = form({
   schema: UserSchema,
-  validation: 'manual'
+  validation: 'manual',
 })
 ```
 
@@ -97,7 +99,7 @@ const form4 = form({
 ```typescript
 const form = form({
   schema: UserSchema,
-  validation: 'manual'
+  validation: 'manual',
 })
 
 // Validate specific field
@@ -120,7 +122,7 @@ if (formValidation.tag === 'Ok') {
 ```typescript
 const form = form({
   schema: LoginSchema,
-  onSubmit: loginPipeline
+  onSubmit: loginPipeline,
 })
 
 // Submit form
@@ -160,7 +162,7 @@ import { formUtils } from 'kairo'
 const userForm = formUtils.create({
   schema: UserSchema,
   onSubmit: createUserPipeline,
-  initialValues: { name: '', email: '' }
+  initialValues: { name: '', email: '' },
 })
 
 // Reset form to initial state
@@ -169,7 +171,7 @@ formUtils.reset(userForm)
 // Set multiple fields at once
 formUtils.setFields(userForm, {
   name: 'John Doe',
-  email: 'john@example.com'
+  email: 'john@example.com',
 })
 
 // Get all field values
@@ -188,7 +190,7 @@ import { field, schema } from 'kairo'
 const emailField = field({
   schema: schema(z.string().email()),
   initialValue: '',
-  validation: 'onBlur'
+  validation: 'onBlur',
 })
 
 // Use field
@@ -205,15 +207,15 @@ console.log(emailField.errors.get()) // []
 ```typescript
 const form = form({
   schema: UserSchema,
-  customValidation: (values) => {
+  customValidation: values => {
     const errors: Record<string, string[]> = {}
-    
+
     if (values.password !== values.confirmPassword) {
       errors.confirmPassword = ['Passwords do not match']
     }
-    
+
     return errors
-  }
+  },
 })
 ```
 
@@ -222,12 +224,11 @@ const form = form({
 ```typescript
 const registrationForm = form({
   schema: RegistrationSchema,
-  validation: 'onChange'
+  validation: 'onChange',
 })
 
 // Show/hide fields based on other field values
-const showBusinessFields = registrationForm.fields
-  .map(fields => fields.userType === 'business')
+const showBusinessFields = registrationForm.fields.map(fields => fields.userType === 'business')
 
 showBusinessFields.subscribe(shouldShow => {
   if (shouldShow) {
@@ -241,25 +242,29 @@ showBusinessFields.subscribe(shouldShow => {
 ### Form Arrays
 
 ```typescript
-const ContactSchema = schema(z.object({
-  contacts: z.array(z.object({
-    name: z.string(),
-    phone: z.string()
-  }))
-}))
+const ContactSchema = schema(
+  z.object({
+    contacts: z.array(
+      z.object({
+        name: z.string(),
+        phone: z.string(),
+      })
+    ),
+  })
+)
 
 const form = form({ schema: ContactSchema })
 
 // Add new contact
-form.setField('contacts', [
-  ...form.getField('contacts') || [],
-  { name: '', phone: '' }
-])
+form.setField('contacts', [...(form.getField('contacts') || []), { name: '', phone: '' }])
 
 // Remove contact at index
 const removeContact = (index: number) => {
   const contacts = form.getField('contacts') || []
-  form.setField('contacts', contacts.filter((_, i) => i !== index))
+  form.setField(
+    'contacts',
+    contacts.filter((_, i) => i !== index)
+  )
 }
 ```
 
@@ -276,16 +281,16 @@ function LoginForm() {
     onSubmit: loginPipeline,
     validation: 'onBlur'
   })
-  
+
   const fields = useSignal(form.fields)
-  const errors = useSignal(form.errors) 
+  const errors = useSignal(form.errors)
   const isSubmitting = useSignal(form.isSubmitting)
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     await form.submit.run()
   }
-  
+
   return (
     <form onSubmit={handleSubmit}>
       <input
@@ -295,7 +300,7 @@ function LoginForm() {
         onBlur={() => form.validateField('email')}
       />
       {errors.email && <span>{errors.email[0]}</span>}
-      
+
       <input
         type="password"
         value={fields.password || ''}
@@ -303,9 +308,9 @@ function LoginForm() {
         onBlur={() => form.validateField('password')}
       />
       {errors.password && <span>{errors.password[0]}</span>}
-      
-      <button 
-        type="submit" 
+
+      <button
+        type="submit"
         disabled={isSubmitting || !form.isValid.get()}
       >
         {isSubmitting ? 'Logging in...' : 'Login'}
@@ -325,30 +330,30 @@ export default {
     const form = form({
       schema: LoginSchema,
       onSubmit: loginPipeline,
-      validation: 'onBlur'
+      validation: 'onBlur',
     })
-    
+
     const fields = ref(form.fields.get())
     const errors = ref(form.errors.get())
     const isSubmitting = ref(form.isSubmitting.get())
-    
+
     // Subscribe to form state changes
-    form.fields.subscribe(newFields => fields.value = newFields)
-    form.errors.subscribe(newErrors => errors.value = newErrors)
-    form.isSubmitting.subscribe(submitting => isSubmitting.value = submitting)
-    
+    form.fields.subscribe(newFields => (fields.value = newFields))
+    form.errors.subscribe(newErrors => (errors.value = newErrors))
+    form.isSubmitting.subscribe(submitting => (isSubmitting.value = submitting))
+
     const handleSubmit = async () => {
       await form.submit.run()
     }
-    
+
     return {
       fields,
       errors,
       isSubmitting,
       setField: form.setField.bind(form),
-      handleSubmit
+      handleSubmit,
     }
-  }
+  },
 }
 ```
 
@@ -357,12 +362,15 @@ export default {
 ### Custom Error Messages
 
 ```typescript
-const UserSchema = schema(z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-}))
+const UserSchema = schema(
+  z.object({
+    email: z.string().email('Please enter a valid email address'),
+    password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters')
+      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter'),
+  })
+)
 
 const form = form({ schema: UserSchema })
 ```
@@ -374,14 +382,14 @@ const getErrorMessage = (error: ValidationError, locale: string) => {
   const messages = {
     en: {
       'email.invalid': 'Please enter a valid email address',
-      'password.too_short': 'Password must be at least 8 characters'
+      'password.too_short': 'Password must be at least 8 characters',
     },
     es: {
       'email.invalid': 'Ingrese una dirección de correo válida',
-      'password.too_short': 'La contraseña debe tener al menos 8 caracteres'
-    }
+      'password.too_short': 'La contraseña debe tener al menos 8 caracteres',
+    },
   }
-  
+
   return messages[locale]?.[error.code] || error.message
 }
 ```
@@ -393,38 +401,40 @@ import { describe, it, expect } from 'vitest'
 import { form, schema } from 'kairo'
 
 describe('User Form', () => {
-  const UserSchema = schema(z.object({
-    name: z.string().min(1),
-    email: z.string().email()
-  }))
-  
+  const UserSchema = schema(
+    z.object({
+      name: z.string().min(1),
+      email: z.string().email(),
+    })
+  )
+
   it('should validate fields correctly', () => {
     const userForm = form({ schema: UserSchema })
-    
+
     userForm.setField('email', 'invalid-email')
     const validation = userForm.validateField('email')
-    
+
     expect(validation.tag).toBe('Err')
   })
-  
+
   it('should submit valid form', async () => {
     const mockSubmit = vi.fn().mockResolvedValue({ tag: 'Ok', value: 'success' })
     const submitPipeline = { run: mockSubmit }
-    
+
     const userForm = form({
       schema: UserSchema,
-      onSubmit: submitPipeline
+      onSubmit: submitPipeline,
     })
-    
+
     userForm.setField('name', 'John Doe')
     userForm.setField('email', 'john@example.com')
-    
+
     const result = await userForm.submit.run()
-    
+
     expect(result.tag).toBe('Ok')
     expect(mockSubmit).toHaveBeenCalledWith({
       name: 'John Doe',
-      email: 'john@example.com'
+      email: 'john@example.com',
     })
   })
 })
@@ -444,6 +454,7 @@ describe('User Form', () => {
 ## Common Patterns
 
 ### Multi-step Forms
+
 ```typescript
 const steps = ['personal', 'address', 'payment']
 const currentStep = signal(0)
@@ -461,10 +472,11 @@ const nextStep = () => {
 ```
 
 ### Dynamic Validation
+
 ```typescript
 const form = form({
   schema: UserSchema,
-  validation: 'onChange'
+  validation: 'onChange',
 })
 
 // Change validation based on field values
@@ -478,18 +490,21 @@ form.fields.subscribe(fields => {
 ```
 
 ### Auto-save Forms
+
 ```typescript
 const form = form({
   schema: DocumentSchema,
-  validation: 'onChange'
+  validation: 'onChange',
 })
 
 // Auto-save on field changes
-form.fields.subscribe(debounce(async (fields) => {
-  if (form.isValid.get()) {
-    await autoSavePipeline.run(fields)
-  }
-}, 1000))
+form.fields.subscribe(
+  debounce(async fields => {
+    if (form.isValid.get()) {
+      await autoSavePipeline.run(fields)
+    }
+  }, 1000)
+)
 ```
 
 Forms provide a complete solution for handling user input with validation, state management, and seamless integration with Kairo's reactive primitives.

@@ -41,28 +41,33 @@ import { pipeline, schema } from 'kairo'
 import { z } from 'zod'
 
 // Define schemas for validation
-const UserIdSchema = schema(z.object({
-  id: z.number().positive()
-}))
+const UserIdSchema = schema(
+  z.object({
+    id: z.number().positive(),
+  })
+)
 
-const UserSchema = schema(z.object({
-  id: z.number(),
-  name: z.string(),
-  email: z.string().email(),
-  avatar: z.string().url().optional()
-}))
+const UserSchema = schema(
+  z.object({
+    id: z.number(),
+    name: z.string(),
+    email: z.string().email(),
+    avatar: z.string().url().optional(),
+  })
+)
 
 // Create a pipeline
 const getUserPipeline = pipeline('get-user')
-  .input(UserIdSchema)           // Validate input
-  .fetch('/api/users/:id')       // Make HTTP request
-  .validate(UserSchema)          // Validate response
-  .map(user => ({               // Transform data
+  .input(UserIdSchema) // Validate input
+  .fetch('/api/users/:id') // Make HTTP request
+  .validate(UserSchema) // Validate response
+  .map(user => ({
+    // Transform data
     displayName: user.name,
     email: user.email,
-    hasAvatar: !!user.avatar
+    hasAvatar: !!user.avatar,
   }))
-  .trace('user-processed')       // Add debugging trace
+  .trace('user-processed') // Add debugging trace
 
 // Execute the pipeline
 const result = await getUserPipeline.run({ id: 123 })
@@ -85,9 +90,7 @@ Kairo uses the `Result<Error, Value>` pattern for error handling instead of thro
 import { Result, isOk, isErr } from 'kairo'
 
 // Results have two possible states
-type Result<E, T> = 
-  | { tag: 'Ok', value: T }
-  | { tag: 'Err', error: E }
+type Result<E, T> = { tag: 'Ok'; value: T } | { tag: 'Err'; error: E }
 
 // Pattern matching
 if (result.tag === 'Ok') {
@@ -119,7 +122,7 @@ const pipeline = pipeline('example')
     return error
   })
 
-const result = await pipeline.run("valid input")
+const result = await pipeline.run('valid input')
 
 if (isErr(result)) {
   // Handle different error types
@@ -147,14 +150,10 @@ const apiPipeline = pipeline('api-base')
   .fetch(input => input.endpoint)
 
 // Specialized user pipeline
-const userPipeline = apiPipeline
-  .validate(UserSchema)
-  .map(user => user.profile)
+const userPipeline = apiPipeline.validate(UserSchema).map(user => user.profile)
 
 // Another specialized pipeline
-const postsPipeline = apiPipeline
-  .validate(PostsSchema)
-  .map(posts => posts.slice(0, 10)) // Take first 10 posts
+const postsPipeline = apiPipeline.validate(PostsSchema).map(posts => posts.slice(0, 10)) // Take first 10 posts
 ```
 
 ## Testing Pipelines
@@ -171,8 +170,8 @@ describe('getUserPipeline', () => {
       get: vi.fn().mockResolvedValue({
         id: 123,
         name: 'John Doe',
-        email: 'john@example.com'
-      })
+        email: 'john@example.com',
+      }),
     }
 
     const pipeline = getUserPipeline.withClient(mockClient)
@@ -242,8 +241,8 @@ import express from 'express'
 const app = express()
 
 app.get('/users/:id', async (req, res) => {
-  const result = await getUserPipeline.run({ 
-    id: parseInt(req.params.id) 
+  const result = await getUserPipeline.run({
+    id: parseInt(req.params.id),
   })
 
   if (isOk(result)) {
@@ -252,7 +251,7 @@ app.get('/users/:id', async (req, res) => {
     const error = result.error
     res.status(error.status || 500).json({
       error: error.message,
-      code: error.code
+      code: error.code,
     })
   }
 })

@@ -2,8 +2,6 @@ import { Result } from './result'
 import { type Schema, type ValidationError } from './schema'
 import { isNil, isEmpty, cond, resolve, conditionalEffect, tryCatch, retry } from '../utils/fp'
 import { type KairoError, createError } from './errors'
-import { type Signal, createSignal } from './signal'
-import { type Task, createTask } from './task'
 
 export interface HttpError extends KairoError {
   code: 'HTTP_ERROR'
@@ -430,6 +428,38 @@ class PipelineCache {
       }
     }
   }
+
+  static invalidate(pattern: string | RegExp): number {
+    let count = 0
+    const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern
+
+    for (const key of this.cache.keys()) {
+      if (regex.test(key)) {
+        this.cache.delete(key)
+        count++
+      }
+    }
+
+    return count
+  }
+
+  static invalidateByPipeline(pipelineName: string): number {
+    return this.invalidate(`^pipeline:${pipelineName}:`)
+  }
+
+  static invalidateByTag(tag: string): number {
+    // For future enhancement: tag-based invalidation
+    // Currently invalidate by pattern matching
+    return this.invalidate(tag)
+  }
+
+  static size(): number {
+    return this.cache.size
+  }
+
+  static entries(): Array<[string, CacheEntry]> {
+    return Array.from(this.cache.entries())
+  }
 }
 
 class GlobalTraceCollector implements TraceCollector {
@@ -628,37 +658,6 @@ export class Pipeline<Input, Output> {
     )
   }
 
-  asSignal(input?: Input): Signal<Result<unknown, Output>> {
-    // Create a signal with an initial loading state
-    const signal = createSignal<Result<unknown, Output>>(
-      Result.Ok(undefined as unknown as Output) // Initial placeholder
-    )
-
-    // Run the pipeline and update the signal
-    this.run(input)
-      .then(result => {
-        signal.set(result)
-      })
-      .catch(error => {
-        const pipelineError: KairoError = {
-          ...createError(
-            'SIGNAL_PIPELINE_ERROR',
-            error instanceof Error
-              ? error.message
-              : 'Pipeline execution failed in signal conversion',
-            { pipelineName: this.name, input }
-          ),
-          code: 'SIGNAL_PIPELINE_ERROR',
-        }
-        signal.set(Result.Err(pipelineError))
-      })
-
-    return signal
-  }
-
-  asTask(): Task<Output> {
-    return createTask(this)
-  }
 
   async run(input?: Input): Promise<Result<unknown, Output>> {
     const start = performance.now()
@@ -1007,6 +1006,144 @@ export const tracing = {
         entries.length > 0 ? (entries.filter(e => e.success).length / entries.length) * 100 : 0,
     }
   },
+
+  // Additional visualization helpers
+  printErrorGraph: (maxBars = 10) => {
+    const errorBreakdown = tracing.getErrorBreakdown()
+    if (errorBreakdown.length === 0) {
+      console.log('No errors found')
+      return
+    }
+
+    console.log('📊 Error Distribution')
+    console.log('=====================')
+
+    const maxCount = Math.max(...errorBreakdown.map(e => e.count))
+    const barLength = 40
+
+    errorBreakdown.slice(0, maxBars).forEach(({ code, count }) => {
+      const barCount = Math.round((count / maxCount) * barLength)
+      const bar = '█'.repeat(barCount) + '░'.repeat(barLength - barCount)
+      console.log(`${code.padEnd(20)} ${bar} ${count}`)
+    })
+  },
+
+  printPipelineFlow: (pipelineName: string) => {
+    const entries = GlobalTraceCollector.getInstance()
+      .query({ pipelineName })
+      .sort((a, b) => a.timestamp - b.timestamp)
+
+    if (entries.length === 0) {
+      console.log(`No entries found for pipeline: ${pipelineName}`)
+      return
+    }
+
+    console.log(`🔄 Pipeline Flow: ${pipelineName}`)
+    console.log('================================')
+
+    const stepGroups = entries.reduce(
+      (acc, entry) => {
+        const key = `${entry.timestamp}_${entry.id}`
+        if (!acc[key]) acc[key] = []
+        acc[key].push(entry)
+        return acc
+      },
+      {} as Record<string, TraceEntry[]>
+    )
+
+    Object.values(stepGroups).forEach(group => {
+      const firstEntry = group[0]
+      if (!firstEntry) return
+
+      const time = new Date(firstEntry.timestamp).toLocaleTimeString()
+      console.log(`\n⏰ ${time}`)
+
+      group.forEach((entry, idx) => {
+        const prefix = idx === group.length - 1 ? '└─' : '├─'
+        const status = entry.success ? '✅' : '❌'
+        console.log(`  ${prefix} ${status} ${entry.stepName} (${entry.duration.toFixed(2)}ms)`)
+        if (entry.error) {
+          console.log(`     └─ Error: ${entry.error.message}`)
+        }
+      })
+    })
+  },
+
+  exportAsJSON: (filter?: TraceFilter) => {
+    const entries = GlobalTraceCollector.getInstance().query(filter)
+    return JSON.stringify(entries, null, 2)
+  },
+
+  exportAsCSV: (filter?: TraceFilter) => {
+    const entries = GlobalTraceCollector.getInstance().query(filter)
+    if (entries.length === 0) return ''
+
+    const headers = [
+      'timestamp',
+      'pipeline',
+      'step',
+      'success',
+      'duration',
+      'error_code',
+      'error_message',
+    ]
+    const rows = entries.map(entry => [
+      entry.timestamp,
+      entry.pipelineName,
+      entry.stepName,
+      entry.success,
+      entry.duration.toFixed(2),
+      entry.error?.code || '',
+      entry.error?.message || '',
+    ])
+
+    return [headers.join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join(
+      '\n'
+    )
+  },
+
+  getHealthScore: () => {
+    const data = GlobalTraceCollector.getInstance().export()
+
+    // Calculate health score based on multiple factors
+    const successRate = (data.summary.successCount / data.summary.totalEntries) * 100
+    const avgDuration = data.summary.avgDuration
+    const errorTypes = tracing.getErrorBreakdown().length
+
+    let score = 100
+
+    // Deduct points for low success rate
+    if (successRate < 95) score -= 10
+    if (successRate < 90) score -= 20
+    if (successRate < 80) score -= 30
+
+    // Deduct points for slow performance
+    if (avgDuration > 1000) score -= 10
+    if (avgDuration > 5000) score -= 20
+
+    // Deduct points for error diversity
+    if (errorTypes > 5) score -= 10
+    if (errorTypes > 10) score -= 20
+
+    return {
+      score: Math.max(0, score),
+      successRate,
+      avgDuration,
+      errorTypes,
+      recommendation: score >= 80 ? 'Healthy' : score >= 60 ? 'Needs Attention' : 'Critical',
+    }
+  },
+}
+
+// Export cache utilities
+export const cache = {
+  clear: () => PipelineCache.clear(),
+  cleanup: () => PipelineCache.cleanup(),
+  invalidate: (pattern: string | RegExp) => PipelineCache.invalidate(pattern),
+  invalidateByPipeline: (pipelineName: string) => PipelineCache.invalidateByPipeline(pipelineName),
+  invalidateByTag: (tag: string) => PipelineCache.invalidateByTag(tag),
+  size: () => PipelineCache.size(),
+  entries: () => PipelineCache.entries(),
 }
 
 const isTraceEnabled = (): boolean =>

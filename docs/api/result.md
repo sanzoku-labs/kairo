@@ -36,9 +36,9 @@ const ok = <T>(value: T): Result<never, T> => ({ tag: 'Ok', value })
 
 ```typescript
 // Create an error result
-const failure: Result<Error, string> = { 
-  tag: 'Err', 
-  error: new Error('Something went wrong') 
+const failure: Result<Error, string> = {
+  tag: 'Err',
+  error: new Error('Something went wrong'),
 }
 
 // Helper function for errors
@@ -58,7 +58,7 @@ const result: Result<Error, number> = { tag: 'Ok', value: 42 }
 
 const output = match(result, {
   Ok: value => `Success: ${value}`,
-  Err: error => `Error: ${error.message}`
+  Err: error => `Error: ${error.message}`,
 })
 
 console.log(output) // "Success: 42"
@@ -101,10 +101,8 @@ Chain operations that return Results:
 ```typescript
 import { flatMap } from 'kairo'
 
-const divide = (x: number, y: number): Result<Error, number> => 
-  y === 0 
-    ? { tag: 'Err', error: new Error('Division by zero') }
-    : { tag: 'Ok', value: x / y }
+const divide = (x: number, y: number): Result<Error, number> =>
+  y === 0 ? { tag: 'Err', error: new Error('Division by zero') } : { tag: 'Ok', value: x / y }
 
 const result: Result<Error, number> = { tag: 'Ok', value: 10 }
 const divided = flatMap(result, x => divide(x, 2))
@@ -133,10 +131,7 @@ const mappedError = mapError(result, err => new Error(`Network: ${err}`))
 ```typescript
 import { chain } from 'kairo'
 
-const result = chain(
-  { tag: 'Ok', value: 5 },
-  x => ({ tag: 'Ok', value: x * 2 })
-)
+const result = chain({ tag: 'Ok', value: 5 }, x => ({ tag: 'Ok', value: x * 2 }))
 // { tag: 'Ok', value: 10 }
 ```
 
@@ -148,12 +143,9 @@ Results work seamlessly with functional programming utilities:
 import { pipe, map, flatMap } from 'kairo'
 
 const processNumber = pipe(
-  (x: number) => ({ tag: 'Ok', value: x } as Result<Error, number>),
+  (x: number) => ({ tag: 'Ok', value: x }) as Result<Error, number>,
   map(x => x * 2),
-  flatMap(x => x > 10 
-    ? { tag: 'Ok', value: x }
-    : { tag: 'Err', error: new Error('Too small') }
-  )
+  flatMap(x => (x > 10 ? { tag: 'Ok', value: x } : { tag: 'Err', error: new Error('Too small') }))
 )
 
 const result = processNumber(6) // { tag: 'Ok', value: 12 }
@@ -196,8 +188,8 @@ import { pipeline, schema } from 'kairo'
 const userPipeline = pipeline('get-user')
   .input(schema(z.object({ id: z.number() })))
   .fetch('/api/users/:id') // Returns Result<NetworkError, unknown>
-  .validate(UserSchema)    // Returns Result<ValidationError, User>
-  .map(user => user.name)  // Returns Result<ValidationError, string>
+  .validate(UserSchema) // Returns Result<ValidationError, User>
+  .map(user => user.name) // Returns Result<ValidationError, string>
 
 const result = await userPipeline.run({ id: 123 })
 // result is Result<NetworkError | ValidationError, string>
@@ -211,8 +203,7 @@ Kairo provides specific error types that work with Results:
 import type { NetworkError, ValidationError, TimeoutError } from 'kairo'
 
 // Pipeline operations return typed errors
-const result: Result<NetworkError | ValidationError, User> = 
-  await userPipeline.run(input)
+const result: Result<NetworkError | ValidationError, User> = await userPipeline.run(input)
 ```
 
 ## Utility Functions
@@ -260,6 +251,7 @@ function unwrapOr<E, T>(result: Result<E, T>, defaultValue: T): T {
 ## Common Patterns
 
 ### Multiple Operations
+
 ```typescript
 const processData = async (input: UserInput): Promise<Result<Error, ProcessedUser>> => {
   const validationResult = validateInput(input)
@@ -274,12 +266,14 @@ const processData = async (input: UserInput): Promise<Result<Error, ProcessedUse
 ```
 
 ### With Functional Composition
+
 ```typescript
-const processData = (input: UserInput) => pipe(
-  validateInput,
-  flatMap(data => fetchUserData(data.id)),
-  flatMap(processUser)
-)(input)
+const processData = (input: UserInput) =>
+  pipe(
+    validateInput,
+    flatMap(data => fetchUserData(data.id)),
+    flatMap(processUser)
+  )(input)
 ```
 
 The Result type eliminates the need for try-catch blocks and makes error handling explicit, leading to more robust and maintainable code.

@@ -1,426 +1,417 @@
-# Kairo Framework - Development Roadmap & Workflow
+# Kairo Framework - Focused Implementation Direction
 
-> **Target:** Claude Code working on existing Kairo codebase  
-> **Objective:** Follow roadmap, maintain code quality, use established patterns
-
-## 📖 Context & Vision
-
-**Read VISION.md first** to understand the overall philosophy, goals, and strategic direction of Kairo.
-
-**Key principles to keep in mind:**
-- **Framework-agnostic**: Every feature should work across React, Node, Bun, etc.
-- **Functional & immutable**: Inspired by Gleam - no mutations, pure functions
-- **Developer joy**: Eliminate glue code, make debugging pleasant
-- **Composable abstractions**: No hidden state, everything should compose cleanly
-- **Lazy by design**: Only execute when explicitly requested
-
-**Success metrics from vision:**
-- Bundle size < 10kb gzipped (core)
-- Reduce boilerplate in real codebases
-- Improve debugging experience
-- Enable better testing practices
-
-Refer back to VISION.md when making architectural decisions or trade-offs.
+> **Target:** Claude Code  
+> **Objective:** Implement Kairo's core vision - eliminate service repetition and compose business logic elegantly
 
 ---
 
-## 🔄 Development Workflow (MANDATORY)
+## 🎯 Mission Statement
 
-### After Every Implementation/Refactoring:
-```bash
-# 1. Lint and format
-bun run lint
-bun run format
+**Kairo solves two specific pain points through declarative patterns:**
 
-# 2. Type checking
-bun run typecheck
+1. **Service Layer Repetition** → Resource declarations
+2. **Complex Business Logic** → Pipeline composition
 
-# 3. Build verification  
-bun run build
-
-# 4. Run tests
-bun run test
-
-# 5. Fix any errors before proceeding
-```
-
-**Never proceed to next feature if any of these steps fail.**
+**Design Philosophy:**
+- ✅ **Simple by default, full control available**
+- ✅ **Explicit and transparent** (no hidden magic)
+- ✅ **Type inference that always works**
+- ✅ **Progressive disclosure** (80/20 rule)
 
 ---
 
-## 🧰 Code Patterns & Conventions
+## 🏗️ Two-Pillar Architecture
 
-### Use Existing FP Utils (PRIORITY)
-The project already has functional programming utilities. **Always use these instead of reinventing:**
+### Pillar 1: Resources (Service Layer Elimination)
+
+**Problem Solved:** Stop writing repetitive service classes
 
 ```typescript
-// Use existing FP utils from src/utils/
-import { pipe, compose, identity, curry } from '../utils/fp'
-import { isOk, isErr, mapResult, flatMapResult } from '../utils/result'
-import { isDefined, isNull, isUndefined } from '../utils/guards'
-
-// ✅ Good - use existing
-const processData = pipe(
-  validate(schema),
-  mapResult(transform),
-  flatMapResult(save)
-)
-
-// ❌ Bad - reinventing
-const processData = (data) => {
-  const validated = validate(schema)(data)
-  if (validated.tag === 'Ok') {
-    const transformed = transform(validated.value)
-    return save(transformed)
+// BEFORE: Repetitive service boilerplate
+class UserService {
+  async getUser(id: string): Promise<User> {
+    try {
+      const response = await fetch(`/api/users/${id}`)
+      if (!response.ok) throw new Error('Failed to fetch')
+      const data = await response.json()
+      return UserSchema.parse(data)
+    } catch (error) {
+      console.error('Error fetching user:', error)
+      throw error
+    }
   }
-  return validated
-}
-```
-
-### When to Create New FP Utils
-Only create new utilities if:
-1. The pattern is used 3+ times across the codebase
-2. It doesn't exist in current utils
-3. It follows functional programming principles (pure, composable)
-
-**Pattern for new utils:**
-```typescript
-// src/utils/newUtil.ts
-export const newUtilFunction = <T, U>(param: T) => (input: U): Result<Error, V> => {
-  // Implementation using existing utils when possible
-  return pipe(
-    existingUtil1,
-    existingUtil2
-  )(input)
-}
-```
-
----
-
-## 🗺️ Roadmap Features (In Priority Order)
-
-### 🎯 Phase 1: Core Stabilization (Current)
-
-#### 1.1 Enhanced Error System
-**Goal:** Rich, traceable error types with context
-
-```typescript
-// Implement error composition and chaining
-interface KairoError {
-  code: string
-  message: string
-  context: Record<string, unknown>
-  cause?: KairoError
-  timestamp: number
-  trace?: string[]
+  // ... repeat for create, update, delete
 }
 
-// Error factory with context
-const createError = (code: string, message: string, context = {}) =>
-  pipe(
-    addTimestamp,
-    addTrace,
-    addContext(context)
-  )({ code, message })
-```
-
-**Tasks:**
-- [ ] Enhance ValidationError with field paths
-- [ ] Add NetworkError with retry context  
-- [ ] Add TimeoutError with duration info
-- [ ] Implement error chaining with `.cause`
-- [ ] Add error serialization for logging
-
-#### 1.2 Advanced Pipeline Steps
-**Goal:** More pipeline methods for complex flows
-
-```typescript
-// New methods to implement
-interface Pipeline<Input, Output> {
-  // Existing methods...
-  
-  retry(times: number, delay?: number): Pipeline<Input, Output>
-  timeout(ms: number): Pipeline<Input, Output>
-  cache(ttl: number): Pipeline<Input, Output>
-  parallel<T>(pipelines: Pipeline<Input, T>[]): Pipeline<Input, T[]>
-  fallback<T>(pipeline: Pipeline<Input, T>): Pipeline<Input, Output | T>
-}
-```
-
-**Implementation approach:**
-- Use existing FP utils for composition
-- Each method returns new Pipeline instance (immutability)
-- Leverage Result pattern for error handling
-
-#### 1.3 Enhanced Tracing System
-**Goal:** Structured, queryable trace data
-
-```typescript
-interface TraceEntry {
-  id: string
-  timestamp: number
-  pipelineName: string
-  stepName: string
-  duration: number
-  success: boolean
-  input?: unknown
-  output?: unknown
-  error?: KairoError
-  metadata: Record<string, unknown>
-}
-
-// Global trace collector
-interface TraceCollector {
-  collect(entry: TraceEntry): void
-  query(filter: TraceFilter): TraceEntry[]
-  export(): TraceData
-}
-```
-
-**Tasks:**
-- [ ] Implement structured trace collection
-- [ ] Add trace filtering and querying
-- [ ] Create trace visualization helpers
-- [ ] Add performance metrics tracking
-
----
-
-### 🎯 Phase 2: Reactive Extensions
-
-#### 2.1 Signal Primitive
-**Goal:** Lightweight reactive state with scoping
-
-```typescript
-interface Signal<T> {
-  get(): T
-  set(value: T): void
-  update(fn: (prev: T) => T): void
-  subscribe(fn: (value: T) => void): () => void
-  pipe<U>(fn: (value: T) => U): Signal<U>
-}
-
-// Usage with existing patterns
-const createSignal = <T>(initial: T): Signal<T> =>
-  pipe(
-    validateInitialValue,
-    createSubscriptionManager,
-    createGetterSetter
-  )(initial)
-```
-
-**Implementation strategy:**
-- Use existing FP utils for transformations
-- Integrate with pipeline `.asSignal()` method
-- Scope-aware cleanup mechanism
-
-#### 2.2 Task Primitive  
-**Goal:** Async state management (pending/success/error)
-
-```typescript
-interface Task<T> {
-  readonly state: 'idle' | 'pending' | 'success' | 'error'
-  readonly data?: T
-  readonly error?: KairoError
-  run(input?: unknown): Promise<void>
-  reset(): void
-  signal(): Signal<TaskState<T>>
-}
-
-// Create from pipeline
-const createTask = <I, O>(pipeline: Pipeline<I, O>): Task<O> =>
-  pipe(
-    createTaskState,
-    attachPipeline,
-    createSignal
-  )(pipeline)
-```
-
-#### 2.3 Form Abstraction
-**Goal:** Form state + validation + submission pipeline
-
-```typescript
-interface Form<T> {
-  fields: Signal<Partial<T>>
-  errors: Signal<Record<keyof T, string[]>>
-  isValid: Signal<boolean>
-  isSubmitting: Signal<boolean>
-  submit: Task<T>
-  reset(): void
-  setField<K extends keyof T>(key: K, value: T[K]): void
-}
-
-// Usage
-const loginForm = createForm({
-  schema: LoginSchema,
-  onSubmit: loginPipeline,
-  validation: 'onBlur'
-})
-```
-
----
-
-### 🎯 Phase 3: Resource Management
-
-#### 3.1 Resource Declaration
-**Goal:** Declarative API endpoint definitions
-
-```typescript
-interface Resource<Methods> {
-  [K in keyof Methods]: Pipeline<Methods[K]['input'], Methods[K]['output']>
-}
-
-// Usage
-const UserResource = resource('user', {
+// AFTER: Declarative resource
+const UserAPI = resource('users', {
   get: {
-    method: 'GET',
-    path: '/api/user/:id',
+    path: '/users/:id',
     params: z.object({ id: z.string() }),
     response: UserSchema
   },
-  update: {
-    method: 'PUT', 
-    path: '/api/user/:id',
-    params: z.object({ id: z.string() }),
-    body: UpdateUserSchema,
+  create: {
+    path: '/users',
+    method: 'POST',
+    body: CreateUserSchema,
     response: UserSchema
   }
 })
 
-// Auto-generated pipelines
-await UserResource.get.run({ id: '123' })
-await UserResource.update.run({ id: '123', name: 'New Name' })
+// Usage: await UserAPI.get.run({ id: '123' })
 ```
 
-**Implementation approach:**
-- Generate pipelines using existing pipeline primitives
-- Use FP utils for URL interpolation and HTTP methods
-- Integrate with cache and retry mechanisms
+### Pillar 2: Pipelines (Business Logic Composition)
 
-#### 3.2 Cache System
-**Goal:** Declarative caching with TTL and invalidation
+**Problem Solved:** Complex domain logic becomes readable and error-free
 
 ```typescript
-interface CacheConfig {
-  ttl: number
-  key: (input: unknown) => string
-  invalidateOn?: string[]
+// BEFORE: Complex business logic mess
+const processOrder = async (orderData) => {
+  try {
+    const validated = OrderSchema.parse(orderData)
+    
+    if (validated.amount > 1000) {
+      const approval = await manualApproval(validated)
+      if (!approval) throw new Error('Not approved')
+    }
+    
+    const inventory = await checkInventory(validated.items)
+    if (!inventory.available) throw new Error('Out of stock')
+    
+    const pricing = calculateDiscount(validated, inventory.pricing)
+    const payment = await processPayment(pricing)
+    
+    return transformOrderResult(payment)
+  } catch (error) {
+    logError(error)
+    throw error
+  }
 }
 
-// Pipeline integration
-const cachedUserPipeline = pipeline('get-user')
-  .input(IdSchema)
-  .cache({ ttl: 300000, key: input => `user:${input.id}` })
-  .fetch('/api/user/:id')
-  .validate(UserSchema)
+// AFTER: Declarative pipeline
+const processOrder = pipeline('process-order')
+  .input(OrderSchema)
+  .validate(requiresApproval)
+  .fetch('/api/inventory/check')
+  .map(calculateDiscount)
+  .fetch('/api/payment/process')
+  .map(transformOrderResult)
+  .trace('order-processing')
 ```
+
+### Optional Integration (When It Makes Sense)
+
+```typescript
+// Resources and Pipelines can compose cleanly
+const businessWorkflow = pipeline('onboarding')
+  .input(OnboardingSchema)
+  .validate(businessRules)
+  .pipeline(UserAPI.create)        // Resource in Pipeline
+  .map(sendWelcomeEmail)
+  .pipeline(UserAPI.update)        // Update welcome status
+  .trace('onboarding-flow')
+```
+
+---
+
+## 🔧 Resource Implementation Specification
+
+### Progressive Disclosure Configuration
+
+```typescript
+// Level 1: Simple & explicit (80% of use cases)
+const UserAPI = resource('users', {
+  get: {
+    path: '/users/:id',
+    params: z.object({ id: z.string() }),
+    response: UserSchema
+  },
+  create: {
+    path: '/users',
+    method: 'POST',
+    body: CreateUserSchema,
+    response: UserSchema
+  }
+})
+
+// Level 2: Full control when necessary (20% of use cases)
+const PaymentAPI = resource('payments', {
+  charge: {
+    path: '/payments/charge',
+    method: 'POST',
+    body: ChargeSchema,
+    response: PaymentResultSchema,
+    timeout: 30000,
+    retry: { times: 5, delay: 2000 },
+    cache: false,
+    headers: { 'Idempotency-Key': () => generateKey() }
+  }
+})
+```
+
+### Resource Configuration Schema
+
+```typescript
+interface ResourceMethodConfig<Input, Output> {
+  // Required core
+  path: string
+  
+  // Optional but explicit
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  params?: Schema<Input>      // For URL params (/users/:id)
+  query?: Schema<Input>       // For query string (?page=1)
+  body?: Schema<Input>        // For request body
+  response?: Schema<Output>   // For response validation
+  
+  // Full control options
+  timeout?: number
+  retry?: RetryConfig | false
+  cache?: CacheConfig | false
+  headers?: Record<string, string | (() => string)>
+  transform?: (data: any) => any
+}
+
+interface ResourceConfig {
+  [methodName: string]: ResourceMethodConfig<any, any>
+}
+```
+
+### Smart Defaults with Override System
+
+```typescript
+// API-level configuration
+const api = createAPI({
+  baseURL: '/api',
+  timeout: 5000,
+  retry: { times: 3, delay: 1000 },
+  headers: { 'Content-Type': 'application/json' }
+})
+
+// Resource inherits defaults, can override
+const UserAPI = api.resource('users', {
+  get: {
+    path: '/users/:id',
+    params: z.object({ id: z.string() }),
+    response: UserSchema
+    // Inherits: timeout: 5000, retry: 3, etc.
+  },
+  
+  bulkUpdate: {
+    path: '/users/bulk',
+    method: 'PATCH',
+    body: BulkUpdateSchema,
+    timeout: 30000,              // Override for slow operation
+    retry: false                 // Override to disable retry
+  }
+})
+```
+
+---
+
+## 🎯 Type Safety Implementation
+
+### Schema-First Type Inference
+
+```typescript
+// Schemas define the types
+const GetUserParams = z.object({ id: z.string() })
+const UserResponse = z.object({ 
+  id: z.string(), 
+  name: z.string(), 
+  email: z.string() 
+})
+
+const UserAPI = resource('users', {
+  get: {
+    path: '/users/:id',
+    params: GetUserParams,        // Input type source
+    response: UserResponse        // Output type source
+  }
+})
+
+// TypeScript infers automatically
+type GetUserInput = z.infer<typeof GetUserParams>    // { id: string }
+type GetUserOutput = z.infer<typeof UserResponse>    // User object
+
+// Usage with perfect types
+const result: Result<KairoError, GetUserOutput> = await UserAPI.get.run({ id: '123' })
+
+result.match({
+  Ok: (user: GetUserOutput) => {
+    // user is fully typed
+  },
+  Err: (error: KairoError) => {
+    // error is properly typed
+  }
+})
+```
+
+### Error Type Composition
+
+```typescript
+// Clear error hierarchy
+type ResourceError = NetworkError | ValidationError | TimeoutError
+
+// Methods return properly typed Results
+const result = await UserAPI.get.run({ id: '123' })
+//    Type: Result<ResourceError, User>
+
+// Error handling with type safety
+result.match({
+  Ok: (user: User) => console.log(user.name),
+  Err: (error: ResourceError) => {
+    if (error instanceof NetworkError) {
+      // Handle network issues
+    }
+    if (error instanceof ValidationError) {
+      // Handle validation issues
+    }
+  }
+})
+```
+
+---
+
+## 🧹 Cleanup and Refactoring Tasks
+
+### REMOVE: ChatGPT Brainstorm Features
+These features diluted the core vision and created framework integration problems:
+
+- ❌ **Signal primitive** (reactive state management)
+- ❌ **Task primitive** (async state management)  
+- ❌ **Form abstraction** (UI state management)
+- ❌ **Universal Reactive Framework Integration** (too complex)
+
+**Reason:** These created the framework adapter problem we wanted to avoid.
+
+### KEEP: Core Value Features
+These solve real problems and maintain framework-agnostic design:
+
+- ✅ **Pipeline composer** (business logic composition)
+- ✅ **Result pattern** (error handling)
+- ✅ **Schema integration** (validation)
+- ✅ **Pipeline extensions** (retry, timeout, cache, parallel, trace)
+
+### REFACTOR: Current Resource Implementation
+Align current Resource system with new design principles:
+
+- 🔄 **Progressive disclosure configuration**
+- 🔄 **Explicit rather than magic behavior**
+- 🔄 **Schema-first type inference**
+- 🔄 **Clean Pipeline integration**
+
+---
+
+## 📋 Implementation Roadmap
+
+### Phase 1: Resource System Redesign
+**Goal:** Perfect service layer elimination experience
+
+**Tasks:**
+- [ ] Implement ResourceMethodConfig interface
+- [ ] Create progressive disclosure API
+- [ ] Add smart defaults with override system
+- [ ] Schema-first type inference
+- [ ] URL parameter interpolation (/users/:id)
+- [ ] Method auto-detection (GET for read, POST for create, etc.)
+- [ ] Error type composition and handling
+
+**Success Criteria:**
+- Resource declaration eliminates 90% of service boilerplate
+- Full TypeScript inference from schemas
+- Clear error handling with typed Results
+- Flexible configuration without complexity
+
+### Phase 2: Pipeline Business Logic Polish
+**Goal:** Perfect business logic composition experience
+
+**Tasks:**
+- [ ] Enhance existing pipeline methods
+- [ ] Improve validation composition patterns
+- [ ] Business logic transformation utilities
+- [ ] Pipeline debugging and introspection
+- [ ] Performance optimization for complex flows
+
+**Success Criteria:**
+- Complex business logic becomes readable
+- Error-free execution through Result pattern
+- Easy testing and debugging
+- Composable business rules
+
+### Phase 3: Integration Excellence
+**Goal:** Seamless Resource ↔ Pipeline composition
+
+**Tasks:**
+- [ ] Resource-in-Pipeline integration
+- [ ] Pipeline-in-Resource scenarios
+- [ ] Complex workflow composition patterns
+- [ ] End-to-end type safety
+- [ ] Integration testing patterns
+
+**Success Criteria:**
+- Natural composition between Resources and Pipelines
+- No type safety loss in complex compositions
+- Clear mental model for when to use what
+- Excellent debugging experience
+
+---
+
+## ✅ Success Metrics
+
+### Developer Experience
+- [ ] **Service elimination:** 500 lines → 50 lines resource declarations
+- [ ] **Business logic clarity:** Imperative → declarative patterns
+- [ ] **Type safety:** 100% inference from schemas
+- [ ] **Error handling:** try/catch → Result pattern everywhere
+
+### Technical Quality
+- [ ] **Bundle size:** Keep core < 15KB gzipped
+- [ ] **Performance:** No regression vs manual implementations
+- [ ] **Framework agnostic:** Works in React, Vue, Node without adapters
+- [ ] **Developer tooling:** Excellent TypeScript integration
+
+### Usage Patterns
+- [ ] **Resource patterns:** Standard CRUD, complex APIs, bulk operations
+- [ ] **Pipeline patterns:** Data transformation, business workflows, validation chains
+- [ ] **Integration patterns:** Resources in Pipelines, complex compositions
+- [ ] **Error patterns:** Network failures, validation errors, business rule violations
 
 ---
 
 ## 🔧 Implementation Guidelines
 
-### File Organization
-```
-src/
-├── core/           # Core primitives (stable)
-├── extensions/     # New features (signals, tasks, forms)
-├── utils/          # FP utilities (USE THESE!)
-├── types/          # Type definitions
-└── examples/       # Usage examples
-```
+### Code Quality Standards
+- **Explicit over magic:** Behavior should be predictable and transparent
+- **Type safety first:** Full TypeScript inference, no `any` types
+- **Progressive disclosure:** Simple by default, complexity available when needed
+- **Framework agnostic:** No framework-specific dependencies
 
-### Testing Strategy
-```typescript
-// Test pattern for new features
-describe('NewFeature', () => {
-  // Unit tests for pure functions
-  describe('pure functions', () => {
-    it('should work with existing FP utils', () => {
-      const result = pipe(
-        newFeature,
-        existingUtil
-      )(input)
-      
-      expect(isOk(result)).toBe(true)
-    })
-  })
-  
-  // Integration tests with pipelines
-  describe('pipeline integration', () => {
-    it('should compose with existing pipeline methods', async () => {
-      const result = await pipeline('test')
-        .input(schema)
-        .newMethod()
-        .run(input)
-        
-      expect(isOk(result)).toBe(true)
-    })
-  })
-})
-```
+### Testing Requirements
+- **Unit tests:** All Resource and Pipeline functionality
+- **Integration tests:** Resource ↔ Pipeline composition
+- **Type tests:** Verify TypeScript inference works correctly
+- **Error tests:** All error scenarios and Result handling
 
-### Type Safety Patterns
-```typescript
-// Use existing type guards
-const processValue = <T>(value: unknown): Result<Error, T> =>
-  pipe(
-    guardType<T>,
-    validate,
-    transform
-  )(value)
-
-// Leverage existing Result helpers
-const chainOperations = pipe(
-  mapResult(step1),
-  flatMapResult(step2),
-  mapResult(step3)
-)
-```
+### Documentation Standards
+- **Clear examples:** Real-world usage patterns
+- **Migration guides:** From existing service layers
+- **Best practices:** When to use Resources vs Pipelines
+- **Type guides:** How schemas drive type inference
 
 ---
 
-## 📚 Reference: Existing Utils to Use
+## 🎯 Final Vision
 
-### FP Core
-- `pipe()` - Function composition
-- `compose()` - Right-to-left composition  
-- `curry()` - Function currying
-- `identity()` - Identity function
+**Kairo eliminates the two biggest pain points in TypeScript application development:**
 
-### Result Helpers
-- `isOk()` - Type guard for Ok results
-- `isErr()` - Type guard for Err results
-- `mapResult()` - Transform Ok values
-- `flatMapResult()` - Chain Result operations
+1. **Repetitive service layers** become **declarative resource definitions**
+2. **Complex business logic** becomes **composable pipeline workflows**
 
-### Type Guards
-- `isDefined()` - Check for non-null/undefined
-- `isNull()` - Null check
-- `isUndefined()` - Undefined check
+**The result:** Developers write less code, make fewer errors, and create more maintainable applications.
 
-### Validation
-- `validateSchema()` - Schema validation with Result
-- `parseJson()` - Safe JSON parsing
-
-**Before implementing new utilities, check if existing ones can be composed to achieve the goal.**
+**Framework integration:** Keep Kairo framework-agnostic. Let developers use their preferred state management and UI frameworks while Kairo handles the business logic and API layers.
 
 ---
 
-## ⚠️ Critical Rules
-
-1. **Always use existing FP utils** before creating new ones
-2. **Run full workflow** after every change
-3. **No mutations** - all operations return new instances
-4. **Result pattern** - never throw exceptions in public APIs
-5. **Type safety** - leverage existing type guards and helpers
-6. **Test coverage** - maintain 100% on core features
-7. **Documentation** - update examples when adding features
-
----
-
-## 🎯 Current Priority
-
-**Focus on Phase 1.1 (Enhanced Error System)** - this provides foundation for all other features.
-
-Start with ValidationError enhancement, then NetworkError, then error chaining. Use existing FP utils wherever possible.
-
-Remember: **Quality over speed. Follow the workflow. Use existing patterns.**
+**This is the focused direction. Implement these two pillars excellently, and Kairo will solve real developer problems without creating new ones.**

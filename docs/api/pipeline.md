@@ -11,25 +11,30 @@ import { z } from 'zod'
 const userPipeline = pipeline('get-user')
   .input(schema(z.object({ id: z.number() })))
   .fetch('/api/users/:id')
-  .validate(schema(z.object({
-    id: z.number(),
-    name: z.string(),
-    email: z.string().email()
-  })))
+  .validate(
+    schema(
+      z.object({
+        id: z.number(),
+        name: z.string(),
+        email: z.string().email(),
+      })
+    )
+  )
   .map(user => ({ ...user, displayName: user.name.toUpperCase() }))
 ```
 
 ## Core Methods
 
 ### `.input(schema)`
+
 Validates and types the pipeline input.
 
 ```typescript
-const pipeline = pipeline('example')
-  .input(schema(z.object({ id: z.number() })))
+const pipeline = pipeline('example').input(schema(z.object({ id: z.number() })))
 ```
 
 ### `.fetch(url, options?)`
+
 Performs HTTP requests with automatic URL interpolation.
 
 ```typescript
@@ -41,6 +46,7 @@ Performs HTTP requests with automatic URL interpolation.
 ```
 
 ### `.validate(schema)`
+
 Validates data against a schema.
 
 ```typescript
@@ -48,6 +54,7 @@ Validates data against a schema.
 ```
 
 ### `.map(fn)`
+
 Transforms data through a pure function.
 
 ```typescript
@@ -57,6 +64,7 @@ Transforms data through a pure function.
 ## Advanced Methods
 
 ### `.retry(times, delay?)`
+
 Retries failed operations with exponential backoff.
 
 ```typescript
@@ -64,6 +72,7 @@ Retries failed operations with exponential backoff.
 ```
 
 ### `.timeout(ms)`
+
 Sets a timeout for operations.
 
 ```typescript
@@ -71,6 +80,7 @@ Sets a timeout for operations.
 ```
 
 ### `.cache(ttl)`
+
 Caches results for the specified time-to-live.
 
 ```typescript
@@ -78,6 +88,7 @@ Caches results for the specified time-to-live.
 ```
 
 ### `.parallel(pipelines)`
+
 Executes multiple pipelines in parallel.
 
 ```typescript
@@ -88,6 +99,7 @@ Executes multiple pipelines in parallel.
 ```
 
 ### `.fallback(pipeline)`
+
 Provides a fallback pipeline if the primary fails.
 
 ```typescript
@@ -99,6 +111,7 @@ Provides a fallback pipeline if the primary fails.
 ## Execution
 
 ### `.run(input)`
+
 Executes the pipeline with the given input.
 
 ```typescript
@@ -114,6 +127,7 @@ if (result.tag === 'Ok') {
 ## Reactive Integration
 
 ### `.asSignal()`
+
 Converts a pipeline to a reactive Signal.
 
 ```typescript
@@ -125,6 +139,7 @@ console.log(userSignal.get()) // Latest result
 ```
 
 ### `.asTask()`
+
 Converts a pipeline to a Task for async state management.
 
 ```typescript
@@ -137,6 +152,7 @@ console.log(userTask.state) // 'idle' | 'pending' | 'success' | 'error'
 ## Tracing and Debugging
 
 ### `.trace()`
+
 Enables tracing for debugging and performance monitoring.
 
 ```typescript
@@ -160,7 +176,7 @@ const result = await pipeline.run(input)
 // Pattern matching
 const output = match(result, {
   Ok: value => `Success: ${value}`,
-  Err: error => `Failed: ${error.message}`
+  Err: error => `Failed: ${error.message}`,
 })
 
 // Direct checking
@@ -174,17 +190,22 @@ if (result.tag === 'Ok') {
 ## Configuration
 
 ### HTTP Client
+
 Configure custom HTTP clients:
 
 ```typescript
-const customPipeline = pipeline('custom')
-  .withClient({
-    get: async (url) => { /* custom implementation */ },
-    post: async (url, data) => { /* custom implementation */ }
-  })
+const customPipeline = pipeline('custom').withClient({
+  get: async url => {
+    /* custom implementation */
+  },
+  post: async (url, data) => {
+    /* custom implementation */
+  },
+})
 ```
 
 ### Global Configuration
+
 Set global defaults:
 
 ```typescript
@@ -198,10 +219,10 @@ Pipelines maintain full type safety throughout the chain:
 
 ```typescript
 const typedPipeline = pipeline('typed')
-  .input(schema(z.object({ id: z.number() })))    // Input: { id: number }
-  .fetch('/api/users/:id')                        // Returns: unknown
-  .validate(schema(UserSchema))                   // Returns: User
-  .map(user => user.name)                         // Returns: string
+  .input(schema(z.object({ id: z.number() }))) // Input: { id: number }
+  .fetch('/api/users/:id') // Returns: unknown
+  .validate(schema(UserSchema)) // Returns: User
+  .map(user => user.name) // Returns: string
 
 // result.value is typed as string
 const result = await typedPipeline.run({ id: 123 })

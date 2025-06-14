@@ -18,7 +18,7 @@ Modern applications often suffer from:
 3. **Unpredictable behavior** - Complex useEffect dependencies and try/catch patterns
 4. **Poor testability** - Business logic mixed with UI concerns makes testing difficult
 
-## Solutions We Provide  
+## Solutions We Provide
 
 Kairo addresses these problems through:
 
@@ -54,12 +54,12 @@ Composable logic flows with fluent methods:
 import { pipeline, schema } from 'kairo'
 
 const userPipeline = pipeline('get-user')
-  .input(UserIdSchema)        // validate inputs
-  .fetch('/api/users/:id')    // HTTP calls with error handling
-  .validate(UserSchema)       // validate outputs
-  .map(user => user.profile)  // transformations
-  .trace('user-fetched')      // debugging and observability
-  .run({ id: 123 })          // execution with Result return
+  .input(UserIdSchema) // validate inputs
+  .fetch('/api/users/:id') // HTTP calls with error handling
+  .validate(UserSchema) // validate outputs
+  .map(user => user.profile) // transformations
+  .trace('user-fetched') // debugging and observability
+  .run({ id: 123 }) // execution with Result return
 ```
 
 ### `schema` wrapper
@@ -70,11 +70,13 @@ Simplified Zod integration for validation:
 import { schema } from 'kairo'
 import { z } from 'zod'
 
-const UserSchema = schema(z.object({
-  id: z.number(),
-  name: z.string(),
-  email: z.string().email()
-}))
+const UserSchema = schema(
+  z.object({
+    id: z.number(),
+    name: z.string(),
+    email: z.string().email(),
+  })
+)
 ```
 
 ## Two Ways to Use Pipelines
@@ -115,7 +117,7 @@ pipe(
 Pipelines are **lazy** - they build a computation graph but execute nothing until `.run()` is called. This enables:
 
 - Performance optimization
-- Easy testing and mocking  
+- Easy testing and mocking
 - Clear separation of definition vs execution
 
 ### Immutability Pattern
@@ -129,12 +131,14 @@ All errors are wrapped in `Result.Err()` with contextual metadata. No exceptions
 ## Success Metrics
 
 ### Technical
+
 - Bundle size < 10kb gzipped (core)
 - 100% test coverage on primitives
 - Zero runtime dependencies (except Zod)
 - TypeScript inference without `any`
 
 ### Developer Experience
+
 - Reduces boilerplate in real codebases
 - Improves debugging experience
 - Enables better testing practices

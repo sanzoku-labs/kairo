@@ -89,7 +89,7 @@ const stateSignal = userTask.signal()
 // Subscribe to state changes
 stateSignal.subscribe(taskState => {
   console.log('Task state:', taskState.state)
-  
+
   if (taskState.state === 'success') {
     console.log('Data:', taskState.data)
   }
@@ -110,15 +110,10 @@ const userTask = userPipeline.asTask()
 const postsTask = postsPipeline.asTask()
 const settingsTask = settingsPipeline.asTask()
 
-const results = await taskEffect.parallel([
-  userTask,
-  postsTask,
-  settingsTask
-], [
-  { id: 123 },
-  { userId: 123 },
-  { userId: 123 }
-])
+const results = await taskEffect.parallel(
+  [userTask, postsTask, settingsTask],
+  [{ id: 123 }, { userId: 123 }, { userId: 123 }]
+)
 
 console.log(results) // Array of results
 ```
@@ -265,17 +260,17 @@ function useTask<T>(task: Task<T>) {
   const [state, setState] = useState(task.state)
   const [data, setData] = useState(task.data)
   const [error, setError] = useState(task.error)
-  
+
   useEffect(() => {
     const cleanup = taskEffect.onStateChange(task, () => {
       setState(task.state)
       setData(task.data)
       setError(task.error)
     })
-    
+
     return cleanup
   }, [task])
-  
+
   return { state, data, error, run: task.run.bind(task), reset: task.reset.bind(task) }
 }
 
@@ -283,15 +278,15 @@ function useTask<T>(task: Task<T>) {
 function UserProfile({ userId }: { userId: number }) {
   const userTask = userPipeline.asTask()
   const { state, data, error, run } = useTask(userTask)
-  
+
   useEffect(() => {
     run({ id: userId })
   }, [userId])
-  
+
   if (state === 'pending') return <div>Loading...</div>
   if (state === 'error') return <div>Error: {error?.message}</div>
   if (state === 'success') return <div>Hello, {data.name}</div>
-  
+
   return null
 }
 ```
@@ -305,23 +300,23 @@ function useTask<T>(task: Task<T>) {
   const state = ref(task.state)
   const data = ref(task.data)
   const error = ref(task.error)
-  
+
   const cleanup = taskEffect.onStateChange(task, () => {
     state.value = task.state
     data.value = task.data
     error.value = task.error
   })
-  
+
   onMounted(() => {
     return cleanup
   })
-  
+
   return {
     state: computed(() => state.value),
     data: computed(() => data.value),
     error: computed(() => error.value),
     run: task.run.bind(task),
-    reset: task.reset.bind(task)
+    reset: task.reset.bind(task),
   }
 }
 ```
@@ -331,11 +326,7 @@ function useTask<T>(task: Task<T>) {
 Tasks integrate with Kairo's error system:
 
 ```typescript
-const task = pipeline('example')
-  .input(schema)
-  .fetch('/api/data')
-  .validate(responseSchema)
-  .asTask()
+const task = pipeline('example').input(schema).fetch('/api/data').validate(responseSchema).asTask()
 
 await task.run(input)
 
@@ -362,6 +353,7 @@ if (task.state === 'error') {
 ## Common Patterns
 
 ### Loading States in UI
+
 ```typescript
 const fetchTask = dataPipeline.asTask()
 
@@ -372,17 +364,18 @@ const hasData = fetchTask.state === 'success'
 ```
 
 ### Retry Logic
+
 ```typescript
 const fetchTask = dataPipeline.asTask()
 
 const retryWithDelay = async (retries = 3, delay = 1000) => {
   for (let i = 0; i < retries; i++) {
     await fetchTask.run(input)
-    
+
     if (fetchTask.state === 'success') {
       break
     }
-    
+
     if (i < retries - 1) {
       await new Promise(resolve => setTimeout(resolve, delay))
       fetchTask.reset()
@@ -392,6 +385,7 @@ const retryWithDelay = async (retries = 3, delay = 1000) => {
 ```
 
 ### Dependent Tasks
+
 ```typescript
 const userTask = userPipeline.asTask()
 const postsTask = postsPipeline.asTask()
@@ -405,12 +399,13 @@ if (userTask.state === 'success') {
 ```
 
 ### Progress Tracking
+
 ```typescript
 const tasks = [task1, task2, task3, task4]
 const totalTasks = tasks.length
 
-const completedTasks = tasks.filter(task => 
-  task.state === 'success' || task.state === 'error'
+const completedTasks = tasks.filter(
+  task => task.state === 'success' || task.state === 'error'
 ).length
 
 const progress = (completedTasks / totalTasks) * 100

@@ -5,14 +5,17 @@ Explore real-world examples of using Kairo in different scenarios.
 ## Basic Examples
 
 ### [Simple Pipeline](/examples/basic-pipeline)
+
 Learn the fundamentals with a simple data processing pipeline.
 
 ### [Data Fetching](/examples/data-fetching)
+
 Common patterns for fetching and processing API data.
 
 ## Advanced Examples
 
 ### [Reactive State](/examples/reactive-state)
+
 Using Signals and Tasks for reactive applications.
 
 ## Framework Integration
@@ -42,7 +45,7 @@ function UserProfile({ userId }) {
   }, [userId])
 
   const user = userSignal.get()
-  
+
   return user ? (
     <div>
       <h1>{user.name}</h1>
@@ -69,13 +72,13 @@ const createUserPipeline = pipeline('create-user')
 
 app.post('/users', async (req, res) => {
   const result = await createUserPipeline.run(req.body)
-  
+
   if (result.tag === 'Ok') {
     res.status(201).json(result.value)
   } else {
-    res.status(400).json({ 
+    res.status(400).json({
       error: result.error.message,
-      code: result.error.code 
+      code: result.error.code,
     })
   }
 })
@@ -93,8 +96,8 @@ describe('User Pipeline', () => {
       get: vi.fn().mockResolvedValue({
         id: 123,
         name: 'John Doe',
-        email: 'john@example.com'
-      })
+        email: 'john@example.com',
+      }),
     }
 
     const pipeline = getUserPipeline.withClient(mockClient)
@@ -108,7 +111,7 @@ describe('User Pipeline', () => {
 
   it('should handle network errors gracefully', async () => {
     const mockClient = {
-      get: vi.fn().mockRejectedValue(new Error('Network error'))
+      get: vi.fn().mockRejectedValue(new Error('Network error')),
     }
 
     const pipeline = getUserPipeline.withClient(mockClient)
