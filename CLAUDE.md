@@ -49,6 +49,29 @@ bun run test
 
 **Never proceed to next feature if any of these steps fail.**
 
+### After Completing Tasks/Features:
+
+**MANDATORY: Update progress tracking in this document**
+
+1. **Mark completed tasks** with `[x]` in the relevant phase sections
+2. **Update Current Priority section** to reflect new status
+3. **Add completion notes** if significant milestones reached
+4. **Update bundle size** if there are significant changes
+
+Example:
+```markdown
+**Tasks:**
+- [x] Implement retry method ✅ 2024-01-15
+- [x] Implement timeout method ✅ 2024-01-15  
+- [ ] Implement cache method
+
+## 🎯 Current Priority
+**✅ Phase 1.1 Complete:** Enhanced Error System  
+**✅ Phase 1.2 Partial:** retry, timeout (Bundle: 13.57KB)
+```
+
+**This ensures roadmap stays accurate and team visibility is maintained.**
+
 ---
 
 ## 🧰 Code Patterns & Conventions
@@ -125,11 +148,11 @@ const createError = (code: string, message: string, context = {}) =>
 
 **Tasks:**
 
-- [ ] Enhance ValidationError with field paths
-- [ ] Add NetworkError with retry context
-- [ ] Add TimeoutError with duration info
-- [ ] Implement error chaining with `.cause`
-- [ ] Add error serialization for logging
+- [x] Enhance ValidationError with field paths
+- [x] Add NetworkError with retry context
+- [x] Add TimeoutError with duration info
+- [x] Implement error chaining with `.cause`
+- [x] Add error serialization for logging
 
 #### 1.2 Advanced Pipeline Steps
 
@@ -153,6 +176,14 @@ interface Pipeline<Input, Output> {
 - Use existing FP utils for composition
 - Each method returns new Pipeline instance (immutability)
 - Leverage Result pattern for error handling
+
+**Tasks:**
+
+- [x] Implement `retry(times: number, delay?: number)` method
+- [x] Implement `timeout(ms: number)` method
+- [ ] Implement `cache(ttl: number)` method
+- [ ] Implement `parallel<T>(pipelines: Pipeline<Input, T>[])` method
+- [ ] Implement `fallback<T>(pipeline: Pipeline<Input, T>)` method
 
 #### 1.3 Enhanced Tracing System
 
@@ -415,8 +446,11 @@ const chainOperations = pipe(mapResult(step1), flatMapResult(step2), mapResult(s
 
 ## 🎯 Current Priority
 
-**Focus on Phase 1.1 (Enhanced Error System)** - this provides foundation for all other features.
+**✅ Phase 1.1 Complete:** Enhanced Error System  
+**✅ Phase 1.2 Partial:** Advanced Pipeline Steps (retry, timeout complete)
 
-Start with ValidationError enhancement, then NetworkError, then error chaining. Use existing FP utils wherever possible.
+**Next focus: Complete Phase 1.2** - Implement remaining pipeline methods (cache, parallel, fallback) to provide comprehensive pipeline capabilities.
+
+After Phase 1.2 completion, move to Phase 1.3 (Enhanced Tracing System) for structured observability.
 
 Remember: **Quality over speed. Follow the workflow. Use existing patterns.**
