@@ -1,8 +1,17 @@
 export { Result, map, flatMap, mapError, match, chain } from './core/result'
 export type { OkResult, ErrResult } from './core/result'
 
-export { pipeline } from './core/pipeline'
-export type { Pipeline, HttpError, NetworkError, TimeoutError, TraceEntry } from './core/pipeline'
+export { pipeline, tracing } from './core/pipeline'
+export type {
+  Pipeline,
+  HttpError,
+  NetworkError,
+  TimeoutError,
+  TraceEntry,
+  TraceFilter,
+  TraceData,
+  TraceCollector,
+} from './core/pipeline'
 
 export { schema } from './core/schema'
 export type { Schema, ValidationError } from './core/schema'

@@ -27,14 +27,46 @@ export interface TimeoutError extends KairoError {
 }
 
 export interface TraceEntry {
+  id: string
   timestamp: number
   pipelineName: string
   stepName: string
+  duration: number
   success: boolean
-  duration?: number
   input?: unknown
   output?: unknown
-  error?: unknown
+  error?: KairoError
+  metadata: Record<string, unknown>
+}
+
+export interface TraceFilter {
+  pipelineName?: string
+  stepName?: string
+  success?: boolean
+  minDuration?: number
+  maxDuration?: number
+  startTime?: number
+  endTime?: number
+  errorCode?: string
+}
+
+export interface TraceData {
+  entries: TraceEntry[]
+  summary: {
+    totalEntries: number
+    successCount: number
+    errorCount: number
+    avgDuration: number
+    minDuration: number
+    maxDuration: number
+  }
+}
+
+export interface TraceCollector {
+  collect(entry: TraceEntry): void
+  query(filter?: TraceFilter): TraceEntry[]
+  export(): TraceData
+  clear(): void
 }
 
 interface Step<TError = unknown, TOutput = unknown> {
@@ -398,6 +430,68 @@ class PipelineCache {
   }
 }
 
+class GlobalTraceCollector implements TraceCollector {
+  private static instance: GlobalTraceCollector
+  private traces: TraceEntry[] = []
+
+  static getInstance(): GlobalTraceCollector {
+    if (!GlobalTraceCollector.instance) {
+      GlobalTraceCollector.instance = new GlobalTraceCollector()
+    }
+    return GlobalTraceCollector.instance
+  }
+
+  collect(entry: TraceEntry): void {
+    this.traces.push(entry)
+
+    // Auto-cleanup old traces (keep last 1000 entries)
+    if (this.traces.length > 1000) {
+      this.traces = this.traces.slice(-1000)
+    }
+  }
+
+  query(filter?: TraceFilter): TraceEntry[] {
+    if (!filter) return [...this.traces]
+
+    return this.traces.filter(entry => {
+      if (filter.pipelineName && !entry.pipelineName.includes(filter.pipelineName)) return false
+      if (filter.stepName && !entry.stepName.includes(filter.stepName)) return false
+      if (filter.success !== undefined && entry.success !== filter.success) return false
+      if (filter.minDuration && entry.duration < filter.minDuration) return false
+      if (filter.maxDuration && entry.duration > filter.maxDuration) return false
+      if (filter.startTime && entry.timestamp < filter.startTime) return false
+      if (filter.endTime && entry.timestamp > filter.endTime) return false
+      if (filter.errorCode && (!entry.error || entry.error.code !== filter.errorCode)) return false
+
+      return true
+    })
+  }
+
+  export(): TraceData {
+    const entries = [...this.traces]
+    const successCount = entries.filter(e => e.success).length
+    const errorCount = entries.length - successCount
+    const durations = entries.map(e => e.duration)
+
+    return {
+      entries,
+      summary: {
+        totalEntries: entries.length,
+        successCount,
+        errorCount,
+        avgDuration:
+          durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0,
+        minDuration: durations.length > 0 ? Math.min(...durations) : 0,
+        maxDuration: durations.length > 0 ? Math.max(...durations) : 0,
+      },
+    }
+  }
+
+  clear(): void {
+    this.traces = []
+  }
+}
+
 export class Pipeline<Input, Output> {
   constructor(
     private readonly steps: Step[],
@@ -661,22 +755,40 @@ export class Pipeline<Input, Output> {
     executeWithTimeout: () => Promise<Result<unknown, Output>>,
     input: Input | undefined
   ): Promise<Result<unknown, Output>> {
-    const retryPipeline = retry(
-      (_: unknown) => executeWithTimeout(),
-      this.retryConfig!.times,
-      this.retryConfig!.delay
-    )
+    // Create a function that throws on Result.Err for the retry utility
+    const throwingFunction = async (_: unknown): Promise<Output> => {
+      const result = await executeWithTimeout()
+      if (Result.isErr(result)) {
+        throw new Error(`Pipeline execution failed: ${JSON.stringify(result.error)}`)
+      }
+      return result.value
+    }
+
+    const retryPipeline = retry(throwingFunction, this.retryConfig!.times, this.retryConfig!.delay)
 
     try {
       const result = await retryPipeline(input)
       return Result.Ok(result) as Result<unknown, Output>
-    } catch {
+    } catch (error) {
+      // Try to parse the original error from the thrown message
+      let originalError: unknown
+      try {
+        if (error instanceof Error && error.message.startsWith('Pipeline execution failed: ')) {
+          originalError = JSON.parse(error.message.replace('Pipeline execution failed: ', ''))
+        } else {
+          originalError = error
+        }
+      } catch {
+        originalError = error
+      }
+
       const networkError: NetworkError = {
         ...createError(
           'NETWORK_ERROR',
           `Pipeline failed after ${this.retryConfig!.times} attempts`,
           {
             pipelineName: this.name,
+            originalError,
           }
         ),
         code: 'NETWORK_ERROR',
@@ -712,6 +824,157 @@ export function pipeline<T = unknown>(
   return new Pipeline<T, T>([], name, deps, undefined, undefined, undefined)
 }
 
+// Export static methods as standalone functions
+pipeline.parallel = <I, T>(pipelines: Pipeline<I, T>[]): Pipeline<I, T[]> => {
+  return Pipeline.parallel(pipelines)
+}
+
+export const tracing = {
+  getCollector: () => GlobalTraceCollector.getInstance(),
+  query: (filter?: TraceFilter) => GlobalTraceCollector.getInstance().query(filter),
+  export: () => GlobalTraceCollector.getInstance().export(),
+  clear: () => GlobalTraceCollector.getInstance().clear(),
+
+  // Visualization helpers
+  printSummary: () => {
+    const data = GlobalTraceCollector.getInstance().export()
+    console.log('📊 Kairo Tracing Summary')
+    console.log('========================')
+    console.log(`Total Entries: ${data.summary.totalEntries}`)
+    console.log(
+      `Success Rate: ${((data.summary.successCount / data.summary.totalEntries) * 100).toFixed(1)}%`
+    )
+    console.log(`Average Duration: ${data.summary.avgDuration.toFixed(2)}ms`)
+    console.log(`Min Duration: ${data.summary.minDuration.toFixed(2)}ms`)
+    console.log(`Max Duration: ${data.summary.maxDuration.toFixed(2)}ms`)
+  },
+
+  printTable: (filter?: TraceFilter) => {
+    const entries = GlobalTraceCollector.getInstance().query(filter)
+    if (entries.length === 0) {
+      console.log('No trace entries found')
+      return
+    }
+
+    console.table(
+      entries.map(entry => ({
+        Pipeline: entry.pipelineName,
+        Step: entry.stepName,
+        Success: entry.success ? '✅' : '❌',
+        Duration: `${entry.duration.toFixed(2)}ms`,
+        Error: entry.error?.code || '-',
+      }))
+    )
+  },
+
+  printTimeline: (pipelineName?: string) => {
+    const filter = pipelineName ? { pipelineName } : undefined
+    const entries = GlobalTraceCollector.getInstance()
+      .query(filter)
+      .sort((a, b) => a.timestamp - b.timestamp)
+
+    if (entries.length === 0) {
+      console.log('No trace entries found')
+      return
+    }
+
+    console.log('⏱️  Kairo Pipeline Timeline')
+    console.log('===========================')
+
+    entries.forEach(entry => {
+      const status = entry.success ? '✅' : '❌'
+      const time = new Date(entry.timestamp).toLocaleTimeString()
+      const duration = entry.duration.toFixed(2)
+      console.log(`${time} ${status} ${entry.pipelineName}:${entry.stepName} (${duration}ms)`)
+      if (entry.error) {
+        console.log(`    ❌ ${entry.error.code}: ${entry.error.message}`)
+      }
+    })
+  },
+
+  getSlowQueries: (thresholdMs = 100) => {
+    return GlobalTraceCollector.getInstance()
+      .query({
+        minDuration: thresholdMs,
+      })
+      .sort((a, b) => b.duration - a.duration)
+  },
+
+  getErrorBreakdown: () => {
+    const entries = GlobalTraceCollector.getInstance().query({ success: false })
+    const errorCounts = entries.reduce(
+      (acc, entry) => {
+        if (entry.error?.code) {
+          acc[entry.error.code] = (acc[entry.error.code] || 0) + 1
+        }
+        return acc
+      },
+      {} as Record<string, number>
+    )
+
+    return Object.entries(errorCounts)
+      .map(([code, count]) => ({ code, count }))
+      .sort((a, b) => b.count - a.count)
+  },
+
+  // Performance metrics
+  getPerformanceMetrics: (pipelineName?: string) => {
+    const filter = pipelineName ? { pipelineName } : undefined
+    const entries = GlobalTraceCollector.getInstance().query(filter)
+
+    const byStep = entries.reduce(
+      (acc, entry) => {
+        const key = `${entry.pipelineName}:${entry.stepName}`
+        if (!acc[key]) {
+          acc[key] = { durations: [], errors: 0, successes: 0 }
+        }
+        acc[key].durations.push(entry.duration)
+        if (entry.success) {
+          acc[key].successes++
+        } else {
+          acc[key].errors++
+        }
+        return acc
+      },
+      {} as Record<string, { durations: number[]; errors: number; successes: number }>
+    )
+
+    return Object.entries(byStep)
+      .map(([step, data]) => {
+        const durations = data.durations
+        const total = data.successes + data.errors
+
+        return {
+          step,
+          count: total,
+          successRate: total > 0 ? (data.successes / total) * 100 : 0,
+          avgDuration: durations.reduce((a, b) => a + b, 0) / durations.length,
+          minDuration: Math.min(...durations),
+          maxDuration: Math.max(...durations),
+          p95Duration: durations.sort((a, b) => a - b)[Math.floor(durations.length * 0.95)] || 0,
+        }
+      })
+      .sort((a, b) => b.avgDuration - a.avgDuration)
+  },
+
+  getThroughput: (timeWindowMs = 60000) => {
+    const now = Date.now()
+    const entries = GlobalTraceCollector.getInstance().query({
+      startTime: now - timeWindowMs,
+      endTime: now,
+    })
+
+    const throughputPerSecond = (entries.length / timeWindowMs) * 1000
+    return {
+      totalRequests: entries.length,
+      timeWindowMs,
+      throughputPerSecond: Math.round(throughputPerSecond * 100) / 100,
+      successRate:
+        entries.length > 0 ? (entries.filter(e => e.success).length / entries.length) * 100 : 0,
+    }
+  },
+}
+
 const isTraceEnabled = (): boolean =>
   cond<typeof globalThis, boolean>([
     [() => typeof globalThis === 'undefined', () => false],
@@ -726,8 +989,15 @@ const isTraceEnabled = (): boolean =>
 const createTraceLogger = (context: PipelineContext) =>
   conditionalEffect(
     () => isTraceEnabled(),
-    (trace: TraceEntry) => context.traces.push(trace)
+    (trace: TraceEntry) => {
+      context.traces.push(trace)
+      GlobalTraceCollector.getInstance().collect(trace)
+    }
   )
+
+const generateTraceId = (): string => {
+  return `trace_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+}
 
 const createTraceEntry = (
   context: PipelineContext,
@@ -735,8 +1005,10 @@ const createTraceEntry = (
   start: number,
   result: Result<unknown, unknown>,
   input?: unknown,
-  error?: unknown
+  error?: unknown,
+  metadata: Record<string, unknown> = {}
 ): TraceEntry => ({
+  id: generateTraceId(),
   timestamp: Date.now(),
   pipelineName: context.name,
   stepName,
@@ -744,5 +1016,6 @@ const createTraceEntry = (
   duration: performance.now() - start,
   input,
   output: Result.isOk(result) ? result.value : undefined,
-  error: Result.isErr(result) ? result.error : error,
+  error: Result.isErr(result) ? (result.error as KairoError) : (error as KairoError),
+  metadata,
 })

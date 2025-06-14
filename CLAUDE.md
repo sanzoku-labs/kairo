@@ -49,6 +49,69 @@ bun run test
 
 **Never proceed to next feature if any of these steps fail.**
 
+### Mandatory Testing Requirements:
+
+**Before implementing any new phase, ALL previous functionality MUST have comprehensive test coverage:**
+
+1. **Core Pipeline Features** ✅
+
+   - Basic operations (map, input, fetch, validate)
+   - Error handling and Result patterns
+   - HTTP client integration
+   - Complex pipeline flows
+
+2. **Advanced Pipeline Methods** ✅
+
+   - `cache(ttl)` - caching with TTL, cache invalidation
+   - `retry(times, delay)` - retry logic with network failures
+   - `timeout(ms)` - timeout handling for slow operations
+   - `parallel(pipelines[])` - concurrent execution and error aggregation
+   - `fallback(pipeline)` - primary/fallback flow with error scenarios
+
+3. **Enhanced Tracing System** ✅
+   - Trace collection with unique IDs and metadata
+   - Filtering and querying capabilities
+   - Visualization helpers (summary, table, timeline)
+   - Performance metrics and throughput tracking
+   - Error breakdown and slow query detection
+
+**Test Coverage Standards:**
+
+- 100% coverage on core functionality
+- Error scenarios must be tested, not just happy paths
+- Integration tests for complex multi-step flows
+- Performance and timeout edge cases
+- Mock HTTP clients for predictable testing
+
+**Test Quality Requirements:**
+
+- **Type Safety**: Use proper TypeScript types in tests, avoid `any` except for mocks
+- **Mock Types**: Create proper interfaces for mocks instead of disabling type checking
+- **ESLint Rules**: Only relax rules to 'warn' for test flexibility, never disable completely
+- **Assertion Safety**: Use type guards and proper casting for assertions
+- **Error Testing**: Verify exact error types and messages, not just failure states
+
+**Test Organization:**
+
+- `/tests/pipeline.test.ts` - Core pipeline functionality
+- `/tests/tracing.test.ts` - Enhanced tracing system
+- `/tests/result.test.ts` - Result type functionality
+- `/tests/schema.test.ts` - Schema validation
+- `/src/utils/fp/*.test.ts` - FP utility functions
+
+**ESLint Configuration for Tests:**
+
+```javascript
+// For test files: Allow flexibility but maintain safety
+rules: {
+  '@typescript-eslint/no-explicit-any': 'warn',        // Allow but warn
+  '@typescript-eslint/no-unsafe-assignment': 'warn',   // Allow but warn
+  '@typescript-eslint/no-unsafe-member-access': 'warn', // Allow but warn
+  '@typescript-eslint/no-unsafe-return': 'error',      // Keep strict
+  '@typescript-eslint/ban-ts-comment': 'error',        // Keep strict
+}
+```
+
 ### After Completing Tasks/Features:
 
 **MANDATORY: Update progress tracking in this document**
@@ -216,10 +279,10 @@ interface TraceCollector {
 
 **Tasks:**
 
-- [ ] Implement structured trace collection
-- [ ] Add trace filtering and querying
-- [ ] Create trace visualization helpers
-- [ ] Add performance metrics tracking
+- [x] Implement structured trace collection ✅ 2024-06-14
+- [x] Add trace filtering and querying ✅ 2024-06-14
+- [x] Create trace visualization helpers ✅ 2024-06-14
+- [x] Add performance metrics tracking ✅ 2024-06-14
 
 ---
 
@@ -450,16 +513,18 @@ const chainOperations = pipe(mapResult(step1), flatMapResult(step2), mapResult(s
 ## 🎯 Current Priority
 
 **✅ Phase 1.1 Complete:** Enhanced Error System  
-**✅ Phase 1.2 Complete:** Advanced Pipeline Steps (Bundle: ~16KB)
+**✅ Phase 1.2 Complete:** Advanced Pipeline Steps  
+**✅ Phase 1.3 Complete:** Enhanced Tracing System (Bundle: ~20KB)
 
-**Next focus: Phase 1.3** - Enhanced Tracing System for structured observability with queryable trace data and performance metrics tracking.
+**Next focus: Phase 2.1** - Signal Primitive for lightweight reactive state with scoping and pipeline integration.
 
-Key Phase 1.2 achievements:
+Key Phase 1.3 achievements:
 
-- Implemented comprehensive pipeline methods: retry, timeout, cache, parallel, fallback
-- Added in-memory caching with TTL support
-- Parallel execution with error aggregation
-- Fallback mechanism for resilient pipelines
-- All methods follow functional programming principles and immutability
+- Structured trace collection with unique IDs and metadata
+- Global trace collector with filtering and querying
+- Rich visualization helpers (printSummary, printTable, printTimeline)
+- Performance metrics tracking (throughput, percentiles, error breakdown)
+- Export capabilities for external analysis
+- All tracing follows functional programming principles
 
 Remember: **Quality over speed. Follow the workflow. Use existing patterns.**

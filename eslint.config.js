@@ -37,7 +37,39 @@ export default [
     },
   },
   {
-    files: ['**/*.config.{js,ts}', 'tests/**/*.ts', 'examples/**/*.ts'],
+    files: ['tests/**/*.ts', 'examples/**/*.ts'],
+    plugins: {
+      '@typescript-eslint': typescript,
+    },
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        project: './tsconfig.json',
+      },
+      globals: {
+        console: 'readonly',
+        performance: 'readonly',
+        fetch: 'readonly',
+        Response: 'readonly',
+        RequestInit: 'readonly',
+        Storage: 'readonly',
+        globalThis: 'readonly',
+      },
+    },
+    rules: {
+      // Allow more flexibility in tests for mocking, but keep important safety rules
+      '@typescript-eslint/no-explicit-any': 'warn', // Allow but warn
+      '@typescript-eslint/no-unsafe-assignment': 'warn', // Allow but warn
+      '@typescript-eslint/no-unsafe-member-access': 'warn', // Allow but warn
+      // Keep these rules enabled for safety
+      '@typescript-eslint/no-unsafe-return': 'error',
+      '@typescript-eslint/ban-ts-comment': 'error',
+    },
+  },
+  {
+    files: ['**/*.config.{js,ts}'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {

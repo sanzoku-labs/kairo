@@ -300,6 +300,398 @@ describe('Pipeline', () => {
     })
   })
 
+  describe('cache functionality', () => {
+    it('should cache successful results', async () => {
+      let callCount = 0
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: vi.fn().mockImplementation(() => {
+          callCount++
+          return Promise.resolve({ data: `call-${callCount}` })
+        }),
+      }
+
+      const mockHttpClient = {
+        fetch: vi.fn().mockResolvedValue(mockResponse),
+      }
+
+      const pipe = pipeline('cache-test', { httpClient: mockHttpClient })
+        .cache(1000) // 1 second TTL
+        .fetch('/api/data')
+
+      // First call
+      const result1 = await pipe.run()
+      expect(Result.isOk(result1)).toBe(true)
+      if (Result.isOk(result1)) {
+        expect(result1.value).toEqual({ data: 'call-1' })
+      }
+
+      // Second call should return cached result
+      const result2 = await pipe.run()
+      expect(Result.isOk(result2)).toBe(true)
+      if (Result.isOk(result2)) {
+        expect(result2.value).toEqual({ data: 'call-1' }) // Same as first call
+      }
+
+      expect(mockHttpClient.fetch).toHaveBeenCalledTimes(1) // Only called once
+    })
+
+    it('should not cache error results', async () => {
+      const mockHttpClient = {
+        fetch: vi
+          .fn()
+          .mockResolvedValueOnce({
+            ok: false,
+            status: 500,
+            statusText: 'Server Error',
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: vi.fn().mockResolvedValue({ success: true }),
+          }),
+      }
+
+      const pipe = pipeline('cache-error-test', { httpClient: mockHttpClient })
+        .cache(1000)
+        .fetch('/api/data')
+
+      // First call fails
+      const result1 = await pipe.run()
+      expect(Result.isErr(result1)).toBe(true)
+
+      // Second call should retry (not cached)
+      const result2 = await pipe.run()
+      expect(Result.isOk(result2)).toBe(true)
+
+      expect(mockHttpClient.fetch).toHaveBeenCalledTimes(2) // Called twice
+    })
+
+    it('should respect cache TTL', async () => {
+      vi.useFakeTimers()
+
+      let callCount = 0
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: vi.fn().mockImplementation(() => {
+          callCount++
+          return Promise.resolve({ data: `call-${callCount}` })
+        }),
+      }
+
+      const mockHttpClient = {
+        fetch: vi.fn().mockResolvedValue(mockResponse),
+      }
+
+      const pipe = pipeline('cache-ttl-test', { httpClient: mockHttpClient })
+        .cache(100) // 100ms TTL
+        .fetch('/api/data')
+
+      // First call
+      const result1 = await pipe.run()
+      expect(Result.isOk(result1) && result1.value).toEqual({ data: 'call-1' })
+
+      // Wait for cache to expire
+      vi.advanceTimersByTime(150)
+
+      // Second call should hit the API again
+      const result2 = await pipe.run()
+      expect(Result.isOk(result2) && result2.value).toEqual({ data: 'call-2' })
+
+      expect(mockHttpClient.fetch).toHaveBeenCalledTimes(2)
+
+      vi.useRealTimers()
+    })
+  })
+
+  describe('parallel functionality', () => {
+    it('should execute pipelines in parallel', async () => {
+      const mockHttpClient = {
+        fetch: vi
+          .fn()
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: vi.fn().mockResolvedValue({ endpoint: 'users' }),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: vi.fn().mockResolvedValue({ endpoint: 'posts' }),
+          }),
+      }
+
+      const userPipeline = pipeline('users', { httpClient: mockHttpClient }).fetch('/api/users')
+      const postPipeline = pipeline('posts', { httpClient: mockHttpClient }).fetch('/api/posts')
+
+      const parallelPipeline = pipeline.parallel([userPipeline, postPipeline])
+
+      const result = await parallelPipeline.run()
+
+      expect(Result.isOk(result)).toBe(true)
+      if (Result.isOk(result)) {
+        expect(result.value).toEqual([{ endpoint: 'users' }, { endpoint: 'posts' }])
+      }
+
+      expect(mockHttpClient.fetch).toHaveBeenCalledTimes(2)
+    })
+
+    it('should fail if any pipeline fails', async () => {
+      const mockHttpClient = {
+        fetch: vi
+          .fn()
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: vi.fn().mockResolvedValue({ success: true }),
+          })
+          .mockResolvedValueOnce({
+            ok: false,
+            status: 404,
+            statusText: 'Not Found',
+          }),
+      }
+
+      const successPipeline = pipeline('success', { httpClient: mockHttpClient }).fetch(
+        '/api/success'
+      )
+      const failPipeline = pipeline('fail', { httpClient: mockHttpClient }).fetch('/api/fail')
+
+      const parallelPipeline = pipeline.parallel([successPipeline, failPipeline])
+
+      const result = await parallelPipeline.run()
+
+      expect(Result.isErr(result)).toBe(true)
+      if (Result.isErr(result)) {
+        expect((result.error as { code: string }).code).toBe('PARALLEL_ERROR')
+      }
+    })
+
+    it('should handle empty pipeline array', async () => {
+      const parallelPipeline = pipeline.parallel([])
+      const result = await parallelPipeline.run()
+
+      expect(Result.isOk(result)).toBe(true)
+      if (Result.isOk(result)) {
+        expect(result.value).toEqual([])
+      }
+    })
+  })
+
+  describe('fallback functionality', () => {
+    it('should use primary pipeline when successful', async () => {
+      const mockHttpClient = {
+        fetch: vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          json: vi.fn().mockResolvedValue({ source: 'primary' }),
+        }),
+      }
+
+      const primaryPipeline = pipeline('primary', { httpClient: mockHttpClient }).fetch(
+        '/api/primary'
+      )
+      const fallbackPipeline = pipeline('fallback', { httpClient: mockHttpClient }).fetch(
+        '/api/fallback'
+      )
+
+      const pipelineWithFallback = primaryPipeline.fallback(fallbackPipeline)
+
+      const result = await pipelineWithFallback.run()
+
+      expect(Result.isOk(result)).toBe(true)
+      if (Result.isOk(result)) {
+        expect(result.value).toEqual({ source: 'primary' })
+      }
+
+      expect(mockHttpClient.fetch).toHaveBeenCalledTimes(1)
+      expect(mockHttpClient.fetch).toHaveBeenCalledWith('/api/primary', expect.any(Object))
+    })
+
+    it('should use fallback pipeline when primary fails', async () => {
+      const mockHttpClient = {
+        fetch: vi
+          .fn()
+          .mockResolvedValueOnce({
+            ok: false,
+            status: 500,
+            statusText: 'Server Error',
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: vi.fn().mockResolvedValue({ source: 'fallback' }),
+          }),
+      }
+
+      const primaryPipeline = pipeline('primary', { httpClient: mockHttpClient }).fetch(
+        '/api/primary'
+      )
+      const fallbackPipeline = pipeline('fallback', { httpClient: mockHttpClient }).fetch(
+        '/api/fallback'
+      )
+
+      const pipelineWithFallback = primaryPipeline.fallback(fallbackPipeline)
+
+      const result = await pipelineWithFallback.run()
+
+      expect(Result.isOk(result)).toBe(true)
+      if (Result.isOk(result)) {
+        expect(result.value).toEqual({ source: 'fallback' })
+      }
+
+      expect(mockHttpClient.fetch).toHaveBeenCalledTimes(2)
+    })
+
+    it('should fail when both primary and fallback fail', async () => {
+      const mockHttpClient = {
+        fetch: vi
+          .fn()
+          .mockResolvedValueOnce({
+            ok: false,
+            status: 500,
+            statusText: 'Server Error',
+          })
+          .mockResolvedValueOnce({
+            ok: false,
+            status: 503,
+            statusText: 'Service Unavailable',
+          }),
+      }
+
+      const primaryPipeline = pipeline('primary', { httpClient: mockHttpClient }).fetch(
+        '/api/primary'
+      )
+      const fallbackPipeline = pipeline('fallback', { httpClient: mockHttpClient }).fetch(
+        '/api/fallback'
+      )
+
+      const pipelineWithFallback = primaryPipeline.fallback(fallbackPipeline)
+
+      const result = await pipelineWithFallback.run()
+
+      expect(Result.isErr(result)).toBe(true)
+      if (Result.isErr(result)) {
+        expect((result.error as { code: string }).code).toBe('FALLBACK_ERROR')
+      }
+
+      expect(mockHttpClient.fetch).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe('retry functionality', () => {
+    it('should retry failed operations', async () => {
+      let callCount = 0
+      const mockHttpClient = {
+        fetch: vi.fn().mockImplementation(() => {
+          callCount++
+          if (callCount < 3) {
+            return Promise.reject(new Error('Network error'))
+          }
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            statusText: 'OK',
+            json: vi.fn().mockResolvedValue({ success: true }),
+          })
+        }),
+      }
+
+      const pipe = pipeline('retry-test', { httpClient: mockHttpClient })
+        .retry(3, 10) // 3 retries, 10ms delay
+        .fetch('/api/data')
+
+      const result = await pipe.run()
+
+      expect(Result.isOk(result)).toBe(true)
+      expect(mockHttpClient.fetch).toHaveBeenCalledTimes(3)
+    })
+
+    it('should fail after max retries', async () => {
+      const mockHttpClient = {
+        fetch: vi.fn().mockRejectedValue(new Error('Network error')),
+      }
+
+      const pipe = pipeline('retry-fail-test', { httpClient: mockHttpClient })
+        .retry(2, 10) // 2 retries
+        .fetch('/api/data')
+
+      const result = await pipe.run()
+
+      expect(Result.isErr(result)).toBe(true)
+      if (Result.isErr(result)) {
+        expect((result.error as { code: string }).code).toBe('NETWORK_ERROR')
+      }
+
+      expect(mockHttpClient.fetch).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  describe('timeout functionality', () => {
+    it('should timeout long operations', async () => {
+      const mockHttpClient = {
+        fetch: vi.fn().mockImplementation(
+          () =>
+            new Promise(resolve =>
+              globalThis.setTimeout(
+                () =>
+                  resolve({
+                    ok: true,
+                    status: 200,
+                    statusText: 'OK',
+                    json: vi.fn().mockResolvedValue({ data: 'slow' }),
+                  }),
+                200
+              )
+            )
+        ),
+      }
+
+      const pipe = pipeline('timeout-test', { httpClient: mockHttpClient })
+        .timeout(50) // 50ms timeout
+        .fetch('/api/slow')
+
+      const result = await pipe.run()
+
+      expect(Result.isErr(result)).toBe(true)
+      if (Result.isErr(result)) {
+        expect((result.error as { code: string }).code).toBe('TIMEOUT_ERROR')
+      }
+    })
+
+    it('should succeed within timeout', async () => {
+      const mockHttpClient = {
+        fetch: vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          json: vi.fn().mockResolvedValue({ data: 'fast' }),
+        }),
+      }
+
+      const pipe = pipeline('fast-test', { httpClient: mockHttpClient })
+        .timeout(1000) // 1 second timeout
+        .fetch('/api/fast')
+
+      const result = await pipe.run()
+
+      expect(Result.isOk(result)).toBe(true)
+      if (Result.isOk(result)) {
+        expect(result.value).toEqual({ data: 'fast' })
+      }
+    })
+  })
+
   describe('complex pipelines', () => {
     it('should handle login flow', async () => {
       const mockResponse = {
