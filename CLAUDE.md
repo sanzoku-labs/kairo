@@ -8,7 +8,6 @@
 **Read VISION.md first** to understand the overall philosophy, goals, and strategic direction of Kairo.
 
 **Key principles to keep in mind:**
-
 - **Framework-agnostic**: Every feature should work across React, Node, Bun, etc.
 - **Functional & immutable**: Inspired by Gleam - no mutations, pure functions
 - **Developer joy**: Eliminate glue code, make debugging pleasant
@@ -16,7 +15,6 @@
 - **Lazy by design**: Only execute when explicitly requested
 
 **Success metrics from vision:**
-
 - Bundle size < 10kb gzipped (core)
 - Reduce boilerplate in real codebases
 - Improve debugging experience
@@ -29,7 +27,6 @@ Refer back to VISION.md when making architectural decisions or trade-offs.
 ## 🔄 Development Workflow (MANDATORY)
 
 ### After Every Implementation/Refactoring:
-
 ```bash
 # 1. Lint and format
 bun run lint
@@ -38,7 +35,7 @@ bun run format
 # 2. Type checking
 bun run typecheck
 
-# 3. Build verification
+# 3. Build verification  
 bun run build
 
 # 4. Run tests
@@ -49,101 +46,11 @@ bun run test
 
 **Never proceed to next feature if any of these steps fail.**
 
-### Mandatory Testing Requirements:
-
-**Before implementing any new phase, ALL previous functionality MUST have comprehensive test coverage:**
-
-1. **Core Pipeline Features** ✅
-
-   - Basic operations (map, input, fetch, validate)
-   - Error handling and Result patterns
-   - HTTP client integration
-   - Complex pipeline flows
-
-2. **Advanced Pipeline Methods** ✅
-
-   - `cache(ttl)` - caching with TTL, cache invalidation
-   - `retry(times, delay)` - retry logic with network failures
-   - `timeout(ms)` - timeout handling for slow operations
-   - `parallel(pipelines[])` - concurrent execution and error aggregation
-   - `fallback(pipeline)` - primary/fallback flow with error scenarios
-
-3. **Enhanced Tracing System** ✅
-   - Trace collection with unique IDs and metadata
-   - Filtering and querying capabilities
-   - Visualization helpers (summary, table, timeline)
-   - Performance metrics and throughput tracking
-   - Error breakdown and slow query detection
-
-**Test Coverage Standards:**
-
-- 100% coverage on core functionality
-- Error scenarios must be tested, not just happy paths
-- Integration tests for complex multi-step flows
-- Performance and timeout edge cases
-- Mock HTTP clients for predictable testing
-
-**Test Quality Requirements:**
-
-- **Type Safety**: Use proper TypeScript types in tests, avoid `any` except for mocks
-- **Mock Types**: Create proper interfaces for mocks instead of disabling type checking
-- **ESLint Rules**: Only relax rules to 'warn' for test flexibility, never disable completely
-- **Assertion Safety**: Use type guards and proper casting for assertions
-- **Error Testing**: Verify exact error types and messages, not just failure states
-
-**Test Organization:**
-
-- `/tests/pipeline.test.ts` - Core pipeline functionality
-- `/tests/tracing.test.ts` - Enhanced tracing system
-- `/tests/result.test.ts` - Result type functionality
-- `/tests/schema.test.ts` - Schema validation
-- `/src/utils/fp/*.test.ts` - FP utility functions
-
-**ESLint Configuration for Tests:**
-
-```javascript
-// For test files: Allow flexibility but maintain safety
-rules: {
-  '@typescript-eslint/no-explicit-any': 'warn',        // Allow but warn
-  '@typescript-eslint/no-unsafe-assignment': 'warn',   // Allow but warn
-  '@typescript-eslint/no-unsafe-member-access': 'warn', // Allow but warn
-  '@typescript-eslint/no-unsafe-return': 'error',      // Keep strict
-  '@typescript-eslint/ban-ts-comment': 'error',        // Keep strict
-}
-```
-
-### After Completing Tasks/Features:
-
-**MANDATORY: Update progress tracking in this document**
-
-1. **Mark completed tasks** with `[x]` in the relevant phase sections
-2. **Update Current Priority section** to reflect new status
-3. **Add completion notes** if significant milestones reached
-4. **Update bundle size** if there are significant changes
-
-Example:
-
-```markdown
-**Tasks:**
-
-- [x] Implement retry method ✅ 2024-01-15
-- [x] Implement timeout method ✅ 2024-01-15
-- [ ] Implement cache method
-
-## 🎯 Current Priority
-
-**✅ Phase 1.1 Complete:** Enhanced Error System  
-**✅ Phase 1.2 Partial:** retry, timeout (Bundle: 13.57KB)
-```
-
-**This ensures roadmap stays accurate and team visibility is maintained.**
-
 ---
 
 ## 🧰 Code Patterns & Conventions
 
 ### Use Existing FP Utils (PRIORITY)
-
 The project already has functional programming utilities. **Always use these instead of reinventing:**
 
 ```typescript
@@ -153,10 +60,14 @@ import { isOk, isErr, mapResult, flatMapResult } from '../utils/result'
 import { isDefined, isNull, isUndefined } from '../utils/guards'
 
 // ✅ Good - use existing
-const processData = pipe(validate(schema), mapResult(transform), flatMapResult(save))
+const processData = pipe(
+  validate(schema),
+  mapResult(transform),
+  flatMapResult(save)
+)
 
 // ❌ Bad - reinventing
-const processData = data => {
+const processData = (data) => {
   const validated = validate(schema)(data)
   if (validated.tag === 'Ok') {
     const transformed = transform(validated.value)
@@ -167,23 +78,21 @@ const processData = data => {
 ```
 
 ### When to Create New FP Utils
-
 Only create new utilities if:
-
 1. The pattern is used 3+ times across the codebase
 2. It doesn't exist in current utils
 3. It follows functional programming principles (pure, composable)
 
 **Pattern for new utils:**
-
 ```typescript
 // src/utils/newUtil.ts
-export const newUtilFunction =
-  <T, U>(param: T) =>
-  (input: U): Result<Error, V> => {
-    // Implementation using existing utils when possible
-    return pipe(existingUtil1, existingUtil2)(input)
-  }
+export const newUtilFunction = <T, U>(param: T) => (input: U): Result<Error, V> => {
+  // Implementation using existing utils when possible
+  return pipe(
+    existingUtil1,
+    existingUtil2
+  )(input)
+}
 ```
 
 ---
@@ -193,7 +102,6 @@ export const newUtilFunction =
 ### 🎯 Phase 1: Core Stabilization (Current)
 
 #### 1.1 Enhanced Error System
-
 **Goal:** Rich, traceable error types with context
 
 ```typescript
@@ -209,26 +117,28 @@ interface KairoError {
 
 // Error factory with context
 const createError = (code: string, message: string, context = {}) =>
-  pipe(addTimestamp, addTrace, addContext(context))({ code, message })
+  pipe(
+    addTimestamp,
+    addTrace,
+    addContext(context)
+  )({ code, message })
 ```
 
 **Tasks:**
-
-- [x] Enhance ValidationError with field paths
-- [x] Add NetworkError with retry context
-- [x] Add TimeoutError with duration info
-- [x] Implement error chaining with `.cause`
-- [x] Add error serialization for logging
+- [ ] Enhance ValidationError with field paths
+- [ ] Add NetworkError with retry context  
+- [ ] Add TimeoutError with duration info
+- [ ] Implement error chaining with `.cause`
+- [ ] Add error serialization for logging
 
 #### 1.2 Advanced Pipeline Steps
-
 **Goal:** More pipeline methods for complex flows
 
 ```typescript
 // New methods to implement
 interface Pipeline<Input, Output> {
   // Existing methods...
-
+  
   retry(times: number, delay?: number): Pipeline<Input, Output>
   timeout(ms: number): Pipeline<Input, Output>
   cache(ttl: number): Pipeline<Input, Output>
@@ -238,21 +148,11 @@ interface Pipeline<Input, Output> {
 ```
 
 **Implementation approach:**
-
 - Use existing FP utils for composition
 - Each method returns new Pipeline instance (immutability)
 - Leverage Result pattern for error handling
 
-**Tasks:**
-
-- [x] Implement `retry(times: number, delay?: number)` method ✅ 2024-06-14
-- [x] Implement `timeout(ms: number)` method ✅ 2024-06-14
-- [x] Implement `cache(ttl: number)` method ✅ 2024-06-14
-- [x] Implement `parallel<T>(pipelines: Pipeline<Input, T>[])` method ✅ 2024-06-14
-- [x] Implement `fallback<T>(pipeline: Pipeline<Input, T>)` method ✅ 2024-06-14
-
 #### 1.3 Enhanced Tracing System
-
 **Goal:** Structured, queryable trace data
 
 ```typescript
@@ -278,18 +178,16 @@ interface TraceCollector {
 ```
 
 **Tasks:**
-
-- [x] Implement structured trace collection ✅ 2024-06-14
-- [x] Add trace filtering and querying ✅ 2024-06-14
-- [x] Create trace visualization helpers ✅ 2024-06-14
-- [x] Add performance metrics tracking ✅ 2024-06-14
+- [ ] Implement structured trace collection
+- [ ] Add trace filtering and querying
+- [ ] Create trace visualization helpers
+- [ ] Add performance metrics tracking
 
 ---
 
 ### 🎯 Phase 2: Reactive Extensions
 
 #### 2.1 Signal Primitive
-
 **Goal:** Lightweight reactive state with scoping
 
 ```typescript
@@ -303,17 +201,19 @@ interface Signal<T> {
 
 // Usage with existing patterns
 const createSignal = <T>(initial: T): Signal<T> =>
-  pipe(validateInitialValue, createSubscriptionManager, createGetterSetter)(initial)
+  pipe(
+    validateInitialValue,
+    createSubscriptionManager,
+    createGetterSetter
+  )(initial)
 ```
 
 **Implementation strategy:**
-
 - Use existing FP utils for transformations
 - Integrate with pipeline `.asSignal()` method
 - Scope-aware cleanup mechanism
 
-#### 2.2 Task Primitive
-
+#### 2.2 Task Primitive  
 **Goal:** Async state management (pending/success/error)
 
 ```typescript
@@ -328,11 +228,14 @@ interface Task<T> {
 
 // Create from pipeline
 const createTask = <I, O>(pipeline: Pipeline<I, O>): Task<O> =>
-  pipe(createTaskState, attachPipeline, createSignal)(pipeline)
+  pipe(
+    createTaskState,
+    attachPipeline,
+    createSignal
+  )(pipeline)
 ```
 
 #### 2.3 Form Abstraction
-
 **Goal:** Form state + validation + submission pipeline
 
 ```typescript
@@ -350,7 +253,7 @@ interface Form<T> {
 const loginForm = createForm({
   schema: LoginSchema,
   onSubmit: loginPipeline,
-  validation: 'onBlur',
+  validation: 'onBlur'
 })
 ```
 
@@ -359,7 +262,6 @@ const loginForm = createForm({
 ### 🎯 Phase 3: Resource Management
 
 #### 3.1 Resource Declaration
-
 **Goal:** Declarative API endpoint definitions
 
 ```typescript
@@ -376,7 +278,7 @@ const UserResource = resource('user', {
     response: UserSchema
   },
   update: {
-    method: 'PUT',
+    method: 'PUT', 
     path: '/api/user/:id',
     params: z.object({ id: z.string() }),
     body: UpdateUserSchema,
@@ -390,13 +292,11 @@ await UserResource.update.run({ id: '123', name: 'New Name' })
 ```
 
 **Implementation approach:**
-
 - Generate pipelines using existing pipeline primitives
 - Use FP utils for URL interpolation and HTTP methods
 - Integrate with cache and retry mechanisms
 
 #### 3.2 Cache System
-
 **Goal:** Declarative caching with TTL and invalidation
 
 ```typescript
@@ -419,7 +319,6 @@ const cachedUserPipeline = pipeline('get-user')
 ## 🔧 Implementation Guidelines
 
 ### File Organization
-
 ```
 src/
 ├── core/           # Core primitives (stable)
@@ -430,24 +329,29 @@ src/
 ```
 
 ### Testing Strategy
-
 ```typescript
 // Test pattern for new features
 describe('NewFeature', () => {
   // Unit tests for pure functions
   describe('pure functions', () => {
     it('should work with existing FP utils', () => {
-      const result = pipe(newFeature, existingUtil)(input)
-
+      const result = pipe(
+        newFeature,
+        existingUtil
+      )(input)
+      
       expect(isOk(result)).toBe(true)
     })
   })
-
+  
   // Integration tests with pipelines
   describe('pipeline integration', () => {
     it('should compose with existing pipeline methods', async () => {
-      const result = await pipeline('test').input(schema).newMethod().run(input)
-
+      const result = await pipeline('test')
+        .input(schema)
+        .newMethod()
+        .run(input)
+        
       expect(isOk(result)).toBe(true)
     })
   })
@@ -455,14 +359,21 @@ describe('NewFeature', () => {
 ```
 
 ### Type Safety Patterns
-
 ```typescript
 // Use existing type guards
 const processValue = <T>(value: unknown): Result<Error, T> =>
-  pipe(guardType<T>, validate, transform)(value)
+  pipe(
+    guardType<T>,
+    validate,
+    transform
+  )(value)
 
 // Leverage existing Result helpers
-const chainOperations = pipe(mapResult(step1), flatMapResult(step2), mapResult(step3))
+const chainOperations = pipe(
+  mapResult(step1),
+  flatMapResult(step2),
+  mapResult(step3)
+)
 ```
 
 ---
@@ -470,27 +381,23 @@ const chainOperations = pipe(mapResult(step1), flatMapResult(step2), mapResult(s
 ## 📚 Reference: Existing Utils to Use
 
 ### FP Core
-
 - `pipe()` - Function composition
-- `compose()` - Right-to-left composition
+- `compose()` - Right-to-left composition  
 - `curry()` - Function currying
 - `identity()` - Identity function
 
 ### Result Helpers
-
 - `isOk()` - Type guard for Ok results
 - `isErr()` - Type guard for Err results
 - `mapResult()` - Transform Ok values
 - `flatMapResult()` - Chain Result operations
 
 ### Type Guards
-
 - `isDefined()` - Check for non-null/undefined
 - `isNull()` - Null check
 - `isUndefined()` - Undefined check
 
 ### Validation
-
 - `validateSchema()` - Schema validation with Result
 - `parseJson()` - Safe JSON parsing
 
@@ -510,119 +417,10 @@ const chainOperations = pipe(mapResult(step1), flatMapResult(step2), mapResult(s
 
 ---
 
-#### 2.1 Signal Primitive
-
-**Goal:** Lightweight reactive state with scoping
-
-```typescript
-interface Signal<T> {
-  get(): T
-  set(value: T): Result<SignalError, void>
-  update(fn: (prev: T) => T): Result<SignalError, void>
-  subscribe(fn: (value: T) => void): SignalSubscription
-  pipe<U>(fn: (value: T) => U): Signal<U>
-  map<U>(fn: (value: T) => U): Signal<U>
-  filter(predicate: (value: T) => boolean): Signal<T>
-  readonly value: T
-}
-
-// Usage with existing patterns
-const userSignal = createSignal<User>({ id: 1, name: 'John' })
-const nameSignal = userSignal.map(user => user.name)
-```
-
-**Implementation strategy:**
-
-- Use existing FP utils for transformations
-- Integrate with pipeline `.asSignal()` method
-- Scope-aware cleanup mechanism
-
-**Tasks:**
-
-- [x] Implement Signal interface and core functionality ✅ 2024-06-14
-- [x] Add subscription management with error handling ✅ 2024-06-14
-- [x] Implement Signal transformations (map, filter, pipe) ✅ 2024-06-14
-- [x] Add utility functions (combine, conditional, validated) ✅ 2024-06-14
-- [x] Create signalEffect helpers for common patterns ✅ 2024-06-14
-- [x] Integrate with Pipeline via .asSignal() method ✅ 2024-06-14
-- [x] Comprehensive test coverage (28 tests) ✅ 2024-06-14
-
----
-
 ## 🎯 Current Priority
 
-**✅ Phase 1.1 Complete:** Enhanced Error System  
-**✅ Phase 1.2 Complete:** Advanced Pipeline Steps  
-**✅ Phase 1.3 Complete:** Enhanced Tracing System
-**✅ Phase 2.1 Complete:** Signal Primitive
-**✅ Phase 2.2 Complete:** Task Primitive
-**✅ Phase 2.3 Complete:** Form Abstraction
-**✅ Phase 3.1 Complete:** Resource Declaration (Bundle: ~35KB)
+**Focus on Phase 1.1 (Enhanced Error System)** - this provides foundation for all other features.
 
-**🎉 All core phases complete!** Kairo framework now provides a complete reactive state management and API interaction solution with declarative resource management, form handling, async task management, and comprehensive pipeline-based data flows.
-
-Key Phase 3.1 achievements:
-
-- Declarative Resource system for API endpoint definitions with automatic pipeline generation
-- Type-safe URL interpolation with path parameter extraction and validation
-- Intelligent parameter/body separation for REST methods (GET, POST, PUT, PATCH, DELETE)
-- Comprehensive configuration with caching, retry, and timeout support at method or resource level
-- Full integration with existing Pipeline, Cache, and Retry systems from previous phases
-- Utility helpers for common HTTP method patterns (resourceUtils.get, .post, .put, etc.)
-- Method validation and error handling with Result-based APIs
-- 35 comprehensive tests covering all resource functionality and edge cases
-- Framework-agnostic design that works seamlessly with existing Kairo primitives
-
-Resource features implemented:
-
-- **Declarative API**: `resource('users', { get: {...}, create: {...} })` for endpoint definitions
-- **Auto-pipeline Generation**: Each method automatically creates optimized Pipeline instances
-- **URL Interpolation**: Smart path parameter handling like `/api/users/:id` with type safety
-- **HTTP Method Support**: GET, POST, PUT, PATCH, DELETE with proper body/param separation
-- **Configuration Layers**: Method-level and resource-level config for cache/retry/timeout
-- **Type Inference**: Full TypeScript support with input/output type inference from schemas
-- **Integration**: Seamless integration with Pipeline caching, retry, and timeout mechanisms
-- **Validation**: Built-in method validation and resource creation safety checks
-
-Key Phase 2.1 achievements:
-
-- Lightweight reactive Signal primitive with immutable updates
-- Rich transformation API (map, filter, pipe, combine, conditional)
-- Comprehensive subscription management with error handling
-- Pipeline integration via `.asSignal()` method
-- Functional composition using existing FP utilities
-- 28 comprehensive tests covering all functionality
-- Framework-agnostic design works across React, Node, Bun
-
-Signal features implemented:
-
-- **Core Operations**: get, set, update with Result-based error handling
-- **Subscriptions**: Multi-subscriber support with automatic cleanup
-- **Transformations**: map, filter, pipe for reactive derivations
-- **Utilities**: combine multiple signals, conditional updates, validation
-- **Effects**: onChange, onChangeOnly, onTrue, batch operations
-- **Pipeline Integration**: Convert any pipeline to reactive signal
-
-Key Phase 2.2 achievements:
-
-- Async state management Task primitive with idle/pending/success/error states
-- Immutable state transitions with Signal integration for reactive updates
-- Pipeline integration via `.asTask()` method for seamless async workflows
-- Concurrent execution prevention and safe state management
-- Comprehensive utility functions (parallel, sequence, groupByState, resetAll)
-- Rich effect system (onStateChange, onSuccess, onError, onComplete, onStart)
-- Full timing and performance tracking (startTime, endTime, duration)
-- 28 comprehensive tests covering all async state scenarios
-- Result-based error handling integrated with existing KairoError system
-
-Task features implemented:
-
-- **State Management**: Automatic state transitions (idle → pending → success/error)
-- **Signal Integration**: Reactive state updates via task.signal() method
-- **Pipeline Integration**: Convert any pipeline to stateful task via .asTask()
-- **Utilities**: Parallel/sequence execution, state grouping, bulk operations
-- **Effects**: Comprehensive lifecycle hooks for all state transitions
-- **Error Handling**: Concurrent execution prevention, Result-based APIs
-- **Performance**: Built-in timing metrics and execution tracking
+Start with ValidationError enhancement, then NetworkError, then error chaining. Use existing FP utils wherever possible.
 
 Remember: **Quality over speed. Follow the workflow. Use existing patterns.**

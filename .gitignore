@@ -5,6 +5,10 @@ node_modules
 dist
 coverage
 
+# Example app builds
+examples/full-app/dist
+examples/full-app/node_modules
+
 # Environment files
 .env
 .env.local
