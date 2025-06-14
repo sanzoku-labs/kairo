@@ -22,7 +22,10 @@
     "test:coverage": "bun run vitest --coverage",
     "typecheck": "bun run tsc --noEmit",
     "lint": "bun run eslint .",
-    "format": "bun run prettier --write ."
+    "format": "bun run prettier --write .",
+    "docs:dev": "vitepress dev docs --open",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "keywords": [
     "typescript",
@@ -44,6 +47,7 @@
     "prettier": "^3.5.3",
     "tsup": "^8.5.0",
     "typescript": "^5.8.3",
+    "vitepress": "^1.6.3",
     "vitest": "^3.2.3"
   },
   "dependencies": {

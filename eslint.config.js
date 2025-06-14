@@ -69,7 +69,7 @@ export default [
     },
   },
   {
-    files: ['**/*.config.{js,ts}'],
+    files: ['**/*.config.{js,ts}', 'docs/**/*.ts', 'docs/**/*.md'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
@@ -77,8 +77,16 @@ export default [
         sourceType: 'module',
       },
     },
+    rules: {
+      // Disable strict type checking for docs and config files
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
   },
   {
-    ignores: ['dist/', 'node_modules/', 'coverage/'],
+    ignores: ['dist/', 'node_modules/', 'coverage/', 'docs/.vitepress/dist/', 'docs/.vitepress/cache/'],
   },
 ]
