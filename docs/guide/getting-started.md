@@ -263,6 +263,5 @@ app.get('/users/:id', async (req, res) => {
 Now that you've created your first pipeline, explore more advanced features:
 
 - [Core Concepts](/guide/concepts) - Deeper understanding of Kairo's architecture
-- [Pipelines](/guide/pipelines) - Advanced pipeline techniques
-- [Result Pattern](/guide/result) - Comprehensive error handling
+- [API Reference](/api/) - Complete API documentation
 - [Examples](/examples/) - Real-world usage patterns

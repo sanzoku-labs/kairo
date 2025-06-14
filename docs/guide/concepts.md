@@ -285,6 +285,6 @@ if (isOk(result)) {
 
 ## Next Steps
 
-- [Pipelines Guide](/guide/pipelines) - Deep dive into pipeline features
-- [Result Pattern](/guide/result) - Comprehensive error handling
-- [Schema Validation](/guide/schema) - Working with schemas and validation
+- [API Reference](/api/) - Complete API documentation
+- [Examples](/examples/) - Real-world usage patterns
+- [GitHub Repository](https://github.com/sovanaryththorng/kairo) - Source code and issues

@@ -23,7 +23,7 @@
     "typecheck": "bun run tsc --noEmit",
     "lint": "bun run eslint .",
     "format": "bun run prettier --write .",
-    "docs:dev": "vitepress dev docs --open",
+    "docs:dev": "NODE_ENV=development vitepress dev docs --open",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
   },

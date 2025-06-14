@@ -10,19 +10,10 @@ Learn the fundamentals with a simple data processing pipeline.
 ### [Data Fetching](/examples/data-fetching)
 Common patterns for fetching and processing API data.
 
-### [Form Validation](/examples/form-validation)
-Handle form input validation and submission.
-
 ## Advanced Examples
 
 ### [Reactive State](/examples/reactive-state)
 Using Signals and Tasks for reactive applications.
-
-### [Complex Workflows](/examples/complex-workflows)
-Multi-step processes with error recovery.
-
-### [Error Recovery](/examples/error-recovery)
-Sophisticated error handling and retry strategies.
 
 ## Framework Integration
 
