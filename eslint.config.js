@@ -31,7 +31,9 @@ export default [
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/consistent-type-imports': 'error'
+      '@typescript-eslint/consistent-type-imports': 'error',
+      'no-redeclare': 'off',
+      '@typescript-eslint/no-redeclare': 'error'
     }
   },
   {
