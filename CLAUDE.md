@@ -569,6 +569,7 @@ Key Phase 2.1 achievements:
 - Framework-agnostic design works across React, Node, Bun
 
 Signal features implemented:
+
 - **Core Operations**: get, set, update with Result-based error handling
 - **Subscriptions**: Multi-subscriber support with automatic cleanup
 - **Transformations**: map, filter, pipe for reactive derivations
