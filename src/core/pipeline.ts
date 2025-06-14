@@ -2,6 +2,7 @@ import { Result } from './result'
 import { type Schema, type ValidationError } from './schema'
 import { isNil, isEmpty, cond, resolve, conditionalEffect, tryCatch, retry } from '../utils/fp'
 import { type KairoError, createError } from './errors'
+import { type Signal, createSignal } from './signal'
 
 export interface HttpError extends KairoError {
   code: 'HTTP_ERROR'
@@ -624,6 +625,34 @@ export class Pipeline<Input, Output> {
       this.timeoutConfig,
       this.cacheConfig
     )
+  }
+
+  asSignal(input?: Input): Signal<Result<unknown, Output>> {
+    // Create a signal with an initial loading state
+    const signal = createSignal<Result<unknown, Output>>(
+      Result.Ok(undefined as unknown as Output) // Initial placeholder
+    )
+
+    // Run the pipeline and update the signal
+    this.run(input)
+      .then(result => {
+        signal.set(result)
+      })
+      .catch(error => {
+        const pipelineError: KairoError = {
+          ...createError(
+            'SIGNAL_PIPELINE_ERROR',
+            error instanceof Error
+              ? error.message
+              : 'Pipeline execution failed in signal conversion',
+            { pipelineName: this.name, input }
+          ),
+          code: 'SIGNAL_PIPELINE_ERROR',
+        }
+        signal.set(Result.Err(pipelineError))
+      })
+
+    return signal
   }
 
   async run(input?: Input): Promise<Result<unknown, Output>> {

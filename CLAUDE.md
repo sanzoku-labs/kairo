@@ -510,21 +510,70 @@ const chainOperations = pipe(mapResult(step1), flatMapResult(step2), mapResult(s
 
 ---
 
+#### 2.1 Signal Primitive
+
+**Goal:** Lightweight reactive state with scoping
+
+```typescript
+interface Signal<T> {
+  get(): T
+  set(value: T): Result<SignalError, void>
+  update(fn: (prev: T) => T): Result<SignalError, void>
+  subscribe(fn: (value: T) => void): SignalSubscription
+  pipe<U>(fn: (value: T) => U): Signal<U>
+  map<U>(fn: (value: T) => U): Signal<U>
+  filter(predicate: (value: T) => boolean): Signal<T>
+  readonly value: T
+}
+
+// Usage with existing patterns
+const userSignal = createSignal<User>({ id: 1, name: 'John' })
+const nameSignal = userSignal.map(user => user.name)
+```
+
+**Implementation strategy:**
+
+- Use existing FP utils for transformations
+- Integrate with pipeline `.asSignal()` method
+- Scope-aware cleanup mechanism
+
+**Tasks:**
+
+- [x] Implement Signal interface and core functionality ✅ 2024-06-14
+- [x] Add subscription management with error handling ✅ 2024-06-14
+- [x] Implement Signal transformations (map, filter, pipe) ✅ 2024-06-14
+- [x] Add utility functions (combine, conditional, validated) ✅ 2024-06-14
+- [x] Create signalEffect helpers for common patterns ✅ 2024-06-14
+- [x] Integrate with Pipeline via .asSignal() method ✅ 2024-06-14
+- [x] Comprehensive test coverage (28 tests) ✅ 2024-06-14
+
+---
+
 ## 🎯 Current Priority
 
 **✅ Phase 1.1 Complete:** Enhanced Error System  
 **✅ Phase 1.2 Complete:** Advanced Pipeline Steps  
-**✅ Phase 1.3 Complete:** Enhanced Tracing System (Bundle: ~20KB)
+**✅ Phase 1.3 Complete:** Enhanced Tracing System
+**✅ Phase 2.1 Complete:** Signal Primitive (Bundle: ~22KB)
 
-**Next focus: Phase 2.1** - Signal Primitive for lightweight reactive state with scoping and pipeline integration.
+**Next focus: Phase 2.2** - Task Primitive for async state management (pending/success/error states).
 
-Key Phase 1.3 achievements:
+Key Phase 2.1 achievements:
 
-- Structured trace collection with unique IDs and metadata
-- Global trace collector with filtering and querying
-- Rich visualization helpers (printSummary, printTable, printTimeline)
-- Performance metrics tracking (throughput, percentiles, error breakdown)
-- Export capabilities for external analysis
-- All tracing follows functional programming principles
+- Lightweight reactive Signal primitive with immutable updates
+- Rich transformation API (map, filter, pipe, combine, conditional)
+- Comprehensive subscription management with error handling
+- Pipeline integration via `.asSignal()` method
+- Functional composition using existing FP utilities
+- 28 comprehensive tests covering all functionality
+- Framework-agnostic design works across React, Node, Bun
+
+Signal features implemented:
+- **Core Operations**: get, set, update with Result-based error handling
+- **Subscriptions**: Multi-subscriber support with automatic cleanup
+- **Transformations**: map, filter, pipe for reactive derivations
+- **Utilities**: combine multiple signals, conditional updates, validation
+- **Effects**: onChange, onChangeOnly, onTrue, batch operations
+- **Pipeline Integration**: Convert any pipeline to reactive signal
 
 Remember: **Quality over speed. Follow the workflow. Use existing patterns.**

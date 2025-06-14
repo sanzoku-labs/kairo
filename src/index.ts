@@ -13,6 +13,9 @@ export type {
   TraceCollector,
 } from './core/pipeline'
 
+export { createSignal, signal, signalEffect } from './core/signal'
+export type { Signal, SignalError, SignalSubscription } from './core/signal'
+
 export { schema } from './core/schema'
 export type { Schema, ValidationError } from './core/schema'
 
