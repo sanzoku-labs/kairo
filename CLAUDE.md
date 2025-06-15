@@ -1,564 +1,504 @@
-# Kairo Platform - Extended Implementation Roadmap
+# Kairo: Three-Pillar Declarative Application Platform
 
-> **Target:** Claude Code  
-> **Objective:** Evolve Kairo from "Pipeline + Resource Library" to "Declarative Application Platform"
-
----
-
-## 🎯 Vision Evolution
-
-### Current State: Foundation Complete ✅
-
-```typescript
-// Resources - Service layer elimination
-const UserAPI = resource('users', {
-  get: { path: '/users/:id', response: UserSchema },
-  create: { path: '/users', body: CreateUserSchema, response: UserSchema },
-})
-
-// Pipelines - Business logic composition
-const processOrder = pipeline('process-order')
-  .input(OrderSchema)
-  .validate(businessRules)
-  .fetch('/api/inventory')
-  .map(calculatePricing)
-  .trace('order-processing')
-```
-
-### Target State: Declarative Application Platform 🚀
-
-```typescript
-// Contract Testing - System reliability
-await UserAPI.contract().verify('https://api.staging.com')
-const userMocks = UserAPI.mock(testScenarios)
-
-// Business Rules - Logic centralization
-const userRules = rules('user-domain', {
-  ageRequirement: rule().when().require().message(),
-  emailUniqueness: rule().async().require().code(),
-})
-
-// Workflow Orchestration - Process management
-const onboarding = workflow('user-onboarding', {
-  steps: { validate, create, welcome, setup },
-  flow: ['validate', 'create', { parallel: ['welcome', 'setup'] }],
-  onError: { create: rollbackUser },
-  metrics: ['completion-rate', 'step-duration'],
-})
-```
+> **Target:** Production-ready declarative application framework  
+> **Objective:** Complete the three-pillar architecture for comprehensive application development
 
 ---
 
-## 🏗️ Three-Phase Extension Roadmap
+## 🏛️ The Three-Pillar Architecture
 
-### Phase 1: Contract Testing & Mocking 🔍
+### **Core Philosophy**
 
-**Goal:** Make resource declarations testable, verifiable, and mockable
+_"Make infrastructure concerns disappear while making business logic visible and composable"_
 
-#### Problem Solved
+Kairo eliminates boilerplate through three foundational pillars that handle every aspect of application development declaratively:
 
-```typescript
-// BEFORE: Resources work in dev, break in prod
-const UserAPI = resource('users', { get: '/users/:id' })
-await UserAPI.get.run({ id: '123' }) // Works locally, fails in staging
+### **1. INTERFACE Pillar** ✅ **Complete**
 
-// AFTER: Contracts ensure API consistency
-await UserAPI.contract().verify('https://api.staging.com')
-// ✅ Validates: endpoint exists, accepts params, returns expected schema
-// ❌ Fails: schema drift, endpoint changes, network issues
-```
+_Declarative external system integration_
 
-#### Implementation Requirements
+- **Resources**: Type-safe HTTP APIs, databases, queues, storage
+- **Contracts**: Live API verification and mock generation
+- **External Systems**: Unified interface for any external dependency
 
-**Contract Verification System:**
+### **2. PROCESS Pillar** ✅ **Complete**
 
-```typescript
-interface ResourceContract<T extends ResourceConfig> {
-  verify(baseURL?: string, options?: VerifyOptions): Promise<ContractResult>
-  generateTests(): TestSuite
-  mock(scenarios: MockScenarios<T>): MockedResource<T>
-}
+_Declarative data transformation and business logic_
 
-interface ContractResult {
-  success: boolean
-  endpoint: string
-  validations: {
-    urlExists: boolean
-    schemaMatches: boolean
-    methodSupported: boolean
-    authenticationWorks: boolean
-  }
-  errors: ContractError[]
-  performance: {
-    responseTime: number
-    availability: number
-  }
-}
-```
+- **Pipelines**: Composable operations with type safety
+- **Business Rules**: Centralized validation logic
+- **Workflows**: Complex process orchestration
 
-**Mock Generation System:**
+### **3. DATA Pillar** ⚠️ **Incomplete**
+
+_Declarative data definition, validation, and integrity_
+
+- **Schemas**: Native type-safe data modeling (replacing Zod)
+- **Transformations**: Declarative data mapping and conversion
+- **Repositories**: Data access patterns and relationships
+- **Validation**: Multi-layer data integrity enforcement
+
+---
+
+## 🎯 Current Implementation Status
+
+### **INTERFACE Pillar** - Production Ready ✅
 
 ```typescript
-interface MockScenarios<T> {
-  [K in keyof T]: {
-    success?: any  // Success response
-    failure?: KairoError  // Error response
-    delay?: number  // Simulate network delay
-    probability?: number  // Success probability (0-1)
-  }
-}
-
-// Usage example
-const userMocks = UserAPI.mock({
-  get: {
-    success: { id: '123', name: 'John Doe', email: 'john@example.com' },
-    failure: new NetworkError('User not found', 404),
-    delay: 100,
-    probability: 0.9
+// Complete declarative API integration
+const UserAPI = resource(
+  'users',
+  {
+    get: {
+      path: '/users/:id',
+      params: schema.object({ id: schema.string().uuid() }),
+      response: UserSchema,
+    },
+    create: {
+      path: '/users',
+      body: CreateUserSchema,
+      response: UserSchema,
+    },
   },
-  create: {
-    success: { id: '456', name: 'Jane Doe', email: 'jane@example.com' },
-    failure: new ValidationError('Email already exists'),
-    delay: 200
+  {
+    defaultCache: { ttl: 60000 },
+    defaultRetry: { times: 3 },
+    defaultTimeout: 5000,
   }
-})
+)
 
-// Development usage
-const user = await userMocks.get.run({ id: '123' })
-// Returns mocked response with specified behavior
+// Built-in contract testing
+await UserAPI.contract().verify('https://api.staging.com')
+const mocks = UserAPI.mock(testScenarios)
 ```
 
-**Tasks:**
+**Features Complete:**
 
-- [ ] Implement ResourceContract interface
-- [ ] Add contract verification against live APIs
-- [ ] Create mock generation system with scenarios
-- [ ] Integrate with existing Resource system
-- [ ] Add contract testing to CI/CD pipeline
-- [ ] Generate contract documentation
+- ✅ HTTP Resources with full type safety
+- ✅ Contract verification against live APIs
+- ✅ Mock generation with scenarios
+- ✅ Caching, retry, timeout, and error handling
+- ✅ URL interpolation and parameter validation
 
-### Phase 2: Business Rules Engine 🧠
-
-**Goal:** Centralize business logic in declarative, reusable rules
-
-#### Problem Solved
+### **PROCESS Pillar** - Production Ready ✅
 
 ```typescript
-// BEFORE: Business logic scattered everywhere
-const validateUser = async user => {
-  if (user.country === 'US' && user.age < 21) {
-    throw new Error('Must be 21+ in US')
-  }
+// Complete business logic composition
+const processUser = pipeline('process-user')
+  .input(CreateUserSchema)
+  .validateAllRules(userRules)
+  .map(enrichUserData)
+  .pipeline(UserAPI.create)
+  .pipeline(EmailAPI.sendWelcome)
+  .trace('user-processing')
 
-  const emailExists = await checkEmailExists(user.email)
-  if (emailExists) {
-    throw new Error('Email already taken')
-  }
-
-  if (user.password.length < 8) {
-    throw new Error('Password too weak')
-  }
-}
-
-// AFTER: Centralized, declarative business rules
+// Declarative business rules
 const userRules = rules('user-validation', {
   ageRequirement: rule()
     .when(user => user.country === 'US')
     .require(user => user.age >= 21)
-    .message('Must be 21+ in US')
-    .code('AGE_REQUIREMENT_US'),
+    .message('Must be 21+ in US'),
 
   emailUniqueness: rule()
     .async(user => UserAPI.checkEmail.run({ email: user.email }))
-    .require(result => result.match({ Ok: available => available, Err: () => false }))
-    .message('Email already taken')
-    .code('EMAIL_TAKEN'),
-
-  passwordStrength: rule()
-    .require(user => user.password.length >= 8 && /[A-Z]/.test(user.password))
-    .message('Password must be 8+ chars with uppercase')
-    .code('WEAK_PASSWORD'),
+    .require(result => result.match({ Ok: available => available, Err: () => false })),
 })
 
-// Usage in pipelines
-const validateUser = pipeline('validate-user')
-  .input(CreateUserSchema)
-  .validateAll(userRules) // Apply all applicable rules
-  .trace('user-validation')
-```
-
-#### Implementation Requirements
-
-**Rule Definition System:**
-
-```typescript
-interface Rule<T> {
-  when(condition: (data: T) => boolean): Rule<T>
-  require(validation: (data: T) => boolean | Promise<boolean>): Rule<T>
-  async(asyncValidation: (data: T) => Promise<any>): Rule<T>
-  message(text: string): Rule<T>
-  code(errorCode: string): Rule<T>
-  context(contextData: Record<string, any>): Rule<T>
-  validate(data: T): Promise<Result<BusinessRuleError, T>>
-}
-
-interface Rules<T> {
-  [ruleName: string]: Rule<T>
-  validate(data: T, ruleNames?: string[]): Promise<Result<BusinessRuleError[], T>>
-  validateAll(data: T): Promise<Result<BusinessRuleError[], T>>
-}
-
-class BusinessRuleError extends KairoError {
-  code: string
-  field?: string
-  ruleName: string
-  context: Record<string, unknown>
-  userMessage: string
-}
-```
-
-**Pipeline Integration:**
-
-```typescript
-// Extend Pipeline interface
-interface Pipeline<Input, Output> {
-  // Existing methods...
-  validate<T>(rule: Rule<T>): Pipeline<Input, Output>
-  validateAll<T>(rules: Rules<T>): Pipeline<Input, Output>
-  validateRule<T>(rules: Rules<T>, ruleName: string): Pipeline<Input, Output>
-}
-
-// Usage examples
-const userValidationPipeline = pipeline('user-validation')
-  .input(CreateUserSchema)
-  .validate(userRules.ageRequirement) // Single rule
-  .validate(userRules.emailUniqueness) // Another single rule
-  .validateAll(userRules) // All rules at once
-
-const businessWorkflow = pipeline('business-flow')
-  .input(OrderSchema)
-  .validateAll(orderRules) // Order-specific rules
-  .validateAll(paymentRules) // Payment-specific rules
-  .pipeline(OrderAPI.create)
-```
-
-**Tasks:**
-
-- [ ] Implement Rule and Rules interfaces
-- [ ] Create rule composition and chaining system
-- [ ] Add async rule support for external validations
-- [ ] Integrate with Pipeline validation system
-- [ ] Implement BusinessRuleError with rich context
-- [ ] Add rule testing utilities
-- [ ] Create rule documentation generator
-
-### Phase 3: Workflow Orchestration 🔄
-
-**Goal:** Manage complex multi-step business processes declaratively
-
-#### Problem Solved
-
-```typescript
-// BEFORE: Complex process management is imperative and fragile
-const onboardUser = async userData => {
-  try {
-    // Step 1: Validate
-    const validated = await validateUser(userData)
-
-    // Step 2: Create user
-    const user = await UserAPI.create.run(validated)
-    if (user.tag === 'Err') {
-      throw new Error('User creation failed')
-    }
-
-    // Step 3: Parallel processes
-    const [emailResult, profileResult] = await Promise.allSettled([
-      sendWelcomeEmail(user.value),
-      ProfileAPI.create.run({ userId: user.value.id }),
-    ])
-
-    // Handle partial failures...
-    if (emailResult.status === 'rejected') {
-      // What do we do? Rollback? Continue?
-    }
-
-    return user.value
-  } catch (error) {
-    // Manual cleanup/rollback
-    if (user?.value?.id) {
-      await UserAPI.delete.run({ id: user.value.id })
-    }
-    throw error
-  }
-}
-
-// AFTER: Declarative workflow orchestration
+// Complex workflow orchestration
 const userOnboarding = workflow('user-onboarding', {
   steps: {
-    validate: pipeline('validate').input(OnboardingSchema).validateAll(userRules),
-
+    validate: pipeline('validate').validateAllRules(userRules),
     createUser: UserAPI.create,
-
-    sendWelcome: pipeline('welcome-email').fetch('/api/email/welcome'),
-
-    setupProfile: pipeline('setup-profile').map(createDefaultProfile).pipeline(ProfileAPI.create),
-
-    verifySetup: pipeline('verify').validate(onboardingComplete),
+    sendWelcome: EmailAPI.sendWelcome,
+    setupProfile: ProfileAPI.create,
   },
-
-  flow: ['validate', 'createUser', { parallel: ['sendWelcome', 'setupProfile'] }, 'verifySetup'],
-
+  flow: ['validate', 'createUser', { parallel: ['sendWelcome', 'setupProfile'] }],
   onError: {
     createUser: async (error, context) => {
       await UserAPI.delete.run({ id: context.userId })
     },
-    setupProfile: 'retry-with-defaults',
   },
+})
+```
 
-  metrics: ['completion-rate', 'step-duration', 'error-frequency'],
+**Features Complete:**
+
+- ✅ Functional pipeline composition
+- ✅ Business rules engine with async support
+- ✅ Workflow orchestration with error handling
+- ✅ Type-safe composition throughout
+- ✅ Built-in tracing and observability
+
+### **DATA Pillar** - Needs Enhancement ⚠️
+
+```typescript
+// Current: Basic Zod wrapper
+const UserSchema = schema.from(
+  z.object({
+    id: z.string().uuid(),
+    name: z.string().min(2),
+    email: z.string().email(),
+  })
+)
+
+// Target: Native Kairo schemas
+const UserSchema = schema.object({
+  id: schema.string().uuid(),
+  name: schema.string().min(2),
+  email: schema.string().email(),
 })
 
-// Execution
-const result = await userOnboarding.execute(newUserData)
+// Target: Data transformations
+const userTransform = transform('user-normalization')
+  .from(RawUserSchema)
+  .to(UserSchema)
+  .map('firstName', 'name.first')
+  .map('lastName', 'name.last')
+  .compute('fullName', user => `${user.name.first} ${user.name.last}`)
+
+// Target: Repository patterns
+const userRepository = repository('users', {
+  schema: UserSchema,
+  storage: 'database',
+  relationships: {
+    posts: hasMany('posts', 'userId'),
+    profile: hasOne('profile', 'userId'),
+  },
+})
 ```
 
-#### Implementation Requirements
+**Missing Features:**
 
-**Workflow Definition System:**
-
-```typescript
-interface Workflow<TInput, TOutput> {
-  name: string
-  steps: WorkflowSteps
-  flow: FlowDefinition
-  onError?: ErrorHandlers
-  rollback?: RollbackHandlers
-  metrics?: MetricsConfig
-  timeout?: number
-  retries?: number
-
-  execute(input: TInput): Promise<Result<WorkflowError, TOutput>>
-  mock(stepMocks: StepMocks): MockedWorkflow<TInput, TOutput>
-  visualize(): WorkflowDiagram
-}
-
-type WorkflowSteps = Record<string, Pipeline<any, any> | ResourceMethod>
-
-type FlowDefinition = FlowStep[]
-type FlowStep =
-  | string // Sequential step
-  | { parallel: string[] } // Parallel execution
-  | { if: Condition; then: string; else?: string } // Conditional step
-  | { loop: LoopCondition; do: string[] } // Loop execution
-
-interface ErrorHandlers {
-  [stepName: string]: ErrorHandler
-}
-
-type ErrorHandler =
-  | string // Retry step name
-  | ((error: any, context: WorkflowContext) => Promise<void>) // Custom handler
-
-interface WorkflowContext {
-  stepResults: Record<string, any>
-  currentStep: string
-  executionId: string
-  startTime: Date
-  metadata: Record<string, any>
-}
-```
-
-**Execution Engine:**
-
-```typescript
-class WorkflowExecutor<TInput, TOutput> {
-  async execute(
-    workflow: Workflow<TInput, TOutput>,
-    input: TInput
-  ): Promise<Result<WorkflowError, TOutput>>
-  async executeStep(
-    stepName: string,
-    input: any,
-    context: WorkflowContext
-  ): Promise<Result<any, any>>
-  async executeParallel(
-    stepNames: string[],
-    context: WorkflowContext
-  ): Promise<Result<any[], any[]>>
-  async handleError(stepName: string, error: any, context: WorkflowContext): Promise<void>
-  async rollback(context: WorkflowContext): Promise<void>
-}
-
-class WorkflowError extends KairoError {
-  stepName: string
-  originalError: any
-  context: WorkflowContext
-  rollbackAttempted: boolean
-}
-```
-
-**Tasks:**
-
-- [ ] Implement Workflow and WorkflowExecutor interfaces
-- [ ] Create flow definition parser and validator
-- [ ] Implement parallel execution engine
-- [ ] Add conditional and loop execution support
-- [ ] Create error handling and rollback system
-- [ ] Implement workflow state management
-- [ ] Add workflow visualization capabilities
-- [ ] Create workflow testing utilities
-- [ ] Implement workflow metrics and monitoring
+- ❌ Native schema system (currently depends on Zod)
+- ❌ Data transformation layer
+- ❌ Repository/data access patterns
+- ❌ Multi-layer validation pipeline
+- ❌ Data relationship management
 
 ---
 
-## 🔄 System Integration
+## 🚀 Implementation Roadmap
 
-### All Three Systems Working Together
+### **Phase 1: Complete DATA Pillar** (Priority: High)
+
+#### **1.1 Native Schema System**
+
+**Goal**: Replace Zod dependency with Kairo-native schemas
+
+**What Exists:**
+
+- Basic Zod wrapper in `src/core/schema.ts`
+- Type inference through Zod schemas
+- Integration with Resources and Pipelines
+
+**What Needs Implementation:**
 
 ```typescript
-// Complete application definition
-const userManagementApp = createApp({
-  // API layer with contracts
-  resources: {
-    UserAPI: resource('users', { ... }).withContract(),
-    ProfileAPI: resource('profiles', { ... }).withContract(),
-    EmailAPI: resource('email', { ... }).withContract()
-  },
+// Native Kairo schema API
+export const schema = {
+  string(): StringSchema,
+  number(): NumberSchema,
+  boolean(): BooleanSchema,
+  object<T>(shape: SchemaShape<T>): ObjectSchema<T>,
+  array<T>(item: Schema<T>): ArraySchema<T>,
+  union<T>(schemas: T): UnionSchema<T>,
+  enum<T>(values: T): EnumSchema<T>
+}
 
-  // Business logic layer
-  rules: {
-    userRules: rules('user-domain', { ... }),
-    profileRules: rules('profile-domain', { ... }),
-    emailRules: rules('email-domain', { ... })
-  },
+// Enhanced validation with Kairo patterns
+interface Schema<T> {
+  parse(input: unknown): Result<ValidationError, T>
+  optional(): Schema<T | undefined>
+  nullable(): Schema<T | null>
+  transform<U>(fn: (value: T) => U): Schema<U>
+  toPipeline(): Pipeline<unknown, T>
+}
+```
 
-  // Process layer
-  workflows: {
-    userOnboarding: workflow('onboarding', { ... }),
-    userOffboarding: workflow('offboarding', { ... }),
-    profileUpdate: workflow('profile-update', { ... })
-  },
+**Benefits:**
 
-  // Quality assurance
-  contracts: {
-    verify: 'on-deploy',
-    environments: ['staging', 'production']
-  },
+- 🚀 Remove 200KB Zod dependency
+- ⚡ 2-3x faster validation performance
+- 🎯 Perfect Kairo integration (Result types, Pipeline composition)
+- 🔧 Complete architectural control
 
-  // Monitoring
-  monitoring: {
-    metrics: ['business-kpis', 'technical-performance'],
-    alerts: ['error-rates', 'sla-violations']
-  }
+#### **1.2 Data Transformation System**
+
+**Goal**: Declarative data mapping and conversion
+
+**Implementation:**
+
+```typescript
+// Declarative data transformations
+const userTransform = transform('user-mapping')
+  .from(APIUserSchema)
+  .to(InternalUserSchema)
+  .map('user_name', 'name')
+  .map('user_email', 'email')
+  .compute('displayName', user => `${user.firstName} ${user.lastName}`)
+  .filter(user => user.active === true)
+  .validate(UserBusinessRules)
+
+// Pipeline integration
+const processUserData = pipeline('process-user')
+  .input(APIUserSchema)
+  .transform(userTransform)
+  .pipeline(UserAPI.create)
+```
+
+#### **1.3 Repository Data Access Layer**
+
+**Goal**: Declarative data access patterns
+
+**Implementation:**
+
+```typescript
+// Repository abstraction
+const userRepository = repository('users', {
+  schema: UserSchema,
+  storage: databaseConfig,
+  indexes: ['email', 'createdAt'],
+  relationships: {
+    posts: hasMany('posts', 'userId'),
+    profile: hasOne('profile', 'userId'),
+  },
 })
 
-// Development workflow
-await userManagementApp.verifyContracts()
-await userManagementApp.runTests()
-const mocks = userManagementApp.generateMocks()
-
-// Production execution
-const result = await userManagementApp.workflows.userOnboarding.execute(userData)
+// Resource integration
+const UserAPI = resource('users', resourceMethods)
+  .withRepository(userRepository)
+  .withCaching(cacheConfig)
 ```
 
-### Progressive Complexity Usage
+### **Phase 2: Cross-Pillar Integration** (Priority: Medium)
+
+#### **2.1 Unified Application Builder**
 
 ```typescript
-// Level 1: Basic resource usage
-const user = await UserAPI.get.run({ id: '123' })
+const userApp = kairoApp({
+  data: {
+    schemas: { UserSchema, ProfileSchema },
+    repositories: { users: userRepository },
+    transformations: { userTransform },
+  },
+  interfaces: {
+    resources: { UserAPI, ProfileAPI },
+    contracts: { verify: 'on-deploy' },
+  },
+  processes: {
+    pipelines: { createUser, updateUser },
+    rules: { userRules },
+    workflows: { userOnboarding },
+  },
+})
+```
 
-// Level 2: Add business rules
-const validatedUser = await pipeline('validate')
-  .input(UserSchema)
-  .validateAll(userRules)
-  .run(userData)
+#### **2.2 Enhanced Testing Integration**
 
-// Level 3: Complex workflow orchestration
-const onboardingResult = await userOnboarding.execute(userData)
+```typescript
+// Cross-pillar integration tests
+const integrationTest = kairoTest('user-management')
+  .given(userRepository.isEmpty())
+  .when(userOnboarding.execute(userData))
+  .then(userRepository.contains(userData.email), UserAPI.get.succeeds({ id: result.userId }))
+```
+
+### **Phase 3: Advanced Features** (Priority: Lower)
+
+#### **3.1 Event-Driven Architecture**
+
+```typescript
+const userEvents = events('user-domain')
+  .on('user.created', userOnboardingWorkflow)
+  .on('user.verified', profileSetupWorkflow)
+```
+
+#### **3.2 Transaction Management**
+
+```typescript
+const userTransaction = transaction('create-user')
+  .step('validate', userValidation)
+  .step('create', userRepository.create)
+  .rollback({
+    create: user => userRepository.delete(user.id),
+  })
 ```
 
 ---
 
-## 📋 Implementation Guidelines
+## 🔧 Development Workflow & Quality Gates
 
-### Code Quality Standards
+### **Post-Implementation Requirements**
 
-- **Declarative over imperative:** All systems should use declarative configuration
-- **Composable architecture:** Each system can work independently or together
-- **Type safety throughout:** Full TypeScript inference across all systems
-- **Error handling consistency:** Unified error types and Result patterns
-- **Testing built-in:** Every system generates its own testing utilities
+After any refactoring or new feature implementation:
 
-### Performance Requirements
+```bash
+# Quality gates that MUST pass
+bun run format     # Code formatting with Prettier
+bun run lint       # ESLint code quality checks
+bun run test       # Complete test suite (236+ tests)
+bun run typecheck  # TypeScript type checking
+bun run build      # Production build verification
+```
 
-- **Contract verification:** < 100ms per endpoint in CI/CD
-- **Rule evaluation:** < 10ms per rule for sync rules
-- **Workflow execution:** Minimal overhead over manual orchestration
-- **Memory usage:** Workflows should not leak memory between executions
+**All changes require:**
 
-### Integration Requirements
+- ✅ **Format compliance**: Consistent code style
+- ✅ **Lint passing**: No code quality issues
+- ✅ **100% test coverage**: All new code thoroughly tested
+- ✅ **Type safety**: No TypeScript errors
+- ✅ **Build success**: Production build must complete
 
-- **Backward compatibility:** Existing Resources and Pipelines unchanged
-- **Progressive adoption:** Can adopt each system independently
-- **Framework agnostic:** All systems work without UI framework dependencies
-- **Observability:** Built-in metrics and tracing for all operations
+### **Testing Strategy**
+
+#### **Current Test Coverage** - Excellent ✅
+
+- **236 tests passing** across all components
+- **Comprehensive coverage**: Pipelines, Resources, Rules, Contracts
+- **Quality patterns**: Unit, integration, and property-based tests
+
+#### **Enhanced Testing Requirements**
+
+```typescript
+// Every new feature requires comprehensive tests
+describe('Native Schema System', () => {
+  describe('Schema Creation', () => {
+    test('string schema validates correctly')
+    test('object schema infers types properly')
+    test('nested schemas compose correctly')
+  })
+
+  describe('Pipeline Integration', () => {
+    test('schemas integrate seamlessly with pipelines')
+    test('validation errors flow through Result types')
+  })
+
+  describe('Performance', () => {
+    test('validation is 2x faster than Zod equivalent')
+    test('bundle size is 50% smaller than Zod')
+  })
+})
+
+// Cross-pillar integration tests
+describe('Three-Pillar Integration', () => {
+  test('data transformations work with resources')
+  test('repositories integrate with pipelines')
+  test('workflows use native schemas throughout')
+})
+```
+
+### **Performance & Quality Benchmarks**
+
+#### **Bundle Size Targets**
+
+- **Current**: ~656KB (with Zod dependency)
+- **Target**: ~300KB (native schema system)
+- **Goal**: 50% reduction while adding DATA pillar features
+
+#### **Performance Targets**
+
+- **Schema Validation**: 2-3x faster than Zod
+- **Pipeline Execution**: <10ms for typical operations
+- **Memory Usage**: Minimal heap allocation growth
+- **Build Time**: <30 seconds for complete build
+
+#### **Code Quality Standards**
+
+- **TypeScript**: Strict mode, no `any` types in public API
+- **Test Coverage**: >95% line coverage, >90% branch coverage
+- **Documentation**: TSDoc for all public APIs
+- **Examples**: Working examples for every major feature
 
 ---
 
-## 🎯 Success Metrics
+## 🎯 Success Criteria
 
-### Phase 1: Contract Testing
+### **Technical Milestones**
 
-- [ ] 100% of resources can generate verifiable contracts
-- [ ] Contract verification catches API changes before production
-- [ ] Mock generation eliminates manual test setup
-- [ ] Integration tests run 50% faster with mocks
+#### **DATA Pillar Completion**
 
-### Phase 2: Business Rules Engine
+- [ ] Native schema system replaces Zod (zero external dependencies)
+- [ ] Data transformation system handles 90% of common patterns
+- [ ] Repository layer provides declarative data access
+- [ ] Performance improvements: 2x validation speed, 50% bundle reduction
 
-- [ ] Business logic centralization reduces code duplication by 70%
-- [ ] Rule violations provide actionable error messages
-- [ ] Rules are reusable across multiple pipelines
-- [ ] Business stakeholders can understand rule definitions
+#### **Three-Pillar Integration**
 
-### Phase 3: Workflow Orchestration
+- [ ] All pillars work seamlessly together
+- [ ] Cross-pillar tracing and observability
+- [ ] Unified application builder
+- [ ] Complete type safety across pillars
 
-- [ ] Complex processes become visual and understandable
-- [ ] Error handling and rollback mechanisms prevent data corruption
-- [ ] Workflow metrics provide business insights
-- [ ] Process changes can be made declaratively
+#### **Production Readiness**
 
-### Overall Platform Goals
+- [ ] 100% backwards compatibility for existing users
+- [ ] Migration path for enhanced features
+- [ ] Comprehensive documentation and examples
+- [ ] Production deployment patterns validated
 
-- [ ] **Developer productivity:** 80% reduction in boilerplate for complex applications
-- [ ] **System reliability:** Contract testing prevents 90% of API integration issues
-- [ ] **Business alignment:** Rules and workflows are readable by non-technical stakeholders
-- [ ] **Maintainability:** Changes to business processes require minimal code changes
+### **Developer Experience Goals**
+
+#### **Adoption Metrics**
+
+- [ ] **Learning curve**: <2 hours for basic three-pillar usage
+- [ ] **Boilerplate reduction**: 80% less code for data-heavy applications
+- [ ] **Common patterns**: 95% expressible declaratively
+- [ ] **Migration effort**: <1 day for existing Kairo applications
+
+#### **Quality Metrics**
+
+- [ ] **Zero regressions**: All existing functionality preserved
+- [ ] **Performance gains**: Measurable improvements across all pillars
+- [ ] **Bundle optimization**: Significant size reduction
+- [ ] **Type safety**: Complete TypeScript inference
 
 ---
 
 ## 🚀 Value Proposition Evolution
 
-### Before Extensions
+### **Current Kairo**
 
-> **"Eliminate service boilerplate and compose business logic"**
+> _"Eliminate service layer boilerplate with Resources and Pipelines"_
 
-### After Extensions
+### **Complete Three-Pillar Kairo**
 
-> **"Declarative application development platform - from API contracts to complex business processes"**
+> _"Declarative application platform - from data definition to external integration to business logic"_
 
-**Kairo becomes the foundation for building reliable, maintainable, and observable business applications with minimal boilerplate and maximum clarity.**
+**Complete platform capabilities:**
 
----
+- **DATA**: Define, validate, and transform data declaratively
+- **INTERFACE**: Connect to any external system without boilerplate
+- **PROCESS**: Compose complex business logic visually and safely
 
-## 🔧 Implementation Priority
-
-1. **Phase 1: Contract Testing** (Immediate - Foundation for reliability)
-2. **Phase 2: Business Rules** (Medium-term - Logic centralization)
-3. **Phase 3: Workflow Orchestration** (Long-term - Process management)
-
-**Each phase builds on the previous one while maintaining independent value.**
+**Result**: Developers focus purely on business value while Kairo handles all infrastructure concerns.
 
 ---
 
-**Ready to build the declarative application platform!** 🚀
+## 📋 Implementation Priority Matrix
+
+```
+PHASE 1 - DATA PILLAR COMPLETION (4-6 weeks)
+├── Native Schema System (2-3 weeks)
+├── Data Transformation Layer (1-2 weeks)
+├── Repository Patterns (1-2 weeks)
+└── Cross-Pillar Integration (1 week)
+
+PHASE 2 - ADVANCED FEATURES (2-4 weeks)
+├── Enhanced Testing Integration (1 week)
+├── Performance Optimizations (1 week)
+├── Documentation & Examples (1-2 weeks)
+└── Migration Tooling (1 week)
+
+PHASE 3 - ECOSYSTEM FEATURES (4-6 weeks)
+├── Event-Driven Architecture (2-3 weeks)
+├── Transaction Management (2-3 weeks)
+└── Advanced Caching Strategies (1-2 weeks)
+```
+
+**Total timeline**: 10-16 weeks for complete three-pillar architecture
+
+**Immediate next step**: Begin native schema system implementation to eliminate Zod dependency and establish the DATA pillar foundation.
+
+---
+
+**Ready to complete the three-pillar declarative application platform!** 🚀
