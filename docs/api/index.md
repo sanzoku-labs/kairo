@@ -28,6 +28,10 @@ Verify API contracts, generate mocks, and ensure API reliability.
 
 The main abstraction for composable business logic workflows.
 
+### [Business Rules](/api/rules)
+
+Declarative validation rules for centralizing business logic.
+
 ## Functional Programming Utilities
 
 - `pipe()` - Function composition
@@ -45,6 +49,9 @@ import type {
   Result,
   Pipeline,
   Resource,
+  Rule,
+  Rules,
+  BusinessRuleError,
   KairoError,
   ValidationError,
   NetworkError,

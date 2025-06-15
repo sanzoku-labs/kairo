@@ -2,6 +2,7 @@ import { Result } from './result'
 import { type Schema, type ValidationError } from './schema'
 import { isNil, isEmpty, cond, resolve, conditionalEffect, tryCatch, retry } from '../utils/fp'
 import { type KairoError, createError } from './errors'
+import type { Rule, Rules, BusinessRuleError, RuleValidationContext } from './rules'
 
 export interface HttpError extends KairoError {
   code: 'HTTP_ERROR'
@@ -206,6 +207,61 @@ class ValidateStep<T> implements Step<ValidationError, T> {
     logTrace(createTraceEntry(context, 'validate', start, result, input))
 
     return Promise.resolve(result)
+  }
+}
+
+class ValidateRuleStep<T> implements Step<BusinessRuleError, T> {
+  type = 'validateRule'
+  constructor(
+    private rule: Rule<T>,
+    private context?: RuleValidationContext
+  ) {}
+
+  async execute(input: unknown, context: PipelineContext): Promise<Result<BusinessRuleError, T>> {
+    const start = performance.now()
+    const result = await this.rule.validate(input as T, this.context)
+
+    const logTrace = createTraceLogger(context)
+    logTrace(createTraceEntry(context, 'validateRule', start, result, input))
+
+    return result
+  }
+}
+
+class ValidateRulesStep<T> implements Step<BusinessRuleError[], T> {
+  type = 'validateRules'
+  constructor(
+    private rules: Rules<T>,
+    private ruleNames?: string[],
+    private context?: RuleValidationContext
+  ) {}
+
+  async execute(input: unknown, context: PipelineContext): Promise<Result<BusinessRuleError[], T>> {
+    const start = performance.now()
+    const result = await this.rules.validate(input as T, this.ruleNames, this.context)
+
+    const logTrace = createTraceLogger(context)
+    logTrace(createTraceEntry(context, 'validateRules', start, result, input))
+
+    return result
+  }
+}
+
+class ValidateAllRulesStep<T> implements Step<BusinessRuleError[], T> {
+  type = 'validateAllRules'
+  constructor(
+    private rules: Rules<T>,
+    private context?: RuleValidationContext
+  ) {}
+
+  async execute(input: unknown, context: PipelineContext): Promise<Result<BusinessRuleError[], T>> {
+    const start = performance.now()
+    const result = await this.rules.validateAll(input as T, this.context)
+
+    const logTrace = createTraceLogger(context)
+    logTrace(createTraceEntry(context, 'validateAllRules', start, result, input))
+
+    return result
   }
 }
 
@@ -562,6 +618,43 @@ export class Pipeline<Input, Output> {
   validate<O>(schema: Schema<O>): Pipeline<Input, O> {
     return new Pipeline<Input, O>(
       [...this.steps, new ValidateStep(schema)],
+      this.name,
+      this.deps,
+      this.retryConfig,
+      this.timeoutConfig,
+      this.cacheConfig
+    )
+  }
+
+  validateRule<T>(rule: Rule<T>, context?: RuleValidationContext): Pipeline<Input, T> {
+    return new Pipeline<Input, T>(
+      [...this.steps, new ValidateRuleStep(rule, context)],
+      this.name,
+      this.deps,
+      this.retryConfig,
+      this.timeoutConfig,
+      this.cacheConfig
+    )
+  }
+
+  validateRules<T>(
+    rules: Rules<T>,
+    ruleNames?: string[],
+    context?: RuleValidationContext
+  ): Pipeline<Input, T> {
+    return new Pipeline<Input, T>(
+      [...this.steps, new ValidateRulesStep(rules, ruleNames, context)],
+      this.name,
+      this.deps,
+      this.retryConfig,
+      this.timeoutConfig,
+      this.cacheConfig
+    )
+  }
+
+  validateAllRules<T>(rules: Rules<T>, context?: RuleValidationContext): Pipeline<Input, T> {
+    return new Pipeline<Input, T>(
+      [...this.steps, new ValidateAllRulesStep(rules, context)],
       this.name,
       this.deps,
       this.retryConfig,

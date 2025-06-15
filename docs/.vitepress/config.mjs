@@ -63,7 +63,10 @@ export default defineConfig({
         },
         {
           text: 'Pillar 2: Pipelines',
-          items: [{ text: 'Pipeline', link: '/api/pipeline' }],
+          items: [
+            { text: 'Pipeline', link: '/api/pipeline' },
+            { text: 'Business Rules', link: '/api/rules' },
+          ],
         },
       ],
       '/examples/': [
@@ -74,6 +77,7 @@ export default defineConfig({
             { text: 'Basic Pipeline', link: '/examples/basic-pipeline' },
             { text: 'Data Fetching', link: '/examples/data-fetching' },
             { text: 'Contract Testing', link: '/examples/contract-testing' },
+            { text: 'Business Rules', link: '/examples/business-rules' },
           ],
         },
       ],

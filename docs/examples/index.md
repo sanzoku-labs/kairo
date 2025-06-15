@@ -16,6 +16,10 @@ Common patterns for fetching and processing API data.
 
 Verify API contracts and use mocks for development and testing.
 
+### [Business Rules](/examples/business-rules)
+
+Centralize validation logic with declarative business rules.
+
 ## Advanced Examples
 
 _More advanced examples coming soon as we expand Kairo's capabilities._

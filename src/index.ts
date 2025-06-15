@@ -43,6 +43,17 @@ export type {
 export { schema } from './core/schema'
 export type { Schema, ValidationError } from './core/schema'
 
+export { rule, rules, commonRules } from './core/rules'
+export type {
+  Rule,
+  Rules,
+  BusinessRuleError,
+  RuleValidationContext,
+  RuleCondition,
+  RuleValidation,
+  AsyncRuleValidation,
+} from './core/rules'
+
 export {
   createError,
   chainError,
