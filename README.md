@@ -192,6 +192,7 @@ const processProduct = pipeline('process-product')
 - 🔄 **Workflow Orchestration** - Complex processes with parallel execution and error recovery
 - 🗄️ **Repository System** - Type-safe data access with relationships and lifecycle hooks
 - 🔍 **Built-in Observability** - Tracing, metrics, and debugging throughout the stack
+- 🧩 **Enhanced Testing Integration** - Comprehensive testing utilities for all three pillars
 
 ## Core Concepts
 
@@ -289,26 +290,68 @@ const complexWorkflow = workflow<Input, Output>('complex-process', {
 })
 ```
 
-### Testing & Mocking
+### Enhanced Testing Integration
 
 ```typescript
-// Contract testing for resources
+import {
+  pipelineTesting,
+  resourceTesting,
+  schemaTesting,
+  transformTesting,
+  integrationTesting,
+} from 'kairo/testing'
+
+// Pipeline testing with fluent assertions
+await pipelineTesting
+  .expect(userPipeline, inputData)
+  .shouldSucceed()
+  .shouldReturnValue(expectedOutput)
+  .shouldCompleteWithin(100)
+
+// Resource testing with mock scenarios
+const tester = resourceTesting.createTester(UserAPI)
+const scenarios = [
+  resourceTesting.mockScenario(
+    'success',
+    { method: 'GET', path: '/users/1' },
+    resourceTesting.mockResponses.success({ id: 1, name: 'John' })
+  ),
+]
+
+// Schema testing with property-based testing
+const schemaTester = schemaTesting.createTester(UserSchema)
+const propertyResults = schemaTester.propertyTest(
+  () => ({
+    name: schemaTesting.generators.randomString(10),
+    email: `test@example.com`,
+    age: schemaTesting.generators.randomNumber(18, 65),
+  }),
+  1000
+)
+
+// Transform testing with field mapping validation
+const transformTester = transformTesting.createTester(userTransform)
+const mappingResults = await transformTester.testFieldMappings([
+  transformTesting.fieldMappingTest('user_name', 'name', 'John', 'John'),
+])
+
+// Integration testing across pillars
+const integrationTest = integrationTesting
+  .createTest('full-flow')
+  .withPipeline('processor', userPipeline)
+  .withResource('api', UserAPI)
+  .withTransform('normalizer', userTransform)
+  .scenario('complete flow', async context => {
+    const result = await context.runFullFlow(testData)
+    context.expect(result).toBeOk()
+  })
+
+// Contract testing for live APIs
 await UserAPI.contract().verify('https://api.staging.com')
 
-// Workflow testing with mocks
-const testResult = await workflowTesting
-  .expect(userOnboardingWorkflow, testData)
-  .withMocks({
-    createUser: { success: mockUser },
-    sendWelcome: { success: { sent: true } },
-  })
-  .shouldSucceed()
-
-// Load testing
-const loadResults = await workflowTesting.loadTest(workflow, input, {
-  concurrency: 10,
-  requests: 100,
-})
+// Performance and load testing
+const performanceResults = await transformTester.performanceTest(testData, 10000)
+console.log(`Throughput: ${performanceResults.throughputPerSecond} ops/sec`)
 ```
 
 ## Documentation

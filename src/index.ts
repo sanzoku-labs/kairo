@@ -170,5 +170,8 @@ export {
 } from './core/errors'
 export type { KairoError, ErrorWithCause } from './core/errors'
 
+// Export testing utilities
+export * from './testing'
+
 // Export functional utilities
 export * from './utils/fp'
