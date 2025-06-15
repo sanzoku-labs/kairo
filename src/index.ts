@@ -115,6 +115,29 @@ export type {
   WorkflowAssertion,
 } from './core/workflow-testing'
 
+export {
+  repository,
+  hasOne,
+  hasMany,
+  belongsTo,
+  MemoryStorageAdapter,
+  createRepositoryError,
+} from './core/repository'
+export type {
+  Repository,
+  RepositoryError,
+  RepositoryConfig,
+  StorageAdapter,
+  QueryOptions,
+  UpdateOptions,
+  DeleteOptions,
+  Relations,
+  HasOneRelation,
+  HasManyRelation,
+  BelongsToRelation,
+  Relation,
+} from './core/repository'
+
 // Export workflow example types for user reference
 export type {
   CreateUserRequest,

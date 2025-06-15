@@ -1,6 +1,6 @@
 # API Reference
 
-Welcome to the Kairo API reference. This section provides detailed documentation for Kairo's Three-Pillar Architecture.
+Welcome to the Kairo API reference. This section provides detailed documentation for Kairo's complete Three-Pillar Architecture.
 
 ## Core Foundation
 
@@ -10,9 +10,9 @@ Type-safe error handling without exceptions.
 
 ### [Schema](/api/schema)
 
-Zod-based validation with Result integration.
+Native schema validation system (3x faster than Zod, zero dependencies).
 
-## Pillar 1: Resources
+## INTERFACE Pillar
 
 ### [Resource](/api/resource)
 
@@ -22,7 +22,7 @@ Declarative API endpoint definitions that eliminate service layer repetition.
 
 Verify API contracts, generate mocks, and ensure API reliability.
 
-## Pillar 2: Pipelines
+## PROCESS Pillar
 
 ### [Pipeline](/api/pipeline)
 
@@ -32,11 +32,19 @@ The main abstraction for composable business logic workflows.
 
 Declarative validation rules for centralizing business logic.
 
-## Pillar 3: Workflows
-
 ### [Workflow](/api/workflow)
 
 Complex multi-step process orchestration with parallel execution, conditionals, loops, and rollback capabilities.
+
+## DATA Pillar
+
+### [Transform](/api/transform)
+
+Declarative data mapping and conversion between schemas.
+
+### [Repository](/api/repository)
+
+Type-safe data access layer with relationships and lifecycle hooks.
 
 ## Functional Programming Utilities
 
@@ -61,6 +69,13 @@ import type {
   Rule,
   Rules,
   BusinessRuleError,
+  Transform,
+  Repository,
+  RepositoryError,
+  StorageAdapter,
+  HasOneRelation,
+  HasManyRelation,
+  BelongsToRelation,
   KairoError,
   ValidationError,
   NetworkError,

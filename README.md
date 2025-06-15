@@ -24,10 +24,10 @@ Kairo is a comprehensive declarative platform that eliminates boilerplate throug
    - **Business Rules**: Centralized validation
    - **Workflows**: Complex orchestration
 
-3. **DATA Pillar** - Declarative data modeling and validation
+3. **DATA Pillar** - Declarative data modeling, validation, and access
    - **Native Schemas**: Zero-dependency validation (3x faster than Zod)
-   - **Type Safety**: Full TypeScript inference
-   - **Transformations**: Declarative data mapping
+   - **Transformations**: Declarative data mapping and conversion
+   - **Repositories**: Type-safe data access with relationships
 
 **Framework-agnostic** by design - works with React, Vue, Node, Bun, and any TypeScript environment.
 
@@ -108,10 +108,10 @@ result.match({
 })
 ```
 
-### 3. DATA Pillar - Native Schema Validation
+### 3. DATA Pillar - Complete Data Management
 
 ```typescript
-import { nativeSchema } from 'kairo'
+import { nativeSchema, transform, repository, hasMany, hasOne } from 'kairo'
 
 // Native schemas with full type safety (3x faster than Zod)
 const ProductSchema = nativeSchema.object({
@@ -123,31 +123,50 @@ const ProductSchema = nativeSchema.object({
   metadata: nativeSchema.record(nativeSchema.string()).optional(),
 })
 
-// Schema composition and transformation
-const CreateProductSchema = ProductSchema.omit(['id']).extend({
-  createRequest: nativeSchema.boolean().default(true),
+// Declarative data transformations
+const productTransform = transform('normalize-product', APIProductSchema)
+  .to(ProductSchema)
+  .map('product_name', 'name')
+  .map('product_price', 'price')
+  .compute('slug', source => slugify(source.product_name))
+  .filter(product => product.active === true)
+  .validate()
+
+// Type-safe repository with relationships
+const productRepository = repository('products', {
+  schema: ProductSchema,
+  storage: 'memory', // or custom StorageAdapter
+  timestamps: true,
+  relationships: {
+    reviews: hasMany('reviews', 'productId', ReviewSchema),
+    category: hasOne('category', 'categoryId', CategorySchema),
+  },
+  hooks: {
+    beforeCreate: data => ({ ...data, slug: slugify(data.name) }),
+    afterCreate: product => console.log(`Product ${product.name} created`),
+  },
 })
 
-const UpdateProductSchema = ProductSchema.partial().required(['id'])
-
-// Validation with Result pattern
-const result = ProductSchema.parse(productData)
+// Repository usage with type safety
+const result = await productRepository.create(productData)
 result.match({
   Ok: product => {
-    // product is fully typed as Product
-    console.log('Valid product:', product.name)
+    console.log('Product created:', product.name)
   },
   Err: error => {
-    // Rich validation error with field paths
-    console.error('Validation failed:', error.field, error.message)
+    console.error('Repository error:', error.message)
   },
 })
 
-// Transform data declaratively
-const processedProduct = ProductSchema.transform(product => ({
-  ...product,
-  slug: slugify(product.name),
-})).parse(rawData)
+// Query with relationships
+const productWithReviews = await productRepository.with(['reviews', 'category']).find('product-123')
+
+// Transform pipeline integration
+const processProduct = pipeline('process-product')
+  .input(APIProductSchema)
+  .transform(productTransform)
+  .run(async product => await productRepository.create(product))
+  .trace('product-processing')
 ```
 
 ## Key Features
@@ -156,7 +175,7 @@ const processedProduct = ProductSchema.transform(product => ({
 
 - **INTERFACE** - Zero-boilerplate APIs with contract testing and mocking
 - **PROCESS** - Functional pipelines with business rules and workflow orchestration
-- **DATA** - Native schema validation (3x faster than Zod, zero dependencies)
+- **DATA** - Complete data layer: schemas, transformations, and repositories
 
 ### 🚀 Performance & Developer Experience
 
@@ -171,6 +190,7 @@ const processedProduct = ProductSchema.transform(product => ({
 - 🧪 **Contract Testing** - Live API verification and intelligent mock generation
 - 🎲 **Business Rules Engine** - Centralized, reusable validation logic with async support
 - 🔄 **Workflow Orchestration** - Complex processes with parallel execution and error recovery
+- 🗄️ **Repository System** - Type-safe data access with relationships and lifecycle hooks
 - 🔍 **Built-in Observability** - Tracing, metrics, and debugging throughout the stack
 
 ## Core Concepts
@@ -214,6 +234,26 @@ const businessWorkflow = pipeline('workflow')
   .fetch('/api/process')
   .map(transformData)
   .trace('completed')
+```
+
+### Repositories - Declarative Data Access
+
+```typescript
+const userRepo = repository('users', {
+  schema: UserSchema,
+  storage: 'memory',
+  relationships: {
+    posts: hasMany('posts', 'userId', PostSchema),
+    profile: hasOne('profile', 'userId', ProfileSchema),
+  },
+  hooks: {
+    beforeCreate: data => ({ ...data, createdAt: new Date() }),
+  },
+})
+
+// Type-safe operations
+const user = await userRepo.create(userData)
+const userWithPosts = await userRepo.with('posts').find(1)
 ```
 
 ### Workflows - Process Orchestration

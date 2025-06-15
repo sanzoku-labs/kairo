@@ -24,28 +24,37 @@ Centralize validation logic with declarative business rules.
 
 Complex multi-step process orchestration with error handling and testing.
 
+## DATA Pillar Examples
+
+### [Data Transformations](/examples/data-transformations)
+
+Declarative data mapping and conversion between different schemas.
+
+### [Repository Patterns](/examples/repository-patterns)
+
+Type-safe data access with relationships and lifecycle hooks.
+
 ## Advanced Examples
 
-Kairo's workflow system enables sophisticated business process automation with declarative configuration.
+Kairo's Three-Pillar Architecture enables sophisticated application development with declarative patterns across data, interfaces, and processes.
 
 ## Framework Integration
 
 ### React Integration
 
 ```typescript
-import { pipeline, schema } from 'kairo'
+import { pipeline, nativeSchema } from 'kairo'
 import { useEffect, useState } from 'react'
-import { z } from 'zod'
 
-const UserSchema = schema.from(z.object({
-  id: z.number(),
-  name: z.string(),
-  email: z.string()
-}))
+const UserSchema = nativeSchema.object({
+  id: nativeSchema.number(),
+  name: nativeSchema.string(),
+  email: nativeSchema.string()
+})
 
 // Pipeline for fetching user data
 const getUserPipeline = pipeline('get-user')
-  .input(schema.from(z.object({ id: z.number() })))
+  .input(nativeSchema.object({ id: nativeSchema.number() }))
   .fetch('/api/users/:id')
   .validate(UserSchema)
 
@@ -80,35 +89,35 @@ function UserProfile({ userId }) {
 
 ```typescript
 import express from 'express'
-import { pipeline, schema } from 'kairo'
-import { z } from 'zod'
+import { pipeline, nativeSchema, repository } from 'kairo'
 
 const app = express()
 
-const CreateUserSchema = schema.from(
-  z.object({
-    name: z.string(),
-    email: z.string().email(),
-  })
-)
+const CreateUserSchema = nativeSchema.object({
+  name: nativeSchema.string(),
+  email: nativeSchema.string().email(),
+})
 
-const UserSchema = schema.from(
-  z.object({
-    id: z.string(),
-    name: z.string(),
-    email: z.string(),
-    createdAt: z.date(),
-  })
-)
+const UserSchema = nativeSchema.object({
+  id: nativeSchema.string(),
+  name: nativeSchema.string(),
+  email: nativeSchema.string(),
+  createdAt: nativeSchema.string(),
+})
+
+const userRepository = repository('users', {
+  schema: UserSchema,
+  storage: 'memory',
+  timestamps: true,
+})
 
 const createUserPipeline = pipeline('create-user')
   .input(CreateUserSchema)
   .map(user => ({
     ...user,
     id: Math.random().toString(36),
-    createdAt: new Date(),
   }))
-  .validate(UserSchema)
+  .run(async user => await userRepository.create(user))
 
 app.post('/users', async (req, res) => {
   const result = await createUserPipeline.run(req.body)
@@ -128,7 +137,7 @@ app.post('/users', async (req, res) => {
 
 ```typescript
 import { describe, it, expect, vi } from 'vitest'
-import { pipeline, schema, Result } from 'kairo'
+import { pipeline, nativeSchema, Result } from 'kairo'
 
 describe('User Pipeline', () => {
   it('should process user data correctly', async () => {
