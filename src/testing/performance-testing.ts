@@ -1,7 +1,18 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-declare const global: any
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-declare const process: any
+interface GlobalWithGC {
+  gc?: () => void
+}
+
+interface ProcessWithMemory {
+  memoryUsage?: () => {
+    heapUsed?: number
+    heapTotal?: number
+    external?: number
+    rss?: number
+  }
+}
+
+declare const global: GlobalWithGC
+declare const process: ProcessWithMemory
 declare const setInterval: (callback: () => void, ms: number) => number
 declare const clearInterval: (id: number) => void
 
@@ -93,7 +104,7 @@ export class PerformanceTester {
     let successful = 0
 
     const startTime = performance.now()
-    let initialMemory: unknown
+    let initialMemory: ReturnType<NonNullable<ProcessWithMemory['memoryUsage']>> | undefined
 
     if (process?.memoryUsage && typeof process.memoryUsage === 'function') {
       initialMemory = process.memoryUsage()
@@ -145,7 +156,7 @@ export class PerformanceTester {
     }
 
     const totalDuration = performance.now() - startTime
-    let finalMemory: unknown
+    let finalMemory: ReturnType<NonNullable<ProcessWithMemory['memoryUsage']>> | undefined
 
     if (process?.memoryUsage && typeof process.memoryUsage === 'function') {
       finalMemory = process.memoryUsage()
@@ -155,34 +166,11 @@ export class PerformanceTester {
     const metrics = this.calculateMetrics(durations, successful, errors.length, totalDuration)
 
     if (initialMemory && finalMemory) {
-      const initial = initialMemory as {
-        heapUsed?: number
-        heapTotal?: number
-        external?: number
-        rss?: number
-      }
-      const final = finalMemory as {
-        heapUsed?: number
-        heapTotal?: number
-        external?: number
-        rss?: number
-      }
-      if (
-        initial.heapUsed !== undefined &&
-        final.heapUsed !== undefined &&
-        initial.heapTotal !== undefined &&
-        final.heapTotal !== undefined &&
-        initial.external !== undefined &&
-        final.external !== undefined &&
-        initial.rss !== undefined &&
-        final.rss !== undefined
-      ) {
-        metrics.memoryUsage = {
-          heapUsed: final.heapUsed - initial.heapUsed,
-          heapTotal: final.heapTotal - initial.heapTotal,
-          external: final.external - initial.external,
-          rss: final.rss - initial.rss,
-        }
+      metrics.memoryUsage = {
+        heapUsed: (finalMemory.heapUsed ?? 0) - (initialMemory.heapUsed ?? 0),
+        heapTotal: (finalMemory.heapTotal ?? 0) - (initialMemory.heapTotal ?? 0),
+        external: (finalMemory.external ?? 0) - (initialMemory.external ?? 0),
+        rss: (finalMemory.rss ?? 0) - (initialMemory.rss ?? 0),
       }
     }
 
@@ -398,9 +386,13 @@ export class PerformanceTester {
     const firstQuarter = heapSizes.slice(0, Math.floor(heapSizes.length / 4))
     const lastQuarter = heapSizes.slice(-Math.floor(heapSizes.length / 4))
     const firstAvg =
-      firstQuarter.length > 0 ? firstQuarter.reduce((a, b) => a + b, 0) / firstQuarter.length : 0
+      firstQuarter.length > 0
+        ? firstQuarter.reduce((a, b) => (a ?? 0) + (b ?? 0), 0) / firstQuarter.length
+        : 0
     const lastAvg =
-      lastQuarter.length > 0 ? lastQuarter.reduce((a, b) => a + b, 0) / lastQuarter.length : 0
+      lastQuarter.length > 0
+        ? lastQuarter.reduce((a, b) => (a ?? 0) + (b ?? 0), 0) / lastQuarter.length
+        : 0
     const leaked = lastAvg > firstAvg * 1.5 // 50% increase suggests leak
 
     // Determine trend

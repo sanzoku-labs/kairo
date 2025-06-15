@@ -41,31 +41,41 @@ export default defineConfig({
           items: [
             { text: 'What is Kairo?', link: '/guide/' },
             { text: 'Getting Started', link: '/guide/getting-started' },
+            { text: 'Three-Pillar Architecture', link: '/guide/architecture' },
             { text: 'Core Concepts', link: '/guide/concepts' },
           ],
         },
       ],
       '/api/': [
         {
-          text: 'Core Foundation',
-          items: [
-            { text: 'Overview', link: '/api/' },
-            { text: 'Result', link: '/api/result' },
-            { text: 'Schema', link: '/api/schema' },
-          ],
+          text: 'API Reference',
+          items: [{ text: 'Overview', link: '/api/' }],
         },
         {
-          text: 'Pillar 1: Resources',
+          text: '🚀 Core Foundation',
+          items: [{ text: 'Result Pattern', link: '/api/result' }],
+        },
+        {
+          text: '🔗 INTERFACE Pillar',
           items: [
-            { text: 'Resource', link: '/api/resource' },
+            { text: 'Resource API', link: '/api/resource' },
             { text: 'Contract Testing', link: '/api/contract' },
           ],
         },
         {
-          text: 'Pillar 2: Pipelines',
+          text: '⚡ PROCESS Pillar',
           items: [
-            { text: 'Pipeline', link: '/api/pipeline' },
-            { text: 'Business Rules', link: '/api/rules' },
+            { text: 'Pipeline API', link: '/api/pipeline' },
+            { text: 'Business Rules API', link: '/api/rules' },
+            { text: 'Workflow API', link: '/api/workflow' },
+          ],
+        },
+        {
+          text: '🛡️ DATA Pillar',
+          items: [
+            { text: 'Native Schema API', link: '/api/schema' },
+            { text: 'Transform API', link: '/api/transform' },
+            { text: 'Repository API', link: '/api/repository' },
           ],
         },
       ],

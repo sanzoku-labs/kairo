@@ -20,15 +20,32 @@ import {
   integrationTesting,
 } from '../src/index'
 
+interface MockConfig {
+  data?: unknown
+  success?: unknown
+  failure?: {
+    code: string
+    message: string
+    timestamp: number
+    context: Record<string, unknown>
+  }
+  rate?: number
+}
+
+interface MockFunction {
+  call: (...args: unknown[]) => Result<unknown, unknown>
+  getCallCount: () => number
+}
+
 // Create a minimal mock factory placeholder for the example
 const mockFactory = {
-  createFunction: (config: any) => ({ 
-    call: async (..._args: any[]) => Result.Ok(config.data || config),
-    getCallCount: () => 1
+  createFunction: (config: MockConfig): MockFunction => ({
+    call: (..._args: unknown[]) => Result.Ok(config.data || config),
+    getCallCount: () => 1,
   }),
-  success: (data: any) => ({ data }),
-  probabilistic: (success: any, failure: any, rate: number) => ({ success, failure, rate }),
-  sequence: (items: any[]) => items,
+  success: (data: unknown) => ({ data }),
+  probabilistic: (success: unknown, failure: unknown, rate: number) => ({ success, failure, rate }),
+  sequence: (items: unknown[]) => items,
 }
 
 // Example 1: Pipeline Testing
@@ -327,7 +344,7 @@ async function testPerformance() {
 }
 
 // Example 7: Mock Factory
-async function testMocks() {
+function testMocks() {
   console.log('🧪 Testing Mocks...')
 
   // Create various mock behaviors
@@ -338,7 +355,7 @@ async function testMocks() {
       { data: 'success' },
       { code: 'RANDOM_FAILURE', message: 'Random failure', timestamp: Date.now(), context: {} },
       0.8 // 80% success rate
-    )
+    ) as MockConfig
   )
 
   console.log('Probabilistic mock created:', typeof probabilisticMock)
@@ -362,16 +379,16 @@ async function testMocks() {
         },
       },
       { success: { data: 'Third call succeeds' } },
-    ])
+    ]) as MockConfig
   )
 
   // Test the mocks
-  const successResult = await successMock.call('test')
+  const successResult = successMock.call('test')
   console.log(`  ✅ Success mock: ${Result.isOk(successResult) ? 'PASS' : 'FAIL'}`)
 
   const sequenceResults = []
   for (let i = 0; i < 3; i++) {
-    const result = await sequenceMock.call(`call-${i}`)
+    const result = sequenceMock.call(`call-${i}`)
     sequenceResults.push(Result.isOk(result) ? 'SUCCESS' : 'FAILURE')
   }
   console.log(`  📊 Sequence mock: [${sequenceResults.join(', ')}]`)
@@ -396,10 +413,10 @@ async function testIntegration() {
     true,
     {
       description: 'Test complete user creation flow',
-      expectedOutput: { 
-        name: 'Integration Test User', 
+      expectedOutput: {
+        name: 'Integration Test User',
         email: 'integration@example.com',
-        id: 123 // Using a placeholder number
+        id: 123, // Using a placeholder number
       },
     }
   )
@@ -425,7 +442,7 @@ async function runAllTests() {
     testTransform()
     await testRepository()
     await testPerformance()
-    await testMocks()
+    testMocks()
     await testIntegration()
 
     console.log('\n✨ All testing examples completed successfully!')

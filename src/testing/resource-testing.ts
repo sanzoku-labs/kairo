@@ -102,9 +102,7 @@ export class ResourceTester<T extends ResourceMethods = ResourceMethods> {
       const resourceOperations = this.resource as unknown as Record<
         string,
         {
-          run: (
-            params: Record<string, unknown>
-          ) => Promise<{
+          run: (params: Record<string, unknown>) => Promise<{
             ok: boolean
             value?: unknown
             error?: { message: string; status?: number }

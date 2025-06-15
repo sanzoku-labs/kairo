@@ -129,7 +129,7 @@ export class RepositoryTester<T = unknown> {
             passed: false,
             duration,
             actualError: error,
-            message: `Expected operation to succeed but it failed: ${error instanceof Error ? error.message : String(error)}`,
+            message: `Expected operation to succeed but it failed: ${error instanceof Error ? error.message : JSON.stringify(error)}`,
           }
         }
 
@@ -206,7 +206,7 @@ export class RepositoryTester<T = unknown> {
         passed: false,
         duration: performance.now() - start,
         actualError: error,
-        message: `Test threw unexpected error: ${error instanceof Error ? error.message : String(error)}`,
+        message: `Test threw unexpected error: ${error instanceof Error ? error.message : JSON.stringify(error)}`,
       }
     }
   }
@@ -356,7 +356,7 @@ export class RepositoryTester<T = unknown> {
           relationshipName: relationshipTest.relationshipName,
           testName: relationshipTest.name,
           passed: false,
-          message: `Relationship test failed: ${error instanceof Error ? error.message : String(error)}`,
+          message: `Relationship test failed: ${error instanceof Error ? error.message : JSON.stringify(error)}`,
         })
       }
     }
