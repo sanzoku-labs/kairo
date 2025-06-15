@@ -4,6 +4,17 @@ import { schema } from '../src/core/schema'
 import { resource, resourceUtils, type ResourceMethod } from '../src/core/resource'
 import { z } from 'zod'
 
+// Test error type interfaces
+interface TestHttpError {
+  code: 'HTTP_ERROR'
+  message: string
+}
+
+interface TestValidationError {
+  code: 'VALIDATION_ERROR'
+  message: string
+}
+
 // Test schemas
 const UserSchema = schema.from(
   z.object({
@@ -147,7 +158,7 @@ describe('Resource', () => {
       mockHttpClient.fetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ id: 1, name: 'John Doe', email: 'john@example.com' }),
-      } as Response)
+      } satisfies Partial<Response>)
 
       const UserResource = resource(
         'users',
@@ -188,7 +199,7 @@ describe('Resource', () => {
       mockHttpClient.fetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ id: 2, name: 'Jane Smith', email: 'jane@example.com' }),
-      } as Response)
+      } satisfies Partial<Response>)
 
       const UserResource = resource(
         'users',
@@ -229,7 +240,7 @@ describe('Resource', () => {
         ok: true,
         json: () =>
           Promise.resolve({ id: 1, name: 'John Updated', email: 'john.updated@example.com' }),
-      } as Response)
+      } satisfies Partial<Response>)
 
       const UserResource = resource(
         'users',
@@ -259,7 +270,7 @@ describe('Resource', () => {
         'https://api.example.com/api/users/1',
         expect.objectContaining({
           method: 'PUT',
-          body: expect.stringContaining('John Updated'),
+          body: expect.stringContaining('John Updated') as string,
         })
       )
     })
@@ -268,7 +279,7 @@ describe('Resource', () => {
       mockHttpClient.fetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ success: true, message: 'User deleted successfully' }),
-      } as Response)
+      } satisfies Partial<Response>)
 
       const UserResource = resource(
         'users',
@@ -401,7 +412,7 @@ describe('Resource', () => {
       mockHttpClient.fetch.mockRejectedValueOnce(new Error('Network error')).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ id: 1, name: 'John Doe', email: 'john@example.com' }),
-      } as Response)
+      } satisfies Partial<Response>)
 
       const UserResource = resource(
         'users',
@@ -659,7 +670,7 @@ describe('Resource', () => {
         status: 404,
         statusText: 'Not Found',
         json: () => Promise.resolve({ error: 'User not found' }),
-      } as Response)
+      } satisfies Partial<Response>)
 
       const UserResource = resource(
         'users',
@@ -678,7 +689,7 @@ describe('Resource', () => {
 
       expect(Result.isErr(result)).toBe(true)
       if (Result.isErr(result)) {
-        expect((result.error as any).code).toBe('HTTP_ERROR')
+        expect((result.error as TestHttpError).code).toBe('HTTP_ERROR')
       }
     })
 
@@ -707,7 +718,7 @@ describe('Resource', () => {
       mockHttpClient.fetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ invalid: 'data' }),
-      } as Response)
+      } satisfies Partial<Response>)
 
       const UserResource = resource(
         'users',
@@ -726,7 +737,7 @@ describe('Resource', () => {
 
       expect(Result.isErr(result)).toBe(true)
       if (Result.isErr(result)) {
-        expect((result.error as any).code).toBe('VALIDATION_ERROR')
+        expect((result.error as TestValidationError).code).toBe('VALIDATION_ERROR')
       }
     })
   })
@@ -736,7 +747,7 @@ describe('Resource', () => {
       mockHttpClient.fetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ id: 1, title: 'Test Post', content: 'Test content' }),
-      } as Response)
+      } satisfies Partial<Response>)
 
       const PostResource = resource(
         'posts',

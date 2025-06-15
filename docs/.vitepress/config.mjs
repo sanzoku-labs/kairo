@@ -47,25 +47,23 @@ export default defineConfig({
       ],
       '/api/': [
         {
-          text: 'API Reference',
+          text: 'Core Foundation',
           items: [
             { text: 'Overview', link: '/api/' },
-            { text: 'Pipeline', link: '/api/pipeline' },
             { text: 'Result', link: '/api/result' },
             { text: 'Schema', link: '/api/schema' },
           ],
         },
         {
-          text: 'Reactive Primitives',
+          text: 'Pillar 1: Resources',
           items: [
-            { text: 'Signal', link: '/api/signal' },
-            { text: 'Task', link: '/api/task' },
-            { text: 'Form', link: '/api/form' },
+            { text: 'Resource', link: '/api/resource' },
+            { text: 'Contract Testing', link: '/api/contract' },
           ],
         },
         {
-          text: 'Resource Management',
-          items: [{ text: 'Resource', link: '/api/resource' }],
+          text: 'Pillar 2: Pipelines',
+          items: [{ text: 'Pipeline', link: '/api/pipeline' }],
         },
       ],
       '/examples/': [
@@ -75,7 +73,7 @@ export default defineConfig({
             { text: 'Overview', link: '/examples/' },
             { text: 'Basic Pipeline', link: '/examples/basic-pipeline' },
             { text: 'Data Fetching', link: '/examples/data-fetching' },
-            { text: 'Reactive State', link: '/examples/reactive-state' },
+            { text: 'Contract Testing', link: '/examples/contract-testing' },
           ],
         },
       ],

@@ -21,7 +21,24 @@ export type {
   ResourceMethods,
   ResourceInput,
   ResourceOutput,
+  ResourceConfig,
 } from './core/resource'
+
+export { ContractVerifier } from './core/contract'
+export type {
+  ResourceContract,
+  VerifyOptions,
+  ContractResult,
+  ContractError,
+  ContractValidation,
+  ContractPerformance,
+  MockScenario,
+  MockScenarios,
+  MockedResource,
+  MockedResourceMethod,
+  TestCase,
+  TestSuite,
+} from './core/contract'
 
 export { schema } from './core/schema'
 export type { Schema, ValidationError } from './core/schema'

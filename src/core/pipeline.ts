@@ -658,7 +658,6 @@ export class Pipeline<Input, Output> {
     )
   }
 
-
   async run(input?: Input): Promise<Result<unknown, Output>> {
     const start = performance.now()
 

@@ -18,6 +18,10 @@ Zod-based validation with Result integration.
 
 Declarative API endpoint definitions that eliminate service layer repetition.
 
+### [Contract Testing](/api/contract)
+
+Verify API contracts, generate mocks, and ensure API reliability.
+
 ## Pillar 2: Pipelines
 
 ### [Pipeline](/api/pipeline)

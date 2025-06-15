@@ -32,9 +32,9 @@ features:
   - icon: 🛡️
     title: Type Safe
     details: Full TypeScript support with Result pattern for predictable error handling
-  - icon: 📦
-    title: Lightweight
-    details: Core bundle < 15kb gzipped with zero runtime dependencies (except Zod)
+  - icon: 🧪
+    title: Contract Testing
+    details: Verify API contracts, generate mocks, and ensure reliability across environments
 ---
 
 ## Quick Start
@@ -74,38 +74,44 @@ const UserAPI = resource('users', {
   get: {
     path: '/users/:id',
     params: z.object({ id: z.string() }),
-    response: UserSchema
+    response: UserSchema,
   },
   create: {
     path: '/users',
     method: 'POST',
     body: CreateUserSchema,
-    response: UserSchema
-  }
+    response: UserSchema,
+  },
 })
 
 // Usage: await UserAPI.get.run({ id: '123' })
+
+// Contract Testing & Mocking
+const result = await UserAPI.contract().verify('https://api.staging.com')
+const mocked = UserAPI.mock({
+  get: { success: mockUser, delay: 50 },
+})
 ```
 
 ## Pillar 2: Pipelines - Compose Business Logic
 
 ```typescript
 // BEFORE: Complex business logic mess
-const processOrder = async (orderData) => {
+const processOrder = async orderData => {
   try {
     const validated = OrderSchema.parse(orderData)
-    
+
     if (validated.amount > 1000) {
       const approval = await manualApproval(validated)
       if (!approval) throw new Error('Not approved')
     }
-    
+
     const inventory = await checkInventory(validated.items)
     if (!inventory.available) throw new Error('Out of stock')
-    
+
     const pricing = calculateDiscount(validated, inventory.pricing)
     const payment = await processPayment(pricing)
-    
+
     return transformOrderResult(payment)
   } catch (error) {
     logError(error)
@@ -136,7 +142,7 @@ const processOrder = pipeline('process-order')
 ### Solutions We Provide
 
 - **Declarative Resources** - API definitions that generate type-safe methods
-- **Composable Pipelines** - Business logic workflows that are readable and testable  
+- **Composable Pipelines** - Business logic workflows that are readable and testable
 - **Result Pattern** - Predictable error modeling without runtime throws
 - **Framework Agnostic** - No framework adapters needed, pure TypeScript
 - **Enhanced Debugging** - Built-in tracing and introspection

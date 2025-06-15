@@ -12,39 +12,50 @@ Learn the fundamentals with a simple data processing pipeline.
 
 Common patterns for fetching and processing API data.
 
+### [Contract Testing](/examples/contract-testing)
+
+Verify API contracts and use mocks for development and testing.
+
 ## Advanced Examples
 
-### [Reactive State](/examples/reactive-state)
-
-Using Signals and Tasks for reactive applications.
+_More advanced examples coming soon as we expand Kairo's capabilities._
 
 ## Framework Integration
 
 ### React Integration
 
 ```typescript
-import { pipeline, schema, signal } from 'kairo'
+import { pipeline, schema } from 'kairo'
 import { useEffect, useState } from 'react'
+import { z } from 'zod'
 
-// Create a signal for reactive state
-const userSignal = signal(null)
+const UserSchema = schema.from(z.object({
+  id: z.number(),
+  name: z.string(),
+  email: z.string()
+}))
 
 // Pipeline for fetching user data
 const getUserPipeline = pipeline('get-user')
-  .input(schema(z.object({ id: z.number() })))
+  .input(schema.from(z.object({ id: z.number() })))
   .fetch('/api/users/:id')
   .validate(UserSchema)
 
 function UserProfile({ userId }) {
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+
   useEffect(() => {
+    setLoading(true)
     getUserPipeline.run({ id: userId }).then(result => {
       if (result.tag === 'Ok') {
-        userSignal.set(result.value)
+        setUser(result.value)
       }
+      setLoading(false)
     })
   }, [userId])
 
-  const user = userSignal.get()
+  if (loading) return <div>Loading...</div>
 
   return user ? (
     <div>
@@ -52,7 +63,7 @@ function UserProfile({ userId }) {
       <p>{user.email}</p>
     </div>
   ) : (
-    <div>Loading...</div>
+    <div>User not found</div>
   )
 }
 ```
@@ -62,13 +73,34 @@ function UserProfile({ userId }) {
 ```typescript
 import express from 'express'
 import { pipeline, schema } from 'kairo'
+import { z } from 'zod'
 
 const app = express()
 
+const CreateUserSchema = schema.from(
+  z.object({
+    name: z.string(),
+    email: z.string().email(),
+  })
+)
+
+const UserSchema = schema.from(
+  z.object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string(),
+    createdAt: z.date(),
+  })
+)
+
 const createUserPipeline = pipeline('create-user')
   .input(CreateUserSchema)
+  .map(user => ({
+    ...user,
+    id: Math.random().toString(36),
+    createdAt: new Date(),
+  }))
   .validate(UserSchema)
-  .map(user => ({ ...user, createdAt: new Date() }))
 
 app.post('/users', async (req, res) => {
   const result = await createUserPipeline.run(req.body)
@@ -88,7 +120,7 @@ app.post('/users', async (req, res) => {
 
 ```typescript
 import { describe, it, expect, vi } from 'vitest'
-import { pipeline, schema, isOk, isErr } from 'kairo'
+import { pipeline, schema, Result } from 'kairo'
 
 describe('User Pipeline', () => {
   it('should process user data correctly', async () => {
@@ -100,11 +132,11 @@ describe('User Pipeline', () => {
       }),
     }
 
-    const pipeline = getUserPipeline.withClient(mockClient)
+    const pipeline = getUserPipeline.withHttpClient(mockClient)
     const result = await pipeline.run({ id: 123 })
 
-    expect(isOk(result)).toBe(true)
-    if (isOk(result)) {
+    expect(result.tag).toBe('Ok')
+    if (result.tag === 'Ok') {
       expect(result.value.name).toBe('John Doe')
     }
   })
@@ -114,11 +146,11 @@ describe('User Pipeline', () => {
       get: vi.fn().mockRejectedValue(new Error('Network error')),
     }
 
-    const pipeline = getUserPipeline.withClient(mockClient)
+    const pipeline = getUserPipeline.withHttpClient(mockClient)
     const result = await pipeline.run({ id: 123 })
 
-    expect(isErr(result)).toBe(true)
-    if (isErr(result)) {
+    expect(result.tag).toBe('Err')
+    if (result.tag === 'Err') {
       expect(result.error.code).toBe('NETWORK_ERROR')
     }
   })

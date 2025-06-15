@@ -2,6 +2,12 @@ import { Result } from './result'
 import { type KairoError, createError } from './errors'
 import { type Schema } from './schema'
 import { type Pipeline, pipeline, cache } from './pipeline'
+import {
+  ContractVerifier,
+  type ResourceContract,
+  type MockScenarios,
+  type MockedResource,
+} from './contract'
 
 export interface ResourceError extends KairoError {
   code: 'RESOURCE_ERROR'
@@ -27,6 +33,7 @@ export interface ResourceMethod<TParams = unknown, TBody = unknown, TResponse = 
 }
 
 export type ResourceMethods = Record<string, ResourceMethod>
+export type ResourceConfig = ResourceMethods
 
 export type ResourceInput<M extends ResourceMethod> =
   M extends ResourceMethod<infer TParams, infer TBody, unknown>
@@ -48,9 +55,12 @@ export type Resource<TMethods extends ResourceMethods> = {
   readonly name: string
   readonly baseUrl: string
   getMethod<K extends keyof TMethods>(method: K): TMethods[K]
+  contract(): ResourceContract<TMethods>
+  withContract(): Resource<TMethods>
+  mock(scenarios: MockScenarios<TMethods>): MockedResource<TMethods>
 }
 
-interface ResourceConfig {
+interface ResourceOptionsInternal {
   baseUrl?: string
   defaultCache?: {
     ttl: number
@@ -114,7 +124,7 @@ const createMethodPipeline = (
   resourceName: string,
   methodName: string,
   method: ResourceMethod,
-  config: ResourceConfig
+  config: ResourceOptionsInternal
 ): Pipeline<unknown, unknown> => {
   const pipelineName = `${resourceName}.${methodName}`
   const baseUrl = config.baseUrl || ''
@@ -200,15 +210,18 @@ class ResourceImpl<TMethods extends ResourceMethods> {
   public readonly name: string
   public readonly baseUrl: string
   private pipelines: Map<string, Pipeline<unknown, unknown>> = new Map()
+  private contractVerifier: ContractVerifier<TMethods>
 
   constructor(
     name: string,
     baseUrl: string,
     public methods: TMethods,
-    private _config: ResourceConfig
+    private _config: ResourceOptionsInternal
   ) {
     this.name = name
     this.baseUrl = baseUrl
+    this.contractVerifier = new ContractVerifier(name, methods)
+
     // Generate pipelines for each method
     for (const [methodName, methodConfig] of Object.entries(methods)) {
       const pipeline = createMethodPipeline(name, methodName, methodConfig, this._config)
@@ -226,6 +239,19 @@ class ResourceImpl<TMethods extends ResourceMethods> {
   getMethod<K extends keyof TMethods>(method: K): TMethods[K] {
     return this.methods[method]
   }
+
+  contract(): ResourceContract<TMethods> {
+    return this.contractVerifier
+  }
+
+  withContract(): Resource<TMethods> {
+    // Return self as it already has contract support
+    return createResourceProxy(this)
+  }
+
+  mock(scenarios: MockScenarios<TMethods>): MockedResource<TMethods> {
+    return this.contractVerifier.mock(scenarios)
+  }
 }
 
 // Create a typed proxy to ensure all methods are accessible
@@ -234,6 +260,11 @@ const createResourceProxy = <TMethods extends ResourceMethods>(
 ): Resource<TMethods> => {
   return new Proxy(impl, {
     get(target, prop) {
+      // Handle contract-related methods
+      if (prop === 'contract' || prop === 'withContract' || prop === 'mock') {
+        return target[prop as keyof ResourceImpl<TMethods>]
+      }
+      // Handle resource methods
       if (typeof prop === 'string' && prop in target.methods) {
         return target[prop as keyof ResourceImpl<TMethods>]
       }
@@ -245,7 +276,7 @@ const createResourceProxy = <TMethods extends ResourceMethods>(
 export const resource = <TMethods extends ResourceMethods>(
   name: string,
   methods: TMethods,
-  config: ResourceConfig = {}
+  config: ResourceOptionsInternal = {}
 ): Resource<TMethods> => {
   const impl = new ResourceImpl(name, config.baseUrl || '', methods, config)
   return createResourceProxy(impl)
@@ -380,7 +411,7 @@ export const resourceUtils = {
   createValidated: <TMethods extends ResourceMethods>(
     name: string,
     methods: TMethods,
-    config: ResourceConfig = {}
+    config: ResourceOptionsInternal = {}
   ): Result<ResourceError, Resource<TMethods>> => {
     try {
       // Validate all methods

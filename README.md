@@ -38,14 +38,14 @@ const UserAPI = resource('users', {
   get: {
     path: '/users/:id',
     params: z.object({ id: z.string() }),
-    response: UserSchema
+    response: UserSchema,
   },
   create: {
     path: '/users',
     method: 'POST',
     body: CreateUserSchema,
-    response: UserSchema
-  }
+    response: UserSchema,
+  },
 })
 
 // Usage with full type safety
@@ -56,7 +56,7 @@ const result = await UserAPI.get.run({ id: '123' })
 
 ```typescript
 // BEFORE: Complex imperative logic with error handling
-const processOrder = async (orderData) => {
+const processOrder = async orderData => {
   try {
     const validated = OrderSchema.parse(orderData)
     // ... complex business logic with nested try/catch
@@ -97,8 +97,8 @@ type Result<E, T> = { tag: 'Ok'; value: T } | { tag: 'Err'; error: E }
 
 // Pattern matching for clean error handling
 Result.match(result, {
-  Ok: (user) => console.log('Success:', user),
-  Err: (error) => console.error('Error:', error)
+  Ok: user => console.log('Success:', user),
+  Err: error => console.error('Error:', error),
 })
 ```
 
@@ -109,14 +109,14 @@ const api = resource('api', {
   getUser: {
     path: '/users/:id',
     params: UserParamsSchema,
-    response: UserSchema
+    response: UserSchema,
   },
   createUser: {
     path: '/users',
     method: 'POST',
     body: CreateUserSchema,
-    response: UserSchema
-  }
+    response: UserSchema,
+  },
 })
 ```
 
