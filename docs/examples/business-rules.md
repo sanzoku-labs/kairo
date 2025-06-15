@@ -76,9 +76,9 @@ const emailUniquenessRule = rule<User>('email-uniqueness')
     const response = await fetch('/api/users/check-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: user.email })
+      body: JSON.stringify({ email: user.email }),
     })
-    
+
     const { exists } = await response.json()
     return exists ? Result.Err('Email taken') : Result.Ok(true)
   })
@@ -91,9 +91,9 @@ const passwordStrengthRule = rule<User>('password-strength')
   .async(async user => {
     const response = await fetch('/api/password/strength', {
       method: 'POST',
-      body: JSON.stringify({ password: user.password })
+      body: JSON.stringify({ password: user.password }),
     })
-    
+
     const { score, feedback } = await response.json()
     if (score < 4) {
       return Result.Err(`Weak password: ${feedback.join(', ')}`)
@@ -112,28 +112,30 @@ Integrate rules with your data processing pipelines:
 import { pipeline, schema } from 'kairo'
 import { z } from 'zod'
 
-const CreateUserSchema = schema.from(z.object({
-  name: z.string(),
-  email: z.string().email(),
-  age: z.number(),
-  password: z.string()
-}))
+const CreateUserSchema = schema.from(
+  z.object({
+    name: z.string(),
+    email: z.string().email(),
+    age: z.number(),
+    password: z.string(),
+  })
+)
 
 // Create validation pipeline
 const userValidationPipeline = pipeline('user-validation')
   .input(CreateUserSchema)
-  .validateAllRules(userRules)                    // Apply all rules
-  .validateRule(emailUniquenessRule)              // Add async validation
+  .validateAllRules(userRules) // Apply all rules
+  .validateRule(emailUniquenessRule) // Add async validation
   .map(user => ({ ...user, validated: true }))
 
 // Use in your application
 const createUser = async (userData: unknown) => {
   const result = await userValidationPipeline.run(userData)
-  
+
   if (result.tag === 'Err') {
     throw new Error(`Validation failed: ${result.error}`)
   }
-  
+
   return result.value
 }
 ```
@@ -150,16 +152,16 @@ const UserAPI = resource('users', {
     method: 'POST',
     path: '/users',
     body: CreateUserSchema,
-    response: UserSchema
-  }
+    response: UserSchema,
+  },
 })
 
 // Complete user creation workflow
 const createUserWorkflow = pipeline('create-user-workflow')
   .input(CreateUserSchema)
-  .validateAllRules(userRules)        // Validate business rules
-  .validateRule(emailUniquenessRule)  // Check email uniqueness
-  .pipeline(UserAPI.create)           // Create user via API
+  .validateAllRules(userRules) // Validate business rules
+  .validateRule(emailUniquenessRule) // Check email uniqueness
+  .pipeline(UserAPI.create) // Create user via API
   .map(user => ({ ...user, status: 'created' }))
 
 // Execute workflow
@@ -167,7 +169,7 @@ const newUser = await createUserWorkflow.run({
   name: 'Jane Doe',
   email: 'jane@example.com',
   age: 28,
-  password: 'SecurePassword123!'
+  password: 'SecurePassword123!',
 })
 ```
 
@@ -185,14 +187,14 @@ const createCountryRules = (country: string, minAge: number) => {
       .message(`Users in ${country} must be ${minAge} or older`)
       .code(`${country}_AGE_REQUIREMENT`)
       .field('age'),
-      
+
     localCompliance: rule<User>(`${country}-compliance`)
       .when(user => user.country === country)
       .async(async user => {
         const compliant = await checkLocalCompliance(user, country)
         return compliant ? Result.Ok(true) : Result.Err('Non-compliant')
       })
-      .message(`Does not meet ${country} compliance requirements`)
+      .message(`Does not meet ${country} compliance requirements`),
   })
 }
 
@@ -203,12 +205,13 @@ const jpRules = createCountryRules('JP', 20)
 
 // Use appropriate rules based on user's country
 const validateUser = async (user: User) => {
-  const countryRules = {
-    'US': usRules,
-    'UK': ukRules,
-    'JP': jpRules
-  }[user.country || 'US'] || usRules
-  
+  const countryRules =
+    {
+      US: usRules,
+      UK: ukRules,
+      JP: jpRules,
+    }[user.country || 'US'] || usRules
+
   return await countryRules.validateAll(user)
 }
 ```
@@ -223,13 +226,16 @@ const result = await userRules.validateAll(userData)
 
 if (result.tag === 'Err') {
   // Group errors by field
-  const errorsByField = result.error.reduce((acc, error) => {
-    const field = error.field || 'general'
-    acc[field] = acc[field] || []
-    acc[field].push(error.userMessage)
-    return acc
-  }, {} as Record<string, string[]>)
-  
+  const errorsByField = result.error.reduce(
+    (acc, error) => {
+      const field = error.field || 'general'
+      acc[field] = acc[field] || []
+      acc[field].push(error.userMessage)
+      return acc
+    },
+    {} as Record<string, string[]>
+  )
+
   console.log('Validation errors by field:', errorsByField)
 }
 
@@ -239,7 +245,7 @@ const formatValidationErrors = (errors: BusinessRuleError[]) => {
     field: error.field,
     message: error.userMessage,
     code: error.code,
-    context: error.context
+    context: error.context,
   }))
 }
 
@@ -267,35 +273,35 @@ describe('User Validation Rules', () => {
   it('should validate age requirement', async () => {
     const validUser = { id: '1', name: 'John', email: 'john@example.com', age: 25 }
     const invalidUser = { id: '2', name: 'Jane', email: 'jane@example.com', age: 16 }
-    
+
     const validResult = await ageRule.validate(validUser)
     expect(validResult.tag).toBe('Ok')
-    
+
     const invalidResult = await ageRule.validate(invalidUser)
     expect(invalidResult.tag).toBe('Err')
     expect(invalidResult.error.userMessage).toBe('Must be 18 or older')
   })
-  
+
   it('should handle conditional rules', async () => {
     const usUser = { country: 'US', age: 20 }
     const nonUsUser = { country: 'CA', age: 20 }
-    
+
     const usResult = await usAgeRule.validate(usUser)
     expect(usResult.tag).toBe('Err') // 20 < 21 for US
-    
+
     const nonUsResult = await usAgeRule.validate(nonUsUser)
     expect(nonUsResult.tag).toBe('Ok') // Rule doesn't apply to non-US
   })
-  
+
   it('should handle async validation', async () => {
     // Mock the external service
     global.fetch = vi.fn().mockResolvedValue({
-      json: () => Promise.resolve({ exists: false })
+      json: () => Promise.resolve({ exists: false }),
     })
-    
+
     const user = { email: 'new@example.com' }
     const result = await emailUniquenessRule.validate(user)
-    
+
     expect(result.tag).toBe('Ok')
     expect(fetch).toHaveBeenCalledWith('/api/users/check-email', expect.any(Object))
   })
@@ -316,10 +322,10 @@ const cachedEmailRule = rule<User>('cached-email-check')
       const exists = emailCache.get(user.email)!
       return exists ? Result.Err('Email taken') : Result.Ok(true)
     }
-    
+
     const exists = await checkEmailExists(user.email)
     emailCache.set(user.email, exists)
-    
+
     return exists ? Result.Err('Email taken') : Result.Ok(true)
   })
   .message('Email already registered')
@@ -328,7 +334,7 @@ const cachedEmailRule = rule<User>('cached-email-check')
 const parallelAsyncRules = rules('parallel-validation', {
   emailCheck: emailUniquenessRule,
   passwordStrength: passwordStrengthRule,
-  complianceCheck: complianceRule
+  complianceCheck: complianceRule,
 })
 
 // Rules will execute in parallel automatically
@@ -341,7 +347,7 @@ const validateWithEarlyExit = async (user: User) => {
   if (criticalResult.tag === 'Err') {
     return criticalResult // Exit early on critical failure
   }
-  
+
   // Continue with full validation
   return await userRules.validateAll(user)
 }
@@ -357,8 +363,12 @@ const registrationRules = rules('user-registration', {
   // Basic validation
   nameRequired: commonRules.required<User>('name', 'Name is required'),
   emailFormat: commonRules.email<User>('email', 'Please enter a valid email'),
-  passwordLength: commonRules.minLength<User>('password', 8, 'Password must be at least 8 characters'),
-  
+  passwordLength: commonRules.minLength<User>(
+    'password',
+    8,
+    'Password must be at least 8 characters'
+  ),
+
   // Complex password validation
   passwordStrength: rule<User>('password-strength')
     .require(user => {
@@ -368,7 +378,7 @@ const registrationRules = rules('user-registration', {
     .message('Password must contain lowercase, uppercase, number, and special character')
     .code('WEAK_PASSWORD')
     .field('password'),
-  
+
   // Age verification with country-specific rules
   ageVerification: rule<User>('age-verification')
     .require((user, context) => {
@@ -377,7 +387,7 @@ const registrationRules = rules('user-registration', {
     })
     .message('You must meet the minimum age requirement for your country')
     .code('AGE_REQUIREMENT'),
-  
+
   // Async email uniqueness check
   emailUnique: rule<User>('email-unique')
     .async(async user => {
@@ -387,14 +397,14 @@ const registrationRules = rules('user-registration', {
     .message('This email is already registered')
     .code('DUPLICATE_EMAIL')
     .field('email'),
-    
+
   // Terms acceptance
   termsAccepted: rule<User>('terms-accepted')
     .require((user, context) => {
       return context?.termsAccepted === true
     })
     .message('You must accept the terms and conditions')
-    .code('TERMS_NOT_ACCEPTED')
+    .code('TERMS_NOT_ACCEPTED'),
 })
 
 // Registration pipeline
@@ -402,7 +412,7 @@ const userRegistrationPipeline = pipeline('user-registration')
   .input(CreateUserSchema)
   .validateAllRules(registrationRules, {
     termsAccepted: true,
-    ipCountry: 'US'
+    ipCountry: 'US',
   })
   .map(async user => {
     // Hash password
@@ -413,33 +423,33 @@ const userRegistrationPipeline = pipeline('user-registration')
   .map(user => ({
     ...user,
     registrationDate: new Date().toISOString(),
-    status: 'active'
+    status: 'active',
   }))
 
 // Use in your application
 export const registerUser = async (userData: CreateUserRequest) => {
   try {
     const result = await userRegistrationPipeline.run(userData)
-    
+
     if (result.tag === 'Err') {
       return {
         success: false,
         errors: result.error.map(error => ({
           field: error.field,
           message: error.userMessage,
-          code: error.code
-        }))
+          code: error.code,
+        })),
       }
     }
-    
+
     return {
       success: true,
-      user: result.value
+      user: result.value,
     }
   } catch (error) {
     return {
       success: false,
-      errors: [{ message: 'Registration failed unexpectedly' }]
+      errors: [{ message: 'Registration failed unexpectedly' }],
     }
   }
 }

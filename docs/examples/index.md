@@ -20,9 +20,13 @@ Verify API contracts and use mocks for development and testing.
 
 Centralize validation logic with declarative business rules.
 
+### [Workflows](/examples/workflows)
+
+Complex multi-step process orchestration with error handling and testing.
+
 ## Advanced Examples
 
-_More advanced examples coming soon as we expand Kairo's capabilities._
+Kairo's workflow system enables sophisticated business process automation with declarative configuration.
 
 ## Framework Integration
 

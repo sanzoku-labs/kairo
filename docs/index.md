@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: 'Kairo'
-  text: 'Framework-Agnostic TypeScript Library'
-  tagline: 'Eliminate service repetition and compose business logic elegantly'
+  text: 'Declarative Application Platform'
+  tagline: 'From API contracts to complex business processes'
   image:
     src: /logo.svg
     alt: Kairo
@@ -18,17 +18,17 @@ hero:
 
 features:
   - icon: 🏗️
-    title: Two-Pillar Architecture
-    details: Resources eliminate service layer repetition, Pipelines compose business logic
+    title: Three-Pillar Architecture
+    details: Resources for APIs, Pipelines for logic, Workflows for process orchestration
+  - icon: 🔄
+    title: Process Orchestration
+    details: Complex workflows with parallel execution, conditionals, loops, and rollback
   - icon: 🔧
     title: Framework Agnostic
     details: Works seamlessly across React, Vue, Node, Bun, and any TypeScript environment
   - icon: ⚡
     title: Functional & Composable
     details: Inspired by Gleam - immutable, pure functions that compose elegantly
-  - icon: 🎯
-    title: Developer Joy
-    details: Eliminate boilerplate, improve debugging, and make testing pleasant
   - icon: 🛡️
     title: Type Safe
     details: Full TypeScript support with Result pattern for predictable error handling
@@ -130,22 +130,87 @@ const processOrder = pipeline('process-order')
   .trace('order-processing')
 ```
 
+## Pillar 3: Workflows - Orchestrate Complex Processes
+
+```typescript
+// BEFORE: Complex process management with manual coordination
+const onboardUser = async userData => {
+  try {
+    const validated = await validateUser(userData)
+    const user = await createUser(validated)
+
+    // Manual parallel coordination
+    const [emailResult, profileResult] = await Promise.allSettled([
+      sendWelcomeEmail(user),
+      setupProfile(user),
+    ])
+
+    // Manual error handling and rollback
+    if (emailResult.status === 'rejected') {
+      // What do we do? How do we clean up?
+    }
+
+    return user
+  } catch (error) {
+    // Manual cleanup
+    if (user?.id) await deleteUser(user.id)
+    throw error
+  }
+}
+
+// AFTER: Declarative workflow orchestration
+const userOnboardingWorkflow = workflow<CreateUserRequest, User>('user-onboarding', {
+  steps: {
+    validate: workflowUtils.step('validate', validateUserPipeline),
+    createUser: workflowUtils.step('createUser', UserAPI.create),
+    sendWelcome: workflowUtils.step('sendWelcome', welcomeEmailPipeline),
+    setupProfile: workflowUtils.step('setupProfile', profileCreationPipeline),
+  },
+
+  flow: ['validate', 'createUser', { parallel: ['sendWelcome', 'setupProfile'] }],
+
+  options: {
+    timeout: 30000,
+    onError: {
+      createUser: workflowUtils.rollback(async context => {
+        const user = context.stepResults.createUser as User
+        if (user?.id) await UserAPI.delete.run({ id: user.id })
+      }),
+    },
+  },
+})
+
+// Execute with automatic error handling and rollback
+const result = await userOnboardingWorkflow.execute(userData)
+
+// Testing with mocks
+await workflowTesting
+  .expect(userOnboardingWorkflow, testData)
+  .withMocks({
+    createUser: { success: mockUser },
+    sendWelcome: { success: { sent: true } },
+  })
+  .shouldSucceed()
+```
+
 ## Why Kairo?
 
 ### Problems We Solve
 
 1. **Service Layer Repetition** - Stop writing the same fetch + validation + error handling code
 2. **Complex Business Logic** - Eliminate nested try/catch and make workflows readable
-3. **Framework Lock-in** - Build business logic that works across any framework
-4. **Poor Error Handling** - Replace runtime exceptions with predictable Result types
+3. **Process Orchestration** - Manual coordination of multi-step processes with error handling
+4. **Framework Lock-in** - Build business logic that works across any framework
+5. **Poor Error Handling** - Replace runtime exceptions with predictable Result types
 
 ### Solutions We Provide
 
-- **Declarative Resources** - API definitions that generate type-safe methods
+- **Declarative Resources** - API definitions with contract testing and mock generation
 - **Composable Pipelines** - Business logic workflows that are readable and testable
+- **Workflow Orchestration** - Complex processes with parallel execution, conditionals, and rollback
 - **Result Pattern** - Predictable error modeling without runtime throws
 - **Framework Agnostic** - No framework adapters needed, pure TypeScript
-- **Enhanced Debugging** - Built-in tracing and introspection
+- **Enhanced Testing** - Built-in testing utilities, mocking, and load testing
 
 ## Core Philosophy
 

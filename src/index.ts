@@ -54,6 +54,57 @@ export type {
   AsyncRuleValidation,
 } from './core/rules'
 
+export { workflow, workflowUtils } from './core/workflow'
+export type {
+  Workflow,
+  WorkflowError,
+  WorkflowContext,
+  WorkflowStep,
+  FlowDefinition,
+  FlowStep,
+  Condition,
+  LoopCondition,
+  ErrorHandler,
+  ErrorHandlers,
+  RollbackHandler,
+  RollbackHandlers,
+  MetricsConfig,
+  StepMocks,
+  WorkflowOptions,
+  MockedWorkflow,
+  WorkflowDiagram,
+} from './core/workflow'
+
+export { workflowTesting } from './core/workflow-testing'
+export type {
+  WorkflowTestCase,
+  WorkflowTestResult,
+  WorkflowTestSuite,
+  WorkflowTestSuiteResult,
+  WorkflowAssertion,
+} from './core/workflow-testing'
+
+// Export workflow example types for user reference
+export type {
+  CreateUserRequest,
+  User,
+  WelcomeEmailRequest,
+  WelcomeEmailResponse,
+  CreateProfileRequest,
+  Profile,
+  Order,
+  PaymentRequest,
+  ShipmentRequest,
+  NotificationRequest,
+  MigrationInput,
+  MigrationState,
+  BatchRequest,
+  MigrationItem,
+  InsertResult,
+  HealthStatus,
+  HealthCheckResult,
+} from './examples/workflow-types'
+
 export {
   createError,
   chainError,

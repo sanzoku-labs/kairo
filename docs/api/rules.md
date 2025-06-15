@@ -5,6 +5,7 @@ The Business Rules Engine provides a declarative way to define, compose, and exe
 ## Overview
 
 Business rules allow you to:
+
 - Define validation logic declaratively
 - Compose conditional and async validations
 - Integrate seamlessly with pipelines and resources
@@ -16,6 +17,7 @@ Business rules allow you to:
 ### Rule
 
 A `Rule` represents a single validation constraint with support for:
+
 - **Conditional execution** with `.when()`
 - **Synchronous validation** with `.require()`
 - **Asynchronous validation** with `.async()`
@@ -24,6 +26,7 @@ A `Rule` represents a single validation constraint with support for:
 ### Rules Collection
 
 A `Rules` collection manages multiple related rules and provides:
+
 - **Batch validation** with `.validateAll()`
 - **Selective validation** with `.validate(ruleNames)`
 - **Individual rule access** with `.getRule(name)`
@@ -68,14 +71,14 @@ const userRules = rules('user-validation', {
   emailFormat: commonRules.email<User>('email'),
   ageRange: commonRules.range<User>('age', 13, 120),
   passwordLength: commonRules.minLength<User>('password', 8),
-  
+
   // Custom rule
   strongPassword: commonRules.custom<User>(
     'strong-password',
     user => /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)/.test(user.password),
     'Password must contain uppercase, lowercase, and numbers',
     'WEAK_PASSWORD'
-  )
+  ),
 })
 ```
 
@@ -104,9 +107,9 @@ import { pipeline } from 'kairo'
 
 const userValidationPipeline = pipeline('user-validation')
   .input(UserSchema)
-  .validateRule(ageRule)                    // Single rule
-  .validateRules(userRules, ['required'])   // Specific rules
-  .validateAllRules(userRules)              // All rules
+  .validateRule(ageRule) // Single rule
+  .validateRules(userRules, ['required']) // Specific rules
+  .validateAllRules(userRules) // All rules
   .map(user => ({ ...user, validated: true }))
 
 const result = await userValidationPipeline.run(userData)
@@ -139,7 +142,7 @@ const uniqueEmailRule = rule<User>('unique-email')
   .async(async user => {
     const response = await fetch(`/api/users/check-email`, {
       method: 'POST',
-      body: JSON.stringify({ email: user.email })
+      body: JSON.stringify({ email: user.email }),
     })
     const { exists } = await response.json()
     return exists ? Result.Err('Email exists') : Result.Ok(true)
@@ -160,11 +163,11 @@ const createCountryRules = (country: string, minAge: number) => {
       .when(user => user.country === country)
       .require(user => user.age >= minAge)
       .message(`Must be ${minAge}+ in ${country}`),
-      
+
     localCompliance: rule<User>(`${country}-compliance`)
       .when(user => user.country === country)
       .async(async user => checkLocalCompliance(user, country))
-      .message(`Compliance check failed for ${country}`)
+      .message(`Compliance check failed for ${country}`),
   })
 }
 
@@ -181,9 +184,9 @@ Rule validation errors provide rich context:
 ```typescript
 interface BusinessRuleError extends KairoError {
   code: 'BUSINESS_RULE_ERROR'
-  ruleName: string        // Rule that failed
-  field?: string          // Field being validated  
-  userMessage: string     // User-friendly message
+  ruleName: string // Rule that failed
+  field?: string // Field being validated
+  userMessage: string // User-friendly message
   context: Record<string, unknown> // Additional context
 }
 ```
@@ -211,14 +214,14 @@ const UserAPI = resource('users', {
     method: 'POST',
     path: '/users',
     body: CreateUserSchema,
-    response: UserSchema
-  }
+    response: UserSchema,
+  },
 })
 
 const createUserWorkflow = pipeline('create-user')
   .input(CreateUserSchema)
   .validateAllRules(userValidationRules)
-  .pipeline(UserAPI.create)  // Call API after validation
+  .pipeline(UserAPI.create) // Call API after validation
   .map(user => ({ ...user, status: 'created' }))
 ```
 
@@ -231,13 +234,13 @@ const createUserWorkflow = pipeline('create-user')
 const userAccountRules = rules('user-account', {
   emailFormat: commonRules.email<User>('email'),
   emailUnique: emailUniquenessRule,
-  passwordStrength: passwordRule
+  passwordStrength: passwordRule,
 })
 
 const userProfileRules = rules('user-profile', {
   nameRequired: commonRules.required<User>('name'),
   ageValid: commonRules.range<User>('age', 13, 120),
-  bioLength: commonRules.maxLength<User>('bio', 500)
+  bioLength: commonRules.maxLength<User>('bio', 500),
 })
 ```
 
@@ -249,10 +252,12 @@ Provide clear, actionable error messages:
 const passwordRule = rule<User>('password-strength')
   .require(user => {
     const { password } = user
-    return password.length >= 8 && 
-           /[A-Z]/.test(password) && 
-           /[a-z]/.test(password) && 
-           /\d/.test(password)
+    return (
+      password.length >= 8 &&
+      /[A-Z]/.test(password) &&
+      /[a-z]/.test(password) &&
+      /\d/.test(password)
+    )
   })
   .message('Password must be at least 8 characters with uppercase, lowercase, and numbers')
   .code('WEAK_PASSWORD')
@@ -267,16 +272,15 @@ Keep async rules efficient:
 // Cache expensive validations
 const emailCache = new Map()
 
-const cachedEmailRule = rule<User>('cached-email-check')
-  .async(async user => {
-    if (emailCache.has(user.email)) {
-      return emailCache.get(user.email)
-    }
-    
-    const result = await checkEmailExists(user.email)
-    emailCache.set(user.email, result)
-    return result
-  })
+const cachedEmailRule = rule<User>('cached-email-check').async(async user => {
+  if (emailCache.has(user.email)) {
+    return emailCache.get(user.email)
+  }
+
+  const result = await checkEmailExists(user.email)
+  emailCache.set(user.email, result)
+  return result
+})
 ```
 
 ### 4. Rule Testing
@@ -288,10 +292,10 @@ describe('User Validation Rules', () => {
   it('should validate age requirement', async () => {
     const validUser = { age: 25, country: 'US' }
     const invalidUser = { age: 16, country: 'US' }
-    
+
     const result1 = await ageRule.validate(validUser)
     expect(result1.tag).toBe('Ok')
-    
+
     const result2 = await ageRule.validate(invalidUser)
     expect(result2.tag).toBe('Err')
   })
@@ -322,9 +326,17 @@ interface Rule<T> {
 interface Rules<T> {
   readonly name: string
   readonly rules: Record<string, Rule<T>>
-  validate(data: T, ruleNames?: string[], context?: RuleValidationContext): Promise<Result<BusinessRuleError[], T>>
+  validate(
+    data: T,
+    ruleNames?: string[],
+    context?: RuleValidationContext
+  ): Promise<Result<BusinessRuleError[], T>>
   validateAll(data: T, context?: RuleValidationContext): Promise<Result<BusinessRuleError[], T>>
-  validateRule(data: T, ruleName: string, context?: RuleValidationContext): Promise<Result<BusinessRuleError, T>>
+  validateRule(
+    data: T,
+    ruleName: string,
+    context?: RuleValidationContext
+  ): Promise<Result<BusinessRuleError, T>>
   getRule(name: string): Rule<T> | undefined
 }
 ```
@@ -347,7 +359,11 @@ const commonRules = {
 ```typescript
 interface Pipeline<Input, Output> {
   validateRule<T>(rule: Rule<T>, context?: RuleValidationContext): Pipeline<Input, T>
-  validateRules<T>(rules: Rules<T>, ruleNames?: string[], context?: RuleValidationContext): Pipeline<Input, T>
+  validateRules<T>(
+    rules: Rules<T>,
+    ruleNames?: string[],
+    context?: RuleValidationContext
+  ): Pipeline<Input, T>
   validateAllRules<T>(rules: Rules<T>, context?: RuleValidationContext): Pipeline<Input, T>
 }
 ```

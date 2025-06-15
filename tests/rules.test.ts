@@ -93,7 +93,7 @@ describe('Business Rules Engine', () => {
 
       const emailUniquenessRule = rule<CreateUserRequest>('email-uniqueness')
         .async(async user => {
-          const exists = await mockUserService.checkEmailExists(user.email) as boolean
+          const exists = (await mockUserService.checkEmailExists(user.email)) as boolean
           return Result.Ok(!exists) // Return Result.Ok(true) if email is unique
         })
         .require(() => true) // Async validation handles the logic
@@ -112,7 +112,7 @@ describe('Business Rules Engine', () => {
 
       const emailUniquenessRule = rule<CreateUserRequest>('email-uniqueness')
         .async(async user => {
-          const exists = await mockUserService.checkEmailExists(user.email) as boolean
+          const exists = (await mockUserService.checkEmailExists(user.email)) as boolean
           if (exists) {
             return Result.Err({ message: 'Email exists' })
           }

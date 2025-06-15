@@ -1,6 +1,6 @@
 # API Reference
 
-Welcome to the Kairo API reference. This section provides detailed documentation for Kairo's focused Two-Pillar Architecture.
+Welcome to the Kairo API reference. This section provides detailed documentation for Kairo's Three-Pillar Architecture.
 
 ## Core Foundation
 
@@ -32,6 +32,12 @@ The main abstraction for composable business logic workflows.
 
 Declarative validation rules for centralizing business logic.
 
+## Pillar 3: Workflows
+
+### [Workflow](/api/workflow)
+
+Complex multi-step process orchestration with parallel execution, conditionals, loops, and rollback capabilities.
+
 ## Functional Programming Utilities
 
 - `pipe()` - Function composition
@@ -49,6 +55,9 @@ import type {
   Result,
   Pipeline,
   Resource,
+  Workflow,
+  WorkflowContext,
+  WorkflowError,
   Rule,
   Rules,
   BusinessRuleError,
