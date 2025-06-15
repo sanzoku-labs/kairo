@@ -13,11 +13,13 @@ Kairo is a comprehensive declarative platform that eliminates boilerplate throug
 ### 🏛️ The Three-Pillar Architecture
 
 1. **INTERFACE Pillar** - Declarative external system integration
+
    - **Resources**: Type-safe APIs, databases, queues
    - **Contracts**: Live verification and mocking
    - **Zero boilerplate**: No more service classes
 
 2. **PROCESS Pillar** - Declarative business logic composition
+
    - **Pipelines**: Functional data transformation
    - **Business Rules**: Centralized validation
    - **Workflows**: Complex orchestration
@@ -81,7 +83,7 @@ const orderRules = rules('order-validation', {
   minimumAmount: rule()
     .require(order => order.total >= 10)
     .message('Minimum order is $10'),
-    
+
   stockAvailable: rule()
     .async(order => InventoryAPI.check.run({ productId: order.productId }))
     .require(result => result.match({ Ok: stock => stock.available > 0, Err: () => false }))
@@ -142,19 +144,22 @@ result.match({
 })
 
 // Transform data declaratively
-const processedProduct = ProductSchema
-  .transform(product => ({ ...product, slug: slugify(product.name) }))
-  .parse(rawData)
+const processedProduct = ProductSchema.transform(product => ({
+  ...product,
+  slug: slugify(product.name),
+})).parse(rawData)
 ```
 
 ## Key Features
 
 ### 🏛️ Complete Three-Pillar Architecture
+
 - **INTERFACE** - Zero-boilerplate APIs with contract testing and mocking
-- **PROCESS** - Functional pipelines with business rules and workflow orchestration  
+- **PROCESS** - Functional pipelines with business rules and workflow orchestration
 - **DATA** - Native schema validation (3x faster than Zod, zero dependencies)
 
 ### 🚀 Performance & Developer Experience
+
 - 🔧 **Framework Agnostic** - Works with React, Vue, Node, Bun, and any TypeScript environment
 - ⚡ **High Performance** - Native validation, optimized pipelines, efficient resource caching
 - 🛡️ **Type Safe** - Full TypeScript inference with Result pattern for error handling
@@ -162,6 +167,7 @@ const processedProduct = ProductSchema
 - 📦 **Lightweight** - Core bundle < 20kb gzipped, zero runtime dependencies
 
 ### 🎪 Advanced Capabilities
+
 - 🧪 **Contract Testing** - Live API verification and intelligent mock generation
 - 🎲 **Business Rules Engine** - Centralized, reusable validation logic with async support
 - 🔄 **Workflow Orchestration** - Complex processes with parallel execution and error recovery

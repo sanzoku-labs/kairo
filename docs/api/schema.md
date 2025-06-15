@@ -21,28 +21,27 @@ const numberSchema = nativeSchema.number()
 const booleanSchema = nativeSchema.boolean()
 
 // String validation with constraints
-const nameSchema = nativeSchema.string()
+const nameSchema = nativeSchema
+  .string()
   .min(2, 'Name must be at least 2 characters')
   .max(100, 'Name cannot exceed 100 characters')
   .trim()
 
 // Number validation with constraints
-const ageSchema = nativeSchema.number()
+const ageSchema = nativeSchema
+  .number()
   .min(0, 'Age cannot be negative')
   .max(150, 'Age seems unrealistic')
   .integer('Age must be a whole number')
 
 // Email validation
-const emailSchema = nativeSchema.string()
-  .email('Please enter a valid email address')
+const emailSchema = nativeSchema.string().email('Please enter a valid email address')
 
 // URL validation
-const urlSchema = nativeSchema.string()
-  .url('Please enter a valid URL')
+const urlSchema = nativeSchema.string().url('Please enter a valid URL')
 
 // UUID validation
-const idSchema = nativeSchema.string()
-  .uuid('Invalid ID format')
+const idSchema = nativeSchema.string().uuid('Invalid ID format')
 ```
 
 ## Complex Schemas
@@ -79,18 +78,21 @@ const UserWithAddressSchema = nativeSchema.object({
 
 ```typescript
 // Array of strings
-const tagsSchema = nativeSchema.array(nativeSchema.string())
+const tagsSchema = nativeSchema
+  .array(nativeSchema.string())
   .min(1, 'At least one tag is required')
   .max(10, 'Maximum 10 tags allowed')
 
 // Array of objects
-const ProductsSchema = nativeSchema.array(
-  nativeSchema.object({
-    id: nativeSchema.string().uuid(),
-    name: nativeSchema.string().min(1),
-    price: nativeSchema.number().positive(),
-  })
-).nonempty('Products list cannot be empty')
+const ProductsSchema = nativeSchema
+  .array(
+    nativeSchema.object({
+      id: nativeSchema.string().uuid(),
+      name: nativeSchema.string().min(1),
+      price: nativeSchema.number().positive(),
+    })
+  )
+  .nonempty('Products list cannot be empty')
 ```
 
 ### Union and Enum Schemas
@@ -139,7 +141,7 @@ const UserSchema = nativeSchema.object({
   name: nativeSchema.string(),
   email: nativeSchema.string().email(),
   avatar: nativeSchema.string().url().optional(), // Can be undefined
-  bio: nativeSchema.string().nullable(),          // Can be null
+  bio: nativeSchema.string().nullable(), // Can be null
   metadata: nativeSchema.record(nativeSchema.string()).optional(),
 })
 ```
@@ -232,32 +234,32 @@ if (safeResult.success) {
 ### Custom Validation with Refine
 
 ```typescript
-const PasswordSchema = nativeSchema.string()
+const PasswordSchema = nativeSchema
+  .string()
   .min(8, 'Password must be at least 8 characters')
-  .refine(
-    password => /[A-Z]/.test(password),
-    'Password must contain at least one uppercase letter'
-  )
-  .refine(
-    password => /[0-9]/.test(password),
-    'Password must contain at least one number'
-  )
+  .refine(password => /[A-Z]/.test(password), 'Password must contain at least one uppercase letter')
+  .refine(password => /[0-9]/.test(password), 'Password must contain at least one number')
 
-const UserRegistrationSchema = nativeSchema.object({
-  password: PasswordSchema,
-  confirmPassword: nativeSchema.string(),
-}).refine(
-  data => data.password === data.confirmPassword,
-  'Passwords do not match'
-)
+const UserRegistrationSchema = nativeSchema
+  .object({
+    password: PasswordSchema,
+    confirmPassword: nativeSchema.string(),
+  })
+  .refine(data => data.password === data.confirmPassword, 'Passwords do not match')
 ```
 
 ### Data Transformation
 
 ```typescript
 const UserSchema = nativeSchema.object({
-  name: nativeSchema.string().trim().transform(name => name.toLowerCase()),
-  email: nativeSchema.string().email().transform(email => email.toLowerCase()),
+  name: nativeSchema
+    .string()
+    .trim()
+    .transform(name => name.toLowerCase()),
+  email: nativeSchema
+    .string()
+    .email()
+    .transform(email => email.toLowerCase()),
   age: nativeSchema.number().transform(age => Math.floor(age)),
 })
 
@@ -278,9 +280,9 @@ const result = UserSchema.parse({
 import { pipeline } from 'kairo'
 
 const processUserPipeline = pipeline('process-user')
-  .input(UserSchema)                    // Validate input
+  .input(UserSchema) // Validate input
   .map(user => ({ ...user, processed: true }))
-  .pipeline(UserAPI.create)             // API call with validation
+  .pipeline(UserAPI.create) // API call with validation
   .trace('user-processing')
 
 // Type-safe execution
@@ -324,16 +326,14 @@ const userRules = rules('user-validation', {
     .when(user => user.country === 'US')
     .require(user => user.age >= 21)
     .message('Must be 21+ in the US'),
-    
+
   emailUniqueness: rule()
     .async(user => UserAPI.checkEmail.run({ email: user.email }))
     .require(result => result.match({ Ok: available => available, Err: () => false }))
     .message('Email already taken'),
 })
 
-const validateUserPipeline = pipeline('validate-user')
-  .input(UserSchema)
-  .validateAll(userRules)
+const validateUserPipeline = pipeline('validate-user').input(UserSchema).validateAll(userRules)
 ```
 
 ## Error Handling
@@ -345,11 +345,11 @@ const result = UserSchema.parse(invalidData)
 
 if (result.tag === 'Err') {
   const error = result.error
-  
+
   console.log('Main error:', error.message)
   console.log('Field path:', error.field)
   console.log('Field path array:', error.fieldPath)
-  
+
   // Detailed issues
   error.issues.forEach(issue => {
     console.log(`Field: ${issue.path.join('.')}`)

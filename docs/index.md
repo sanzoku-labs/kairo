@@ -99,7 +99,7 @@ const orderRules = rules('order-validation', {
   minimumAmount: rule()
     .require(order => order.total >= 10)
     .message('Minimum order is $10'),
-    
+
   stockAvailable: rule()
     .async(order => InventoryAPI.check.run({ productId: order.productId }))
     .require(result => result.match({ Ok: stock => stock.available > 0, Err: () => false }))
@@ -160,9 +160,10 @@ result.match({
 })
 
 // Transform data declaratively
-const processedProduct = ProductSchema
-  .transform(product => ({ ...product, slug: slugify(product.name) }))
-  .parse(rawData)
+const processedProduct = ProductSchema.transform(product => ({
+  ...product,
+  slug: slugify(product.name),
+})).parse(rawData)
 
 // Performance: 1000+ validations in <100ms
 // Zero dependencies: Pure TypeScript implementation
@@ -176,6 +177,7 @@ const processedProduct = ProductSchema
 ### The Problem: Infrastructure Overwhelms Business Logic
 
 Most applications spend 70% of their code on infrastructure concerns:
+
 - Repetitive API service classes
 - Manual error handling and validation
 - Complex process coordination

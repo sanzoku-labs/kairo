@@ -3,6 +3,7 @@ import { type Schema, type ValidationError } from './schema'
 import { isNil, isEmpty, cond, resolve, conditionalEffect, tryCatch, retry } from '../utils/fp'
 import { type KairoError, createError } from './errors'
 import type { Rule, Rules, BusinessRuleError, RuleValidationContext } from './rules'
+import type { Transform, TransformError, TransformContext } from './transform'
 
 export interface HttpError extends KairoError {
   code: 'HTTP_ERROR'
@@ -291,6 +292,24 @@ class MapErrorStep<E, F> implements Step<F, unknown> {
 
   execute(input: unknown, _context: PipelineContext): Promise<Result<F, unknown>> {
     return Promise.resolve(Result.Ok(input))
+  }
+}
+
+class TransformStep<TSource, TTarget> implements Step<TransformError, TTarget> {
+  type = 'transform'
+  constructor(
+    private transform: Transform<TSource, TTarget>,
+    private transformContext?: TransformContext
+  ) {}
+
+  execute(input: unknown, context: PipelineContext): Promise<Result<TransformError, TTarget>> {
+    const start = performance.now()
+    const result = this.transform.execute(input as TSource, this.transformContext)
+
+    const logTrace = createTraceLogger(context)
+    logTrace(createTraceEntry(context, 'transform', start, result, input))
+
+    return Promise.resolve(result)
   }
 }
 
@@ -666,6 +685,17 @@ export class Pipeline<Input, Output> {
   map<U>(fn: (value: Output) => U): Pipeline<Input, U> {
     return new Pipeline<Input, U>(
       [...this.steps, new MapStep(fn)],
+      this.name,
+      this.deps,
+      this.retryConfig,
+      this.timeoutConfig,
+      this.cacheConfig
+    )
+  }
+
+  transform<T>(transform: Transform<Output, T>, context?: TransformContext): Pipeline<Input, T> {
+    return new Pipeline<Input, T>(
+      [...this.steps, new TransformStep(transform, context)],
       this.name,
       this.deps,
       this.retryConfig,

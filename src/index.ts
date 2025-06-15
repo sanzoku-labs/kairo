@@ -43,6 +43,37 @@ export type {
 export { schema } from './core/schema'
 export type { Schema, ValidationError } from './core/schema'
 
+export { nativeSchema } from './core/native-schema'
+export type {
+  Schema as NativeSchema,
+  StringSchema,
+  NumberSchema,
+  BooleanSchema,
+  ObjectSchema,
+  ArraySchema,
+  LiteralSchema,
+  UnionSchema,
+  EnumSchema,
+  RecordSchema,
+  ValidationError as NativeValidationError,
+  SchemaShape,
+  InferSchema,
+} from './core/native-schema'
+
+export { transform, createTransform, commonTransforms } from './core/transform'
+export type {
+  Transform,
+  TransformError,
+  TransformContext,
+  TransformBuilder,
+  FieldMapper,
+  ComputeFunction,
+  FilterPredicate,
+  FieldMapping,
+  ComputeMapping,
+  TransformStep,
+} from './core/transform'
+
 export { rule, rules, commonRules } from './core/rules'
 export type {
   Rule,
