@@ -14,6 +14,7 @@
 
 import { Result } from './result'
 import { type KairoError } from './errors'
+import { performance as perf } from './performance'
 
 // ============================================================================
 // Core Types
@@ -204,13 +205,30 @@ abstract class BaseSchema<T> implements Schema<T> {
   }
 
   parse(input: unknown): Result<ValidationError, T> {
-    // Handle default values
-    let actualInput: unknown = input
-    if (input === undefined && this.defaultValue !== undefined) {
-      actualInput = this.defaultValue as unknown
-    }
+    const span = perf.startSpan(`schema:${this.type}:parse`, {
+      schemaType: this.type,
+      hasDefault: this.defaultValue !== undefined,
+    })
 
-    return this.validator(actualInput)
+    try {
+      // Handle default values
+      let actualInput: unknown = input
+      if (input === undefined && this.defaultValue !== undefined) {
+        actualInput = this.defaultValue as unknown
+      }
+
+      const result = this.validator(actualInput)
+
+      span.metadata = {
+        ...span.metadata,
+        success: Result.isOk(result),
+        validationTime: span.endTime ? span.endTime - span.startTime : 0,
+      }
+
+      return result
+    } finally {
+      perf.endSpan(span)
+    }
   }
 
   safeParse(input: unknown): { success: boolean; data?: T; error?: ValidationError } {

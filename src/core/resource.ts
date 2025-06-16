@@ -8,6 +8,7 @@ import {
   type MockScenarios,
   type MockedResource,
 } from './contract'
+import { Lazy, ResourcePool } from './performance'
 
 export interface ResourceError extends KairoError {
   code: 'RESOURCE_ERROR'
@@ -74,6 +75,13 @@ interface ResourceOptionsInternal {
   defaultTimeout?: number
   httpClient?: {
     fetch(url: string, options?: RequestInit): Promise<Response>
+  }
+  lazy?: boolean // Enable lazy loading for resources
+  connectionPool?: {
+    enabled: boolean
+    min?: number
+    max?: number
+    idleTimeout?: number
   }
 }
 
@@ -206,11 +214,55 @@ const createMethodPipeline = (
   return basePipeline
 }
 
+// Connection pool manager for HTTP connections
+class ConnectionPoolManager {
+  private static pools = new Map<string, ResourcePool<Response>>()
+
+  static getPool(
+    baseUrl: string,
+    config?: ResourceOptionsInternal['connectionPool']
+  ): ResourcePool<Response> | null {
+    if (!config?.enabled) {
+      return null
+    }
+
+    const poolKey = baseUrl
+    if (!this.pools.has(poolKey)) {
+      const pool = new ResourcePool<Response>({
+        min: config.min ?? 0,
+        max: config.max ?? 10,
+        idleTimeout: config.idleTimeout ?? 30000,
+        createResource: async () => {
+          // For HTTP/2, we can reuse the same connection
+          // This is a placeholder - actual implementation would depend on the HTTP client
+          await Promise.resolve()
+          return new Response()
+        },
+        validateResource: async () => {
+          await Promise.resolve()
+          return true
+        },
+      })
+      this.pools.set(poolKey, pool)
+    }
+
+    return this.pools.get(poolKey)!
+  }
+
+  static async drainAll(): Promise<void> {
+    const drainPromises = Array.from(this.pools.values()).map(pool => pool.drain())
+    await Promise.all(drainPromises)
+    this.pools.clear()
+  }
+}
+
 class ResourceImpl<TMethods extends ResourceMethods> {
   public readonly name: string
   public readonly baseUrl: string
   private pipelines: Map<string, Pipeline<unknown, unknown>> = new Map()
+  private lazyPipelines: Map<string, Lazy<Pipeline<unknown, unknown>>> = new Map()
   private contractVerifier: ContractVerifier<TMethods>
+  private connectionPool: ResourcePool<Response> | null
 
   constructor(
     name: string,
@@ -221,18 +273,53 @@ class ResourceImpl<TMethods extends ResourceMethods> {
     this.name = name
     this.baseUrl = baseUrl
     this.contractVerifier = new ContractVerifier(name, methods)
+    // Store connection pool for future use (not currently used but reserved for HTTP/2 optimizations)
+    this.connectionPool = ConnectionPoolManager.getPool(baseUrl, _config.connectionPool)
+    // Prevent unused variable warning
+    void this.connectionPool
 
     // Generate pipelines for each method
     for (const [methodName, methodConfig] of Object.entries(methods)) {
-      const pipeline = createMethodPipeline(name, methodName, methodConfig, this._config)
-      this.pipelines.set(methodName, pipeline)
+      if (_config.lazy) {
+        // Create lazy-loaded pipeline
+        const lazyPipeline = new Lazy({
+          loader: () => Promise.resolve(createMethodPipeline(name, methodName, methodConfig, this._config)),
+          cache: true,
+          onLoad: () => {
+            console.log(`[Lazy] Loaded pipeline: ${name}.${methodName}`)
+          },
+        })
+        this.lazyPipelines.set(methodName, lazyPipeline)
 
-      // Create property for each method
-      Object.defineProperty(this, methodName, {
-        get: () => pipeline,
-        enumerable: true,
-        configurable: false,
-      })
+        // Create lazy property for each method
+        Object.defineProperty(this, methodName, {
+          get: () => {
+            // Return a wrapper that loads the pipeline on first use
+            return {
+              run: async (input: unknown) => {
+                const pipelineResult = await lazyPipeline.get()
+                if (Result.isOk(pipelineResult)) {
+                  return pipelineResult.value.run(input)
+                }
+                return pipelineResult
+              },
+            }
+          },
+          enumerable: true,
+          configurable: false,
+        })
+      } else {
+        // Create pipeline immediately
+        const pipeline = createMethodPipeline(name, methodName, methodConfig, this._config)
+        this.pipelines.set(methodName, pipeline)
+
+        // Create property for each method
+        Object.defineProperty(this, methodName, {
+          get: () => pipeline,
+          enumerable: true,
+          configurable: false,
+        })
+      }
     }
   }
 

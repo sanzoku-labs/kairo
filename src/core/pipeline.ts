@@ -4,6 +4,7 @@ import { isNil, isEmpty, cond, resolve, conditionalEffect, tryCatch, retry } fro
 import { type KairoError, createError } from './errors'
 import type { Rule, Rules, BusinessRuleError, RuleValidationContext } from './rules'
 import type { Transform, TransformError, TransformContext } from './transform'
+import { performance as perf } from './performance'
 
 export interface HttpError extends KairoError {
   code: 'HTTP_ERROR'
@@ -783,12 +784,15 @@ export class Pipeline<Input, Output> {
 
   async run(input?: Input): Promise<Result<unknown, Output>> {
     const start = performance.now()
+    const span = perf.startSpan(`pipeline:${this.name}`, { input })
 
     // Cache logic
     if (this.cacheConfig) {
       const cacheKey = `pipeline:${this.name}:${JSON.stringify(input || {})}`
       const cached = PipelineCache.get(cacheKey)
       if (cached && Date.now() - cached.timestamp < this.cacheConfig.ttl) {
+        span.metadata = { ...span.metadata, cacheHit: true }
+        perf.endSpan(span)
         return cached.result as Result<unknown, Output>
       }
     }
@@ -829,7 +833,23 @@ export class Pipeline<Input, Output> {
               ([res]) => Result.isOk(res),
               async ([result, step]) => {
                 if (Result.isOk(result)) {
-                  return await step.execute(result.value, context)
+                  const stepSpan = perf.startSpan(`${context.name}:${step.type}`, {
+                    stepType: step.type,
+                    input: result.value,
+                  })
+
+                  try {
+                    const stepResult = await step.execute(result.value, context)
+                    stepSpan.metadata = {
+                      ...stepSpan.metadata,
+                      success: Result.isOk(stepResult),
+                      output: Result.isOk(stepResult) ? stepResult.value : undefined,
+                      error: Result.isErr(stepResult) ? stepResult.error : undefined,
+                    }
+                    return stepResult
+                  } finally {
+                    perf.endSpan(stepSpan)
+                  }
                 }
                 return result
               },
@@ -902,6 +922,16 @@ export class Pipeline<Input, Output> {
         timestamp: Date.now(),
       })
     }
+
+    // End performance span
+    span.metadata = {
+      ...span.metadata,
+      success: Result.isOk(finalResult),
+      output: Result.isOk(finalResult) ? finalResult.value : undefined,
+      error: Result.isErr(finalResult) ? finalResult.error : undefined,
+      cached: this.cacheConfig ? true : false,
+    }
+    perf.endSpan(span)
 
     return finalResult
   }

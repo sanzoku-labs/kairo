@@ -8,6 +8,7 @@
 import { Result } from './result'
 import { type KairoError, createError } from './errors'
 import { type Schema } from './native-schema'
+import { BatchProcessor } from './performance'
 
 // ============================================================================
 // Core Types
@@ -67,6 +68,13 @@ export interface Transform<TSource, TTarget> {
   // Execution
   execute(source: TSource, context?: TransformContext): Result<TransformError, TTarget>
   executeMany(sources: TSource[], context?: TransformContext): Result<TransformError[], TTarget[]>
+
+  // Batch processing
+  executeBatch(
+    sources: TSource[],
+    options?: { batchSize?: number; parallel?: boolean },
+    context?: TransformContext
+  ): Promise<Result<TransformError[], TTarget[]>>
 
   // Composition
   pipe<TNext>(nextTransform: Transform<TTarget, TNext>): Transform<TSource, TNext>
@@ -276,6 +284,64 @@ class TransformImpl<TSource, TTarget> implements Transform<TSource, TTarget> {
     return Result.Ok(results)
   }
 
+  async executeBatch(
+    sources: TSource[],
+    options: { batchSize?: number; parallel?: boolean } = {},
+    context?: TransformContext
+  ): Promise<Result<TransformError[], TTarget[]>> {
+    const { batchSize = 100, parallel = true } = options
+
+    if (!parallel) {
+      // Sequential processing
+      return this.executeMany(sources, context)
+    }
+
+    // Create batch processor for parallel execution
+    const batchProcessor = new BatchProcessor<TSource, Result<TransformError, TTarget>>({
+      batchSize,
+      batchDelay: 10,
+      maxWaitTime: 100,
+      processor: async batch => {
+        // Process batch in parallel
+        const promises = batch.map((source, index) =>
+          Promise.resolve(this.execute(source, { ...context, batchIndex: index }))
+        )
+        return Promise.all(promises)
+      },
+    })
+
+    // Add all sources to batch processor
+    const resultPromises = sources.map(source => batchProcessor.add(source))
+
+    // Wait for all results
+    const results = await Promise.all(resultPromises)
+
+    // Collect results and errors
+    const successfulResults: TTarget[] = []
+    const errors: TransformError[] = []
+
+    for (const [index, result] of results.entries()) {
+      if (result.tag === 'Ok') {
+        successfulResults.push(result.value)
+      } else {
+        // Don't treat filter failures as errors - just skip the item
+        if (result.error.operation === 'filter') {
+          continue
+        }
+        errors.push({
+          ...result.error,
+          context: { ...result.error.context, sourceIndex: index },
+        })
+      }
+    }
+
+    if (errors.length > 0) {
+      return Result.Err(errors)
+    }
+
+    return Result.Ok(successfulResults)
+  }
+
   pipe<TNext>(nextTransform: Transform<TTarget, TNext>): Transform<TSource, TNext> {
     return new PipeTransform(this, nextTransform)
   }
@@ -405,6 +471,22 @@ class PipeTransform<TSource, TMiddle, TTarget> implements Transform<TSource, TTa
     }
 
     return Result.Ok(results)
+  }
+
+  async executeBatch(
+    sources: TSource[],
+    options: { batchSize?: number; parallel?: boolean } = {},
+    context?: TransformContext
+  ): Promise<Result<TransformError[], TTarget[]>> {
+    // For piped transforms, execute the first transform in batch
+    const firstResults = await this.firstTransform.executeBatch(sources, options, context)
+
+    if (firstResults.tag === 'Err') {
+      return firstResults as Result<TransformError[], TTarget[]>
+    }
+
+    // Then execute the second transform on the successful results
+    return this.secondTransform.executeBatch(firstResults.value, options, context)
   }
 
   pipe<TNext>(nextTransform: Transform<TTarget, TNext>): Transform<TSource, TNext> {
