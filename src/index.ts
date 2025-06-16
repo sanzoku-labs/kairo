@@ -204,3 +204,70 @@ export * from './testing'
 
 // Export functional utilities
 export * from './utils/fp'
+
+// Export event-driven architecture
+export { createEventBus, getGlobalEventBus, setGlobalEventBus, createEvent } from './core/event-bus'
+export type {
+  BaseEvent,
+  DomainEvent,
+  EventHandler,
+  EventFilter,
+  EventSubscription,
+  RetryPolicy,
+  EventStoreEntry,
+  EventStream,
+  EventPublisher,
+  EventSubscriber,
+  EventStore,
+  SagaStep,
+  SagaContext,
+  SagaDefinition,
+  EventSchema,
+  EventRegistry,
+  DeadLetterEntry,
+  EventBusConfig,
+  EventBus,
+  AggregateRoot,
+  EventSourcedRepository,
+} from './core/events'
+
+export {
+  createEventStore,
+  createInMemoryEventStore,
+  InMemoryEventStorageAdapter,
+  KairoEventStore,
+} from './core/event-store'
+export type { EventStoreConfig, EventSnapshot, EventStorageAdapter } from './core/event-store'
+
+export { createSagaManager, sagaStep, saga, InMemorySagaManager } from './core/saga'
+export type {
+  SagaState,
+  SagaResult,
+  SagaManager,
+  SagaStepContext,
+  EnhancedSagaStep,
+  EnhancedSagaDefinition,
+} from './core/saga'
+
+export { eventPipeline, eventStep, EventPipeline } from './core/event-pipeline'
+export type {
+  EventPipelineContext,
+  EventAwareStep,
+  EventPipelineConfig,
+  PipelineStartedEvent,
+  PipelineCompletedEvent,
+  PipelineFailedEvent,
+  StepStartedEvent,
+  StepCompletedEvent,
+  StepFailedEvent,
+} from './core/event-pipeline'
+
+export { eventRepository, InMemoryStorageAdapter, EventRepository } from './core/event-repository'
+export type {
+  EntityCreatedEvent,
+  EntityUpdatedEvent,
+  EntityDeletedEvent,
+  QueryExecutedEvent,
+  EventRepositoryConfig,
+  StorageAdapter as EventRepositoryStorageAdapter,
+} from './core/event-repository'
