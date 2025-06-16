@@ -271,3 +271,70 @@ export type {
   EventRepositoryConfig,
   StorageAdapter as EventRepositoryStorageAdapter,
 } from './core/event-repository'
+
+// Export transaction management system
+export {
+  createTransactionManager,
+  transactionStep,
+  transaction,
+  InMemoryTransactionManager,
+} from './core/transaction-manager'
+export type {
+  TransactionIsolation,
+  TransactionStatus,
+  TransactionOperationType,
+  TransactionOperation,
+  CompensationFunction,
+  TransactionContext,
+  TransactionStep,
+  TransactionDefinition,
+  TransactionResult,
+  TransactionManager,
+  TransactionalResource,
+  TransactionCoordinator,
+  LockManager,
+  TransactionEvent,
+  TransactionStartedEvent,
+  TransactionCommittedEvent,
+  TransactionRolledBackEvent,
+  TransactionFailedEvent,
+} from './core/transactions'
+
+export { createLockManager, InMemoryLockManager } from './core/lock-manager'
+export type {
+  LockType,
+  LockEntry,
+  LockConflictStrategy,
+  LockManagerConfig,
+} from './core/lock-manager'
+
+export {
+  transactionalPipeline,
+  makeTransactional,
+  parallelTransaction,
+  TransactionalPipeline,
+} from './core/transactional-pipeline'
+export type {
+  TransactionalPipelineConfig,
+  TransactionalPipelineStep,
+} from './core/transactional-pipeline'
+
+export {
+  transactionalRepository,
+  makeRepositoryTransactional,
+  TransactionalRepository,
+} from './core/transactional-repository'
+export type {
+  TransactionalRepositoryConfig,
+  TransactionalStorageAdapter,
+} from './core/transactional-repository'
+
+export {
+  transactionalResource,
+  makeResourceTransactional,
+  TransactionalResourceImpl as TransactionalResourceClass,
+} from './core/transactional-resource'
+export type {
+  TransactionalResourceConfig,
+  CompensatableOperation,
+} from './core/transactional-resource'
