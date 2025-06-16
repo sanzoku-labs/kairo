@@ -31,7 +31,7 @@ export default defineConfig({
       { text: 'Guide', link: '/guide/' },
       { text: 'API', link: '/api/' },
       { text: 'Examples', link: '/examples/' },
-      { text: 'GitHub', link: 'https://github.com/sovanaryththorng/kairo' },
+      { text: 'GitHub', link: 'https://github.com/sovanaryththorng/sanzoku-labs/kairo' },
     ],
 
     sidebar: {
@@ -93,6 +93,8 @@ export default defineConfig({
       ],
     },
 
-    socialLinks: [{ icon: 'github', link: 'https://github.com/sovanaryththorng/kairo' }],
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/sovanaryththorng/sanzoku-labs/kairo' },
+    ],
   },
 })
