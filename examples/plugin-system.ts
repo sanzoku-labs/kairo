@@ -1,16 +1,8 @@
 // Plugin System Examples
 // Complete examples showing how to create and use plugins with Kairo
 
-import {
-  createPlugin,
-  registerPlugin,
-  loadAndEnablePlugin,
-  resource,
-  pipeline,
-  repository,
-  schema,
-  Result,
-} from '../src/index'
+import { resource, pipeline, repository, schema, Result } from '../src/index'
+import { createPlugin, registerPlugin, loadAndEnablePlugin } from '../src/extensions/plugins'
 
 // Example 1: Authentication Plugin
 const authPlugin = createPlugin('auth', {

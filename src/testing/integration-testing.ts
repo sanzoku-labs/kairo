@@ -2,7 +2,7 @@ import { type Pipeline } from '../core/pipeline'
 import { type Resource, type ResourceMethods } from '../core/resource'
 import { type Repository } from '../core/repository'
 import { type Transform } from '../core/transform'
-import { type Workflow } from '../core/workflow'
+import { type Workflow } from '../extensions/workflows/workflow'
 import { Result } from '../core/result'
 
 export interface IntegrationTestScenario<TInput = unknown, TOutput = unknown> {

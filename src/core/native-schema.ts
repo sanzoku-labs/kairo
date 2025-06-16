@@ -14,7 +14,7 @@
 
 import { Result } from './result'
 import { type KairoError } from './errors'
-import { performance as perf } from './performance'
+import { performance as perf } from '../extensions/performance/performance'
 
 // ============================================================================
 // Core Types

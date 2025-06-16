@@ -1,7 +1,7 @@
 import { Result } from '../core/result'
 import { pipeline } from '../core/pipeline'
-import { workflow, workflowUtils, type WorkflowContext } from '../core/workflow'
-import { workflowTesting } from '../core/workflow-testing'
+import { workflow, workflowUtils, type WorkflowContext } from '../extensions/workflows/workflow'
+import { workflowTesting } from '../extensions/workflows/workflow-testing'
 import type {
   CreateUserRequest,
   User,

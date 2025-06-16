@@ -1,6 +1,6 @@
 import { Result } from '../core/result'
-import type { PluginDefinition, PluginState } from '../core/plugin'
-import { PluginRegistry } from '../core/plugin-registry'
+import type { PluginDefinition, PluginState } from '../extensions/plugins/plugin'
+import { PluginRegistry } from '../extensions/plugins/plugin-registry'
 
 export interface PluginTestContext {
   pluginName: string

@@ -8,7 +8,7 @@
 import { Result } from './result'
 import { type KairoError, createError } from './errors'
 import { type Schema } from './native-schema'
-import { BatchProcessor } from './performance'
+import { BatchProcessor } from '../extensions/performance/performance'
 
 // ============================================================================
 // Core Types

@@ -4,8 +4,11 @@ import { isNil, isEmpty, cond, resolve, conditionalEffect, tryCatch, retry } fro
 import { type KairoError, createError } from './errors'
 import type { Rule, Rules, BusinessRuleError, RuleValidationContext } from './rules'
 import type { Transform, TransformError, TransformContext } from './transform'
-import { performance as perf } from './performance'
-import { cache as advancedCache, type CacheConfig as AdvancedCacheConfig } from './cache'
+import { performance as perf } from '../extensions/performance/performance'
+import {
+  cache as advancedCache,
+  type CacheConfig as AdvancedCacheConfig,
+} from '../extensions/caching/cache'
 
 export interface HttpError extends KairoError {
   code: 'HTTP_ERROR'

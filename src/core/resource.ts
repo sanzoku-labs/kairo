@@ -7,8 +7,8 @@ import {
   type ResourceContract,
   type MockScenarios,
   type MockedResource,
-} from './contract'
-import { Lazy, ResourcePool } from './performance'
+} from '../extensions/contract'
+import { Lazy, ResourcePool } from '../extensions/performance/performance'
 
 export interface ResourceError extends KairoError {
   code: 'RESOURCE_ERROR'
