@@ -1,4 +1,4 @@
-// Advanced Caching Extension  
+// Advanced Caching Extension
 //
 // Tree-shakable named exports for multi-level caching
 
@@ -30,12 +30,7 @@ export {
 } from './caching/cache-distributed'
 
 // Export all types separately to avoid conflicts
-export type {
-  CacheError,
-  CacheStats,
-  CacheConfig,
-  CacheLayerConfig,
-} from './caching/cache'
+export type { CacheError, CacheStats, CacheConfig, CacheLayerConfig } from './caching/cache'
 
 export type {
   AnalyticsError,

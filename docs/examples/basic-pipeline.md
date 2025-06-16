@@ -1,15 +1,14 @@
 # Basic Pipeline
 
-Learn the fundamentals of creating and using Kairo pipelines with practical examples.
+Learn the fundamentals of creating and using Kairo **core API** pipelines with practical examples.
 
 ## Simple Data Processing
 
 ```typescript
 import { pipeline, schema } from 'kairo'
-import { z } from 'zod'
 
-// Define a schema for input validation
-const NumberSchema = schema(z.number().positive())
+// Define a schema for input validation (native - no dependencies!)
+const NumberSchema = schema.number().positive()
 
 // Create a simple pipeline
 const doublePipeline = pipeline('double-number')
@@ -30,7 +29,7 @@ if (result.tag === 'Ok') {
 ## String Processing Pipeline
 
 ```typescript
-const TextSchema = schema(z.string().min(1))
+const TextSchema = schema.string().min(1)
 
 const processTextPipeline = pipeline('process-text')
   .input(TextSchema)
@@ -60,13 +59,11 @@ if (result.tag === 'Ok') {
 ## Validation Pipeline
 
 ```typescript
-const UserInputSchema = schema(
-  z.object({
-    name: z.string().min(2, 'Name must be at least 2 characters'),
-    email: z.string().email('Invalid email format'),
-    age: z.number().min(18, 'Must be at least 18 years old'),
-  })
-)
+const UserInputSchema = schema.object({
+  name: schema.string().min(2),
+  email: schema.string().email(),
+  age: schema.number().min(18),
+})
 
 const validateUserPipeline = pipeline('validate-user')
   .input(UserInputSchema)
@@ -92,14 +89,14 @@ const invalidResult = await validateUserPipeline.run({
 })
 
 if (invalidResult.tag === 'Err') {
-  console.log('Validation errors:', invalidResult.error.issues)
+  console.log('Validation error:', invalidResult.error.message)
 }
 ```
 
 ## Conditional Processing
 
 ```typescript
-const NumberProcessingSchema = schema(z.number())
+const NumberProcessingSchema = schema.number()
 
 const conditionalPipeline = pipeline('conditional-processing')
   .input(NumberProcessingSchema)
@@ -129,12 +126,10 @@ const results = await Promise.all([
 ```typescript
 const safeDividePipeline = pipeline('safe-divide')
   .input(
-    schema(
-      z.object({
-        numerator: z.number(),
-        denominator: z.number(),
-      })
-    )
+    schema.object({
+      numerator: schema.number(),
+      denominator: schema.number(),
+    })
   )
   .map(({ numerator, denominator }) => {
     if (denominator === 0) {
@@ -171,11 +166,11 @@ if (errorResult.tag === 'Err') {
 ```typescript
 // Create smaller, focused pipelines
 const validateEmailPipeline = pipeline('validate-email')
-  .input(schema(z.string().email()))
+  .input(schema.string().email())
   .map(email => ({ email, domain: email.split('@')[1] }))
 
 const validateNamePipeline = pipeline('validate-name')
-  .input(schema(z.string().min(2)))
+  .input(schema.string().min(2))
   .map(name => ({
     name,
     firstName: name.split(' ')[0],
@@ -185,12 +180,10 @@ const validateNamePipeline = pipeline('validate-name')
 // Compose them in a larger pipeline
 const createUserPipeline = pipeline('create-user')
   .input(
-    schema(
-      z.object({
-        name: z.string(),
-        email: z.string(),
-      })
-    )
+    schema.object({
+      name: schema.string(),
+      email: schema.string(),
+    })
   )
   .map(async input => {
     // Run sub-pipelines
@@ -219,7 +212,7 @@ const userResult = await createUserPipeline.run({
 ## Working with Arrays
 
 ```typescript
-const NumberListSchema = schema(z.array(z.number()))
+const NumberListSchema = schema.array(schema.number())
 
 const processNumbersPipeline = pipeline('process-numbers')
   .input(NumberListSchema)
@@ -250,13 +243,11 @@ if (result.tag === 'Ok') {
 ## Pipeline with Side Effects
 
 ```typescript
-const LoggingSchema = schema(
-  z.object({
-    userId: z.string(),
-    action: z.string(),
-    data: z.record(z.unknown()),
-  })
-)
+const LoggingSchema = schema.object({
+  userId: schema.string(),
+  action: schema.string(),
+  data: schema.record(schema.unknown()),
+})
 
 const auditLogPipeline = pipeline('audit-log')
   .input(LoggingSchema)
@@ -291,12 +282,18 @@ await auditLogPipeline.run({
 ```typescript
 // ✅ Good - focused on single responsibility
 const validateEmailPipeline = pipeline('validate-email')
-  .input(schema(z.string().email()))
+  .input(schema.string().email())
   .map(email => ({ email, isValid: true }))
 
 // ❌ Bad - doing too much
 const processEverythingPipeline = pipeline('process-everything')
-  .input(schema(z.object({ email: z.string(), name: z.string(), age: z.number() })))
+  .input(
+    schema.object({
+      email: schema.string(),
+      name: schema.string(),
+      age: schema.number(),
+    })
+  )
   .map(input => {
     /* validate email, process name, check age, send notifications, etc. */
   })
@@ -331,16 +328,16 @@ if (result.tag === 'Ok') {
 
 ```typescript
 // ✅ Good - specific validation
-const UserSchema = schema(
-  z.object({
-    name: z.string().min(1),
-    email: z.string().email(),
-    age: z.number().min(0).max(150),
-  })
-)
+const UserSchema = schema.object({
+  name: schema.string().min(1),
+  email: schema.string().email(),
+  age: schema.number().min(0).max(150),
+})
 
 // ❌ Bad - too permissive
-const UserSchema = schema(z.record(z.unknown()))
+const UserSchema = schema.record(schema.unknown())
 ```
 
-Basic pipelines provide the foundation for all data processing in Kairo. Start with simple transformations and build up to more complex workflows as needed.
+Basic pipelines provide the foundation for all data processing in Kairo's **core API**. Start with simple transformations and build up to more complex workflows as needed.
+
+> **Need more advanced features?** Explore [Extension Examples](/examples/#⚡-advanced-extension-examples) for enterprise-grade patterns like event-driven architecture, transactions, and advanced caching.

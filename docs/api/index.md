@@ -1,16 +1,42 @@
 # API Reference
 
-Welcome to the Kairo API reference. This comprehensive guide covers all APIs across Kairo's **Three-Pillar Declarative Architecture**: **INTERFACE**, **PROCESS**, and **DATA**.
+Welcome to the Kairo API reference. This comprehensive guide covers all APIs across Kairo's **Three-Pillar Declarative Architecture** and **Advanced Extensions**.
 
 > **Architecture Overview**: [Three-Pillar Architecture Guide](/guide/architecture) for complete architectural context
 
 ---
 
-## 🔗 INTERFACE Pillar
+## 📦 API Organization
+
+Kairo APIs are organized into **Core** and **Extensions** for optimal bundle size and progressive enhancement:
+
+### [🚀 Core APIs](/api/core/)
+
+Essential three-pillar architecture - always available with minimal bundle size (~20KB):
+
+- **[INTERFACE Pillar](/api/core/)** - Resources and external system integration
+- **[PROCESS Pillar](/api/core/)** - Pipelines and business rules
+- **[DATA Pillar](/api/core/)** - Schemas, transforms, and repositories
+- **[Result Pattern](/api/core/result)** - Type-safe error handling foundation
+
+### [⚡ Extensions](/api/extensions/)
+
+Enterprise-grade advanced features - import only what you need:
+
+- **[Event-Driven Architecture](/api/extensions/events)** - Event bus, sagas, and sourcing
+- **[Transaction Management](/api/extensions/transactions)** - ACID transactions with compensation
+- **[Advanced Caching](/api/extensions/cache)** - Multi-level cache with analytics
+- **[Plugin System](/api/extensions/plugins)** - Extensible architecture with hooks
+- **[Contract Testing](/api/extensions/contract)** - API verification and mocking
+- **[Complex Workflows](/api/extensions/workflow)** - Multi-step process orchestration
+
+---
+
+## 🔗 INTERFACE Pillar (Core)
 
 _Zero-boilerplate external system integration_
 
-### [Resource API](/api/resource)
+### [Resource API](/api/core/resource)
 
 Declarative API definitions with type safety, contract testing, and intelligent mocking
 
@@ -19,21 +45,13 @@ Declarative API definitions with type safety, contract testing, and intelligent 
 - URL parameter interpolation
 - Built-in caching strategies
 
-### [Contract Testing](/api/contract)
-
-API contract verification and mock generation
-
-- Live contract verification against APIs
-- Intelligent mock scenario generation
-- Response validation and schema verification
-
 ---
 
-## ⚡ PROCESS Pillar
+## ⚡ PROCESS Pillar (Core)
 
 _Declarative business logic composition_
 
-### [Pipeline API](/api/pipeline)
+### [Pipeline API](/api/core/pipeline)
 
 The core abstraction for composable business workflows
 
@@ -42,7 +60,7 @@ The core abstraction for composable business workflows
 - Parallel execution and branching logic
 - Observability and tracing
 
-### [Business Rules API](/api/rules)
+### [Business Rules API](/api/core/rules)
 
 Declarative validation and business logic
 
@@ -51,22 +69,13 @@ Declarative validation and business logic
 - Rule composition and reusability
 - Rich error messaging
 
-### [Workflow API](/api/workflow)
-
-Complex multi-step process orchestration
-
-- Sequential and parallel step execution
-- Error handling and compensation patterns
-- Conditional branching and loops
-- Distributed transaction support
-
 ---
 
-## 🛡️ DATA Pillar
+## 🛡️ DATA Pillar (Core)
 
 _Native data definition, validation, and access_
 
-### [Native Schema API](/api/schema)
+### [Native Schema API](/api/core/schema)
 
 High-performance validation (3x faster than Zod, zero dependencies)
 
@@ -75,7 +84,7 @@ High-performance validation (3x faster than Zod, zero dependencies)
 - Data transformation and refinement
 - Rich validation error reporting
 
-### [Transform API](/api/transform)
+### [Transform API](/api/core/transform)
 
 Declarative data mapping and conversion
 
@@ -84,7 +93,7 @@ Declarative data mapping and conversion
 - Data filtering and validation
 - Transform composition and chaining
 
-### [Repository API](/api/repository)
+### [Repository API](/api/core/repository)
 
 Type-safe data access with relationships
 
@@ -97,7 +106,7 @@ Type-safe data access with relationships
 
 ## 🚀 Core Foundation
 
-### [Result Pattern](/api/result)
+### [Result Pattern](/api/core/result)
 
 Type-safe error handling without exceptions
 
@@ -108,100 +117,82 @@ Type-safe error handling without exceptions
 
 ---
 
-## 🔄 Event-Driven Architecture
+## 🔄 Event-Driven Architecture (Extensions)
 
-### [Event Bus API](/api/events)
+### [Event Bus API](/api/extensions/events)
 
-Type-safe publish/subscribe event system
+Type-safe publish/subscribe event system with advanced features
 
 - Event publishing and subscription
 - Event filtering and retry logic
 - Dead letter queues and replay capabilities
+- Saga patterns for complex workflows
 - Cross-pillar event integration
-
-### [Event Store API](/api/event-store)
-
-Persistent event storage with replay capabilities
-
-- Event stream management
-- Event replay and rebuilding state
-- Concurrency control and optimistic locking
-- Event sourcing patterns
-
-### [Saga API](/api/saga)
-
-Complex workflow orchestration with compensation
-
-- Multi-step workflow management
-- Automatic rollback and compensation
-- Distributed transaction patterns
-- Error handling and recovery
 
 ---
 
-## 💾 Transaction Management
+## 💾 Transaction Management (Extensions)
 
-### [Transaction API](/api/transactions)
+### [Transaction API](/api/extensions/transactions)
 
-ACID-compliant transaction management
+ACID-compliant transaction management with distributed support
 
 - Transaction definition and execution
 - Isolation levels and lock management
 - Automatic rollback and compensation
 - Cross-pillar transaction support
-
-### [Lock Manager API](/api/lock-manager)
-
-Distributed locking with deadlock detection
-
-- Shared and exclusive locks
 - Deadlock detection and resolution
-- Automatic lock release
-- Performance monitoring
 
 ---
 
-## ⚡ Advanced Caching
+## ⚡ Advanced Caching (Extensions)
 
-### [Cache Manager API](/api/cache)
+### [Cache Manager API](/api/extensions/cache)
 
-Multi-level caching with analytics
+Multi-level caching with real-time analytics
 
-- Cache layer management
-- Invalidation strategies (tag-based, pattern-based)
+- Cache layer management with priority-based promotion
+- Invalidation strategies (tag-based, pattern-based, dependency-based)
 - Real-time analytics and monitoring
-- Distributed cache support
-
-### [Cache Analytics API](/api/cache-analytics)
-
-Real-time cache performance monitoring
-
-- Hit/miss ratio tracking
-- Memory usage monitoring
-- Performance metrics and alerting
-- Trend analysis and optimization
+- Distributed cache support with Redis clustering
+- Cache warming strategies and predictive loading
 
 ---
 
-## 🔌 Plugin System
+## 🔌 Plugin System (Extensions)
 
-### [Plugin API](/api/plugins)
+### [Plugin API](/api/extensions/plugins)
 
-Extensible plugin architecture
+Extensible plugin architecture with three-pillar integration
 
 - Plugin definition and registration
 - Lifecycle management (load, enable, disable)
 - Three-pillar integration hooks
 - Dependency management and validation
-
-### [Plugin Registry API](/api/plugin-registry)
-
-Centralized plugin management
-
-- Plugin discovery and loading
 - Health monitoring and status tracking
-- Dependency resolution
-- Plugin testing framework
+
+---
+
+## 🧪 Advanced Testing & Contracts (Extensions)
+
+### [Contract Testing](/api/extensions/contract)
+
+API contract verification and intelligent mocking
+
+- Live contract verification against APIs
+- Intelligent mock scenario generation
+- Response validation and schema verification
+- Automated contract regression testing
+
+### [Complex Workflows](/api/extensions/workflow)
+
+Multi-step process orchestration with advanced patterns
+
+- Sequential and parallel step execution
+- Error handling and compensation patterns
+- Conditional branching and loops
+- Distributed transaction support
+- Event-driven workflow triggers
 
 ---
 
@@ -355,22 +346,39 @@ import {
 
 ---
 
+---
+
 ## 🎯 Quick Navigation
 
 **Getting Started**: [Installation & Quick Start](/guide/getting-started)
 
+**By API Type**:
+
+- **Core APIs** → [Essential three-pillar architecture](/api/core/)
+- **Extensions** → [Advanced enterprise features](/api/extensions/)
+
 **By Use Case**:
 
-- Building APIs → [Resource API](/api/resource)
-- Business Logic → [Pipeline API](/api/pipeline) + [Rules API](/api/rules)
-- Data Validation → [Schema API](/api/schema)
-- Data Access → [Repository API](/api/repository)
-- Data Transformation → [Transform API](/api/transform)
+- Building APIs → [Resource API](/api/core/resource)
+- Business Logic → [Pipeline API](/api/core/pipeline) + [Rules API](/api/core/rules)
+- Data Validation → [Schema API](/api/core/schema)
+- Data Access → [Repository API](/api/core/repository)
+- Data Transformation → [Transform API](/api/core/transform)
+- Event Systems → [Event Bus API](/api/extensions/events)
+- Transactions → [Transaction API](/api/extensions/transactions)
+- Caching → [Cache Manager API](/api/extensions/cache)
+- Extensibility → [Plugin API](/api/extensions/plugins)
 
 **By Pillar**:
 
-- **INTERFACE**: [Resource](/api/resource) • [Contract](/api/contract)
-- **PROCESS**: [Pipeline](/api/pipeline) • [Rules](/api/rules) • [Workflow](/api/workflow)
-- **DATA**: [Schema](/api/schema) • [Transform](/api/transform) • [Repository](/api/repository)
+- **INTERFACE (Core)**: [Resource](/api/core/resource)
+- **PROCESS (Core)**: [Pipeline](/api/core/pipeline) • [Rules](/api/core/rules)
+- **DATA (Core)**: [Schema](/api/core/schema) • [Transform](/api/core/transform) • [Repository](/api/core/repository)
+
+**Advanced Features (Extensions)**:
+
+- **Event-Driven**: [Events](/api/extensions/events) • [Workflows](/api/extensions/workflow)
+- **Data Management**: [Transactions](/api/extensions/transactions) • [Caching](/api/extensions/cache)
+- **Extensibility**: [Plugins](/api/extensions/plugins) • [Contracts](/api/extensions/contract)
 
 **Architecture Deep Dive**: [Three-Pillar Architecture Guide](/guide/architecture)

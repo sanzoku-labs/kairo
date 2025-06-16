@@ -2,7 +2,14 @@
 
 > **"Make infrastructure disappear. Make business logic visible."**
 
-Kairo's Three-Pillar Architecture is a revolutionary approach to application development that eliminates infrastructure boilerplate through three foundational pillars: **INTERFACE**, **PROCESS**, and **DATA**. This guide explores the architectural principles, design patterns, and implementation strategies that make Kairo a complete declarative application platform.
+Kairo's Three-Pillar Architecture is a revolutionary approach to application development that eliminates infrastructure boilerplate through **core APIs** and **optional extensions**. This guide explores the architectural principles, design patterns, and implementation strategies that make Kairo a complete declarative application platform.
+
+## Core vs Extensions Architecture
+
+Kairo is built with **progressive enhancement** in mind:
+
+- **🚀 Core APIs** (~20KB) - Essential three-pillar functionality for any application
+- **⚡ Extensions** (opt-in) - Enterprise-grade features you add as your application grows
 
 ## The Philosophy Behind Three-Pillar Architecture
 
@@ -71,15 +78,15 @@ class UserService {
 Kairo eliminates infrastructure code through declarative patterns:
 
 ```typescript
-// Kairo approach - Business logic focused
-import { pipeline, nativeSchema, rules, rule, resource } from 'kairo'
+// Kairo approach - Business logic focused with core API
+import { pipeline, schema, rules, rule, resource } from 'kairo'
 
 // DATA: Define your domain
-const UserSchema = nativeSchema.object({
-  id: nativeSchema.string().uuid(),
-  name: nativeSchema.string().min(2),
-  email: nativeSchema.string().email(),
-  age: nativeSchema.number().min(0),
+const UserSchema = schema.object({
+  id: schema.string().uuid(),
+  name: schema.string().min(2),
+  email: schema.string().email(),
+  age: schema.number().min(0),
 })
 
 // PROCESS: Define business rules
@@ -121,6 +128,7 @@ result.match({
 - ✅ **Highly testable** - Pure functions and declarative patterns
 - ✅ **Completely reusable** - Framework-agnostic, composable components
 - ✅ **Zero dependencies** - Native implementations with no external deps
+- ✅ **Progressive enhancement** - Start with core, add extensions as needed
 
 ## Pillar 1: INTERFACE - Declarative External System Integration
 
@@ -136,9 +144,9 @@ The INTERFACE pillar eliminates service classes and API boilerplate through decl
 ### Resource Declaration Pattern
 
 ```typescript
-import { resource, nativeSchema } from 'kairo'
+import { resource, schema } from 'kairo'
 
-// Define your resource declaratively
+// Define your resource declaratively with core API
 const UserAPI = resource(
   'users',
   {
@@ -146,7 +154,7 @@ const UserAPI = resource(
     get: {
       method: 'GET',
       path: '/users/:id',
-      params: nativeSchema.object({ id: nativeSchema.string().uuid() }),
+      params: schema.object({ id: schema.string().uuid() }),
       response: UserSchema,
     },
 
@@ -162,7 +170,7 @@ const UserAPI = resource(
     update: {
       method: 'PUT',
       path: '/users/:id',
-      params: nativeSchema.object({ id: nativeSchema.string().uuid() }),
+      params: schema.object({ id: schema.string().uuid() }),
       body: UpdateUserSchema,
       response: UserSchema,
     },
@@ -171,8 +179,8 @@ const UserAPI = resource(
     delete: {
       method: 'DELETE',
       path: '/users/:id',
-      params: nativeSchema.object({ id: nativeSchema.string().uuid() }),
-      response: nativeSchema.object({ success: nativeSchema.boolean() }),
+      params: schema.object({ id: schema.string().uuid() }),
+      response: schema.object({ success: schema.boolean() }),
     },
   },
   {
@@ -273,7 +281,7 @@ The PROCESS pillar transforms complex business logic into composable, declarativ
 ### Pipeline Composition Patterns
 
 ```typescript
-import { pipeline, rules, rule, nativeSchema } from 'kairo'
+import { pipeline, rules, rule, schema } from 'kairo'
 
 // Simple linear pipeline
 const processUser = pipeline('process-user')
@@ -454,19 +462,19 @@ The DATA pillar provides native, high-performance data modeling with declarative
 ### Native Schema System
 
 ```typescript
-import { nativeSchema } from 'kairo'
+import { schema } from 'kairo'
 
-// Basic schema types
-const UserSchema = nativeSchema.object({
-  id: nativeSchema.string().uuid(),
-  name: nativeSchema.string().min(2).max(100),
-  email: nativeSchema.string().email(),
-  age: nativeSchema.number().min(0).max(150),
-  active: nativeSchema.boolean().default(true),
-  roles: nativeSchema.array(nativeSchema.enum(['user', 'admin', 'moderator'] as const)),
-  metadata: nativeSchema.record(nativeSchema.string()).optional(),
-  createdAt: nativeSchema.string().datetime(),
-  updatedAt: nativeSchema.string().datetime().optional(),
+// Basic schema types with core API
+const UserSchema = schema.object({
+  id: schema.string().uuid(),
+  name: schema.string().min(2).max(100),
+  email: schema.string().email(),
+  age: schema.number().min(0).max(150),
+  active: schema.boolean().default(true),
+  roles: schema.array(schema.enum(['user', 'admin', 'moderator'] as const)),
+  metadata: schema.record(schema.string()).optional(),
+  createdAt: schema.string().datetime(),
+  updatedAt: schema.string().datetime().optional(),
 })
 
 // Advanced schema composition
@@ -484,49 +492,49 @@ const ValidatedUserSchema = UserSchema.refine(
 }))
 
 // Complex nested schemas
-const OrderSchema = nativeSchema.object({
-  id: nativeSchema.string().uuid(),
+const OrderSchema = schema.object({
+  id: schema.string().uuid(),
   customer: UserSchema,
-  items: nativeSchema.array(
-    nativeSchema.object({
-      productId: nativeSchema.string().uuid(),
-      quantity: nativeSchema.number().positive(),
-      price: nativeSchema.number().positive(),
-      total: nativeSchema.number().positive(),
+  items: schema.array(
+    schema.object({
+      productId: schema.string().uuid(),
+      quantity: schema.number().positive(),
+      price: schema.number().positive(),
+      total: schema.number().positive(),
     })
   ),
-  shipping: nativeSchema.object({
-    address: nativeSchema.object({
-      street: nativeSchema.string(),
-      city: nativeSchema.string(),
-      state: nativeSchema.string(),
-      zipCode: nativeSchema.string().regex(/^\d{5}(-\d{4})?$/),
-      country: nativeSchema.string().length(2),
+  shipping: schema.object({
+    address: schema.object({
+      street: schema.string(),
+      city: schema.string(),
+      state: schema.string(),
+      zipCode: schema.string().regex(/^\d{5}(-\d{4})?$/),
+      country: schema.string().length(2),
     }),
-    method: nativeSchema.enum(['standard', 'express', 'overnight'] as const),
-    cost: nativeSchema.number().min(0),
+    method: schema.enum(['standard', 'express', 'overnight'] as const),
+    cost: schema.number().min(0),
   }),
-  payment: nativeSchema.discriminatedUnion('type', [
-    nativeSchema.object({
-      type: nativeSchema.literal('credit_card'),
-      cardNumber: nativeSchema.string().regex(/^\d{16}$/),
-      expiryMonth: nativeSchema.number().min(1).max(12),
-      expiryYear: nativeSchema.number().min(2024),
+  payment: schema.discriminatedUnion('type', [
+    schema.object({
+      type: schema.literal('credit_card'),
+      cardNumber: schema.string().regex(/^\d{16}$/),
+      expiryMonth: schema.number().min(1).max(12),
+      expiryYear: schema.number().min(2024),
     }),
-    nativeSchema.object({
-      type: nativeSchema.literal('paypal'),
-      email: nativeSchema.string().email(),
+    schema.object({
+      type: schema.literal('paypal'),
+      email: schema.string().email(),
     }),
-    nativeSchema.object({
-      type: nativeSchema.literal('bank_transfer'),
-      routingNumber: nativeSchema.string(),
-      accountNumber: nativeSchema.string(),
+    schema.object({
+      type: schema.literal('bank_transfer'),
+      routingNumber: schema.string(),
+      accountNumber: schema.string(),
     }),
   ]),
-  total: nativeSchema.number().positive(),
-  status: nativeSchema.enum(['pending', 'processing', 'shipped', 'delivered'] as const),
-  createdAt: nativeSchema.string().datetime(),
-  updatedAt: nativeSchema.string().datetime().optional(),
+  total: schema.number().positive(),
+  status: schema.enum(['pending', 'processing', 'shipped', 'delivered'] as const),
+  createdAt: schema.string().datetime(),
+  updatedAt: schema.string().datetime().optional(),
 })
 ```
 
@@ -668,9 +676,9 @@ const getActiveUsersWithRecentOrders = async () => {
 }
 ```
 
-## Advanced Features Integration
+## Advanced Features Integration (Extensions)
 
-Kairo's advanced features work seamlessly with the three-pillar architecture to provide enterprise-grade capabilities.
+Kairo's **extensions** work seamlessly with the core three-pillar architecture to provide enterprise-grade capabilities. Import only what you need:
 
 ### Event-Driven Architecture Integration
 
@@ -682,7 +690,7 @@ import {
   sagaStep,
   eventPipeline,
   eventRepository,
-} from 'kairo/events'
+} from 'kairo/extensions/events'
 
 // Create event bus
 const eventBus = createEventBus({
@@ -750,7 +758,7 @@ import {
   createTransactionManager,
   transactionalPipeline,
   transactionalRepository,
-} from 'kairo/transactions'
+} from 'kairo/extensions/transactions'
 
 const transactionManager = createTransactionManager()
 
@@ -807,7 +815,7 @@ const complexOrderTransaction = transaction(
 ### Advanced Caching Integration
 
 ```typescript
-import { CacheManager, MemoryStorage, RedisStorage } from 'kairo/cache'
+import { CacheManager, MemoryStorage, RedisStorage } from 'kairo/extensions/caching'
 
 // Multi-level cache setup
 const cacheManager = new CacheManager({
@@ -876,7 +884,7 @@ eventBus.subscribe({
 ### Plugin System Integration
 
 ```typescript
-import { createPlugin, registerPlugin, loadAndEnablePlugin } from 'kairo/plugins'
+import { createPlugin, registerPlugin, loadAndEnablePlugin } from 'kairo/extensions/plugins'
 
 // Comprehensive auth plugin
 const authPlugin = createPlugin('auth', {
@@ -989,19 +997,14 @@ const secureUserPipeline = pipeline('secure-user-processing')
 ### Complete Enterprise Architecture
 
 ```typescript
-import {
-  nativeSchema,
-  resource,
-  pipeline,
-  repository,
-  transform,
-  rules,
-  rule,
-  createEventBus,
-  createTransactionManager,
-  CacheManager,
-  createPlugin,
-} from 'kairo'
+// Core APIs - always available
+import { schema, resource, pipeline, repository, transform, rules, rule } from 'kairo'
+
+// Extensions - opt-in as needed
+import { createEventBus } from 'kairo/extensions/events'
+import { createTransactionManager } from 'kairo/extensions/transactions'
+import { CacheManager } from 'kairo/extensions/caching'
+import { createPlugin } from 'kairo/extensions/plugins'
 
 // Foundation setup
 const eventBus = createEventBus()
@@ -1009,14 +1012,14 @@ const transactionManager = createTransactionManager()
 const cacheManager = new CacheManager()
 
 // DATA: Domain models with validation
-const UserSchema = nativeSchema.object({
-  id: nativeSchema.string().uuid(),
-  name: nativeSchema.string().min(2).max(100),
-  email: nativeSchema.string().email(),
-  role: nativeSchema.enum(['user', 'admin', 'moderator'] as const),
-  active: nativeSchema.boolean().default(true),
-  createdAt: nativeSchema.string().datetime(),
-  updatedAt: nativeSchema.string().datetime().optional(),
+const UserSchema = schema.object({
+  id: schema.string().uuid(),
+  name: schema.string().min(2).max(100),
+  email: schema.string().email(),
+  role: schema.enum(['user', 'admin', 'moderator'] as const),
+  active: schema.boolean().default(true),
+  createdAt: schema.string().datetime(),
+  updatedAt: schema.string().datetime().optional(),
 })
 
 // INTERFACE: API with caching and events
@@ -1270,7 +1273,7 @@ describe('Complete Workflows', () => {
 ```typescript
 // Phase 1: Start with DATA pillar
 // Replace validation libraries with native schemas
-const UserSchema = nativeSchema.object({
+const UserSchema = schema.object({
   // existing validation logic
 })
 
@@ -1282,8 +1285,10 @@ const UserAPI = resource('users', existingEndpoints)
 // Replace complex business logic with pipelines
 const processUser = pipeline('process-user').input(UserSchema).pipeline(UserAPI.create)
 
-// Phase 4: Full integration
-// Combine all pillars for complete declarative architecture
+// Phase 4: Add extensions as needed
+// Import advanced features when your application grows
+import { createEventBus } from 'kairo/extensions/events'
+import { transactionManager } from 'kairo/extensions/transactions'
 ```
 
 ### Legacy Integration
@@ -1304,8 +1309,10 @@ const legacyServiceWrapper = pipeline('legacy-wrapper')
 
 ## Conclusion
 
-Kairo's Three-Pillar Architecture represents a fundamental shift from infrastructure-heavy to business-logic-focused application development. By embracing declarative patterns across the **INTERFACE**, **PROCESS**, and **DATA** pillars, developers can:
+Kairo's Three-Pillar Architecture represents a fundamental shift from infrastructure-heavy to business-logic-focused application development. Through **progressive enhancement** with core APIs and optional extensions, developers can:
 
+- **Start small with core APIs** - ~20KB bundle with essential functionality
+- **Scale progressively** - Add enterprise features only when needed
 - **Eliminate 70% of boilerplate code** - Focus on business value, not infrastructure
 - **Achieve predictable error handling** - No more exception-driven development
 - **Build highly testable systems** - Declarative patterns make testing natural
@@ -1314,4 +1321,4 @@ Kairo's Three-Pillar Architecture represents a fundamental shift from infrastruc
 
 The result is applications that are more maintainable, more reliable, and more enjoyable to develop. Kairo doesn't just provide tools - it provides a complete architectural philosophy that transforms how we think about application development.
 
-**Ready to embrace the Three-Pillar Architecture?** Start with any pillar that matches your immediate needs, then expand to leverage the full declarative platform.
+**Ready to embrace the Three-Pillar Architecture?** Start with the [core APIs](/api/core/) for essential functionality, then add [extensions](/api/extensions/) as your application grows.

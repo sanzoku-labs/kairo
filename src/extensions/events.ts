@@ -3,7 +3,12 @@
 // Tree-shakable named exports for event-driven patterns
 
 // Event Bus
-export { createEventBus, getGlobalEventBus, setGlobalEventBus, createEvent } from './events/event-bus'
+export {
+  createEventBus,
+  getGlobalEventBus,
+  setGlobalEventBus,
+  createEvent,
+} from './events/event-bus'
 
 // Event Store
 export {

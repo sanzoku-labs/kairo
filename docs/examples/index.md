@@ -1,8 +1,10 @@
 # Examples
 
-Explore real-world examples of using Kairo in different scenarios.
+Explore real-world examples of using Kairo's **core API** and **optional extensions**. Start with core examples, then explore advanced features.
 
-## Basic Examples
+## 🚀 Core API Examples
+
+Start with these essential patterns using Kairo's core three-pillar architecture:
 
 ### [Simple Pipeline](/examples/basic-pipeline)
 
@@ -20,11 +22,7 @@ Verify API contracts and use mocks for development and testing.
 
 Centralize validation logic with declarative business rules.
 
-### [Workflows](/examples/workflows)
-
-Complex multi-step process orchestration with error handling and testing.
-
-## DATA Pillar Examples
+## 🛡️ Core DATA Pillar Examples
 
 ### [Data Transformations](/examples/data-transformations)
 
@@ -34,21 +32,25 @@ Declarative data mapping and conversion between different schemas.
 
 Type-safe data access with relationships and lifecycle hooks.
 
-## Advanced Examples
+---
+
+## ⚡ Advanced Extension Examples
+
+Explore enterprise-grade features with optional extensions:
 
 ### [Event-Driven Architecture](/examples/event-driven-architecture)
 
 Building reactive applications with events, sagas, and event sourcing.
 
-### [Transaction Management](/examples/transaction-management)
+### [Workflows](/examples/workflows) 🆕
 
-ACID transactions with automatic rollback and compensation patterns.
+Complex multi-step process orchestration with error handling and testing.
 
-### [Advanced Caching](/examples/advanced-caching)
+### [Advanced Caching](/examples/advanced-caching) 🆕
 
 Multi-level caching with analytics and intelligent invalidation strategies.
 
-### [Plugin Development](/examples/plugin-development)
+### [Plugin Development](/examples/plugin-development) 🆕
 
 Creating extensible plugins that integrate with all three pillars.
 
@@ -56,25 +58,29 @@ Creating extensible plugins that integrate with all three pillars.
 
 Complete enterprise architecture with all advanced features combined.
 
-Kairo's Three-Pillar Architecture enables sophisticated application development with declarative patterns across data, interfaces, and processes.
+> **New to Kairo?** Start with [Core API examples](#🚀-core-api-examples) first, then explore [Extension examples](#⚡-advanced-extension-examples) as your application grows.
 
-## Framework Integration
+---
+
+## 🔧 Framework Integration
+
+Kairo works seamlessly with any TypeScript framework. Here are core API integration patterns:
 
 ### React Integration
 
 ```typescript
-import { pipeline, nativeSchema } from 'kairo'
+import { pipeline, schema } from 'kairo'
 import { useEffect, useState } from 'react'
 
-const UserSchema = nativeSchema.object({
-  id: nativeSchema.number(),
-  name: nativeSchema.string(),
-  email: nativeSchema.string()
+const UserSchema = schema.object({
+  id: schema.number(),
+  name: schema.string(),
+  email: schema.string()
 })
 
 // Pipeline for fetching user data
 const getUserPipeline = pipeline('get-user')
-  .input(nativeSchema.object({ id: nativeSchema.number() }))
+  .input(schema.object({ id: schema.number() }))
   .fetch('/api/users/:id')
   .validate(UserSchema)
 
@@ -109,20 +115,20 @@ function UserProfile({ userId }) {
 
 ```typescript
 import express from 'express'
-import { pipeline, nativeSchema, repository } from 'kairo'
+import { pipeline, schema, repository } from 'kairo'
 
 const app = express()
 
-const CreateUserSchema = nativeSchema.object({
-  name: nativeSchema.string(),
-  email: nativeSchema.string().email(),
+const CreateUserSchema = schema.object({
+  name: schema.string(),
+  email: schema.string().email(),
 })
 
-const UserSchema = nativeSchema.object({
-  id: nativeSchema.string(),
-  name: nativeSchema.string(),
-  email: nativeSchema.string(),
-  createdAt: nativeSchema.string(),
+const UserSchema = schema.object({
+  id: schema.string(),
+  name: schema.string(),
+  email: schema.string(),
+  createdAt: schema.string(),
 })
 
 const userRepository = repository('users', {
@@ -157,7 +163,7 @@ app.post('/users', async (req, res) => {
 
 ```typescript
 import { describe, it, expect, vi } from 'vitest'
-import { pipeline, nativeSchema, Result } from 'kairo'
+import { pipeline, schema, Result } from 'kairo'
 
 describe('User Pipeline', () => {
   it('should process user data correctly', async () => {

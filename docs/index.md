@@ -53,17 +53,31 @@ npm install kairo
 bun add kairo
 ```
 
+Start with the simple **core API** for essential functionality:
+
+```typescript
+import { schema, pipeline, resource } from 'kairo'
+```
+
+Add **extensions** only when you need advanced features:
+
+```typescript
+import { createEventBus } from 'kairo/extensions/events'
+import { transactionManager } from 'kairo/extensions/transactions'
+import { CacheManager } from 'kairo/extensions/caching'
+```
+
 ## INTERFACE Pillar - Zero-Boilerplate APIs
 
 ```typescript
-import { resource, nativeSchema } from 'kairo'
+import { resource, schema } from 'kairo'
 
 // Define your data with native schemas (3x faster than Zod!)
-const UserSchema = nativeSchema.object({
-  id: nativeSchema.string().uuid(),
-  name: nativeSchema.string().min(2).max(100),
-  email: nativeSchema.string().email(),
-  age: nativeSchema.number().min(0).max(150),
+const UserSchema = schema.object({
+  id: schema.string().uuid(),
+  name: schema.string().min(2).max(100),
+  email: schema.string().email(),
+  age: schema.number().min(0).max(150),
 })
 
 // Declarative API definition with caching and retry
@@ -72,7 +86,7 @@ const UserAPI = resource(
   {
     get: {
       path: '/users/:id',
-      params: nativeSchema.object({ id: nativeSchema.string().uuid() }),
+      params: schema.object({ id: schema.string().uuid() }),
       response: UserSchema,
     },
     create: {
@@ -156,16 +170,16 @@ result.match({
 ## DATA Pillar - Complete Data Management
 
 ```typescript
-import { nativeSchema, transform, repository } from 'kairo'
+import { schema, transform, repository } from 'kairo'
 
 // Native schemas with full type safety (3x faster than Zod!)
-const ProductSchema = nativeSchema.object({
-  id: nativeSchema.string().uuid(),
-  name: nativeSchema.string().min(1).max(200),
-  price: nativeSchema.number().positive(),
-  category: nativeSchema.enum(['electronics', 'books', 'clothing'] as const),
-  tags: nativeSchema.array(nativeSchema.string()).optional(),
-  metadata: nativeSchema.record(nativeSchema.string()).optional(),
+const ProductSchema = schema.object({
+  id: schema.string().uuid(),
+  name: schema.string().min(1).max(200),
+  price: schema.number().positive(),
+  category: schema.enum(['electronics', 'books', 'clothing'] as const),
+  tags: schema.array(schema.string()).optional(),
+  metadata: schema.record(schema.string()).optional(),
 })
 
 // Data transformations
@@ -214,12 +228,14 @@ const productsWithReviews = await productRepository.with('reviews').findMany()
 // Complete data access layer
 ```
 
-## Advanced Features
+## Advanced Features (Extensions)
+
+Need more power? Kairo extensions provide enterprise-grade features without bloating your bundle.
 
 ### Event-Driven Architecture
 
 ```typescript
-import { createEventBus, createEvent, saga } from 'kairo/events'
+import { createEventBus, createEvent, saga } from 'kairo/extensions/events'
 
 const eventBus = createEventBus()
 
@@ -261,7 +277,11 @@ const userOnboardingSaga = saga(
 ### Transaction Management
 
 ```typescript
-import { transaction, transactionStep, createTransactionManager } from 'kairo/transactions'
+import {
+  transaction,
+  transactionStep,
+  createTransactionManager,
+} from 'kairo/extensions/transactions'
 
 const transactionManager = createTransactionManager()
 
@@ -291,7 +311,7 @@ const result = await transactionManager.execute(transferFunds, transferData)
 ### Advanced Caching
 
 ```typescript
-import { cache, CacheManager } from 'kairo/cache'
+import { CacheManager } from 'kairo/extensions/caching'
 
 // Multi-level cache with analytics
 const cacheManager = new CacheManager({
@@ -319,7 +339,7 @@ console.log(`Hit rate: ${analytics.hitRate}%`)
 ### Plugin System
 
 ```typescript
-import { createPlugin, registerPlugin, loadAndEnablePlugin } from 'kairo/plugins'
+import { createPlugin, registerPlugin, loadAndEnablePlugin } from 'kairo/extensions/plugins'
 
 // Create extensible plugins
 const authPlugin = createPlugin('auth', {

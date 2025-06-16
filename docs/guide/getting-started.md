@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide will help you install Kairo and explore its **Three-Pillar Declarative Architecture** - **INTERFACE**, **PROCESS**, and **DATA** pillars that eliminate infrastructure boilerplate.
+This guide will help you install Kairo and explore its **simple core API** with **opt-in advanced extensions**. Start with the essential **Three-Pillar Architecture** - **INTERFACE**, **PROCESS**, and **DATA** pillars - then add enterprise features only when you need them.
 
 ## Installation
 
@@ -26,26 +26,42 @@ pnpm add kairo
 
 :::
 
-**Zero Dependencies Required!** Kairo now includes native schema validation (3x faster than Zod) with no external dependencies.
+**Zero Dependencies Required!** Kairo includes native schema validation (3x faster than Zod) with no external dependencies.
 
-## The Three-Pillar Quick Start
+## Core API: The Three-Pillar Quick Start
 
-Kairo's architecture consists of three foundational pillars. Let's explore each one:
+Kairo's **core API** provides essential functionality through three foundational pillars. Start here:
+
+```typescript
+// Import only what you need from the core API
+import { schema, resource, pipeline, repository, transform } from 'kairo'
+```
+
+**Extensions are opt-in** - add them only when you need advanced features:
+
+```typescript
+// Add extensions for advanced functionality
+import { createEventBus } from 'kairo/extensions/events'
+import { transactionManager } from 'kairo/extensions/transactions'
+import { CacheManager } from 'kairo/extensions/caching'
+```
+
+Let's explore each core pillar:
 
 ### 1. DATA Pillar - Native Schema Validation
 
 Start with native, high-performance data validation:
 
 ```typescript
-import { nativeSchema } from 'kairo'
+import { schema } from 'kairo'
 
 // Define schemas with native validation (3x faster than Zod!)
-const UserSchema = nativeSchema.object({
-  id: nativeSchema.string().uuid(),
-  name: nativeSchema.string().min(2).max(100),
-  email: nativeSchema.string().email(),
-  age: nativeSchema.number().min(0).max(150),
-  active: nativeSchema.boolean().default(true),
+const UserSchema = schema.object({
+  id: schema.string().uuid(),
+  name: schema.string().min(2).max(100),
+  email: schema.string().email(),
+  age: schema.number().min(0).max(150),
+  active: schema.boolean().default(true),
 })
 
 // Schema composition and transformation
@@ -84,7 +100,7 @@ const UserAPI = resource('users', {
   get: {
     method: 'GET',
     path: '/users/:id',
-    params: nativeSchema.object({ id: nativeSchema.string().uuid() }),
+    params: schema.object({ id: schema.string().uuid() }),
     response: UserSchema,
   },
   create: {
@@ -96,7 +112,7 @@ const UserAPI = resource('users', {
   update: {
     method: 'PUT',
     path: '/users/:id',
-    params: nativeSchema.object({ id: nativeSchema.string().uuid() }),
+    params: schema.object({ id: schema.string().uuid() }),
     body: UpdateUserSchema,
     response: UserSchema,
   },
@@ -167,14 +183,14 @@ result.match({
 Here's how all three pillars work together in a real application:
 
 ```typescript
-import { nativeSchema, resource, pipeline, repository, transform, hasMany } from 'kairo'
+import { schema, resource, pipeline, repository, transform, hasMany } from 'kairo'
 
 // DATA: Define your domain model
-const UserSchema = nativeSchema.object({
-  id: nativeSchema.string().uuid(),
-  name: nativeSchema.string().min(2).max(100),
-  email: nativeSchema.string().email(),
-  createdAt: nativeSchema.string(),
+const UserSchema = schema.object({
+  id: schema.string().uuid(),
+  name: schema.string().min(2).max(100),
+  email: schema.string().email(),
+  createdAt: schema.string(),
 })
 
 // DATA: Repository for data access
@@ -194,11 +210,11 @@ const ExternalUserAPI = resource('external-users', {
   fetch: {
     method: 'GET',
     path: '/api/external/users/:id',
-    params: nativeSchema.object({ id: nativeSchema.string() }),
-    response: nativeSchema.object({
-      user_id: nativeSchema.string(),
-      full_name: nativeSchema.string(),
-      email_address: nativeSchema.string(),
+    params: schema.object({ id: schema.string() }),
+    response: schema.object({
+      user_id: schema.string(),
+      full_name: schema.string(),
+      email_address: schema.string(),
     }),
   },
 })
@@ -213,7 +229,7 @@ const userTransform = transform('normalize-user', ExternalUserAPI.fetch.response
 
 // PROCESS: Complete user import workflow
 const importUser = pipeline('import-user')
-  .input(nativeSchema.object({ externalId: nativeSchema.string() }))
+  .input(schema.object({ externalId: schema.string() }))
   .pipeline(data => ExternalUserAPI.fetch.run({ id: data.externalId }))
   .transform(userTransform)
   .run(user => userRepository.create(user))
@@ -271,13 +287,13 @@ if (Result.isErr(result)) {
 Kairo provides structured error handling with rich error information:
 
 ```typescript
-import { pipeline, nativeSchema } from 'kairo'
+import { pipeline, schema } from 'kairo'
 
 const userPipeline = pipeline('user-processing')
   .input(
-    nativeSchema.object({
-      email: nativeSchema.string().email(),
-      age: nativeSchema.number().min(0),
+    schema.object({
+      email: schema.string().email(),
+      age: schema.number().min(0),
     })
   )
   .map(user => ({ ...user, processed: true }))
@@ -329,14 +345,14 @@ result.match({
 ### Pipeline Composition and Reusability
 
 ```typescript
-import { pipeline, nativeSchema } from 'kairo'
+import { pipeline, schema } from 'kairo'
 
 // Base pipeline for authenticated API calls
 const authenticatedApiPipeline = pipeline('authenticated-api')
   .input(
-    nativeSchema.object({
-      endpoint: nativeSchema.string(),
-      token: nativeSchema.string(),
+    schema.object({
+      endpoint: schema.string(),
+      token: schema.string(),
     })
   )
   .map(({ endpoint, token }) => ({
@@ -354,9 +370,9 @@ const userPipeline = authenticatedApiPipeline.validate(UserSchema).map(user => (
 // Posts pipeline with pagination
 const postsPipeline = authenticatedApiPipeline
   .validate(
-    nativeSchema.object({
-      posts: nativeSchema.array(PostSchema),
-      total: nativeSchema.number(),
+    schema.object({
+      posts: schema.array(PostSchema),
+      total: schema.number(),
     })
   )
   .map(({ posts, total }) => ({
@@ -372,7 +388,7 @@ import { pipeline } from 'kairo'
 
 // Execute multiple pipelines in parallel
 const userDashboard = pipeline('user-dashboard')
-  .input(nativeSchema.object({ userId: nativeSchema.string() }))
+  .input(schema.object({ userId: schema.string() }))
   .parallel([
     userPipeline, // Get user info
     postsPipeline, // Get user posts
@@ -393,7 +409,7 @@ const result = await userDashboard.run({ userId: 'user-123' })
 ```typescript
 // Pipeline with fallback logic
 const resilientUserPipeline = pipeline('resilient-user')
-  .input(nativeSchema.object({ userId: nativeSchema.string() }))
+  .input(schema.object({ userId: schema.string() }))
   .fallback(
     primaryUserPipeline, // Try primary source first
     fallbackUserPipeline // Fall back to secondary source
@@ -753,14 +769,14 @@ const tracedPipeline = userPipeline
   })
 ```
 
-## Advanced Features (Optional)
+## Advanced Features (Extensions)
 
-Once you're comfortable with the three pillars, explore Kairo's enterprise-grade advanced features:
+Once you're comfortable with the core three pillars, explore Kairo's enterprise-grade **extensions**. Import only what you need:
 
 ### Event-Driven Architecture
 
 ```typescript
-import { createEventBus, createEvent, saga, sagaStep } from 'kairo/events'
+import { createEventBus, createEvent, saga, sagaStep } from 'kairo/extensions/events'
 
 // Create event bus
 const eventBus = createEventBus()
@@ -803,7 +819,11 @@ const userOnboardingSaga = saga(
 ### Transaction Management
 
 ```typescript
-import { transaction, transactionStep, createTransactionManager } from 'kairo/transactions'
+import {
+  transaction,
+  transactionStep,
+  createTransactionManager,
+} from 'kairo/extensions/transactions'
 
 const transactionManager = createTransactionManager()
 
@@ -830,7 +850,7 @@ const result = await transactionManager.execute(transferFunds, transferData)
 ### Advanced Caching
 
 ```typescript
-import { CacheManager, MemoryStorage, RedisStorage } from 'kairo/cache'
+import { CacheManager, MemoryStorage, RedisStorage } from 'kairo/extensions/caching'
 
 // Multi-level cache with analytics
 const cacheManager = new CacheManager({
@@ -858,7 +878,7 @@ console.log(`Hit rate: ${analytics.hitRate}%`)
 ### Plugin System
 
 ```typescript
-import { createPlugin, registerPlugin, loadAndEnablePlugin } from 'kairo/plugins'
+import { createPlugin, registerPlugin, loadAndEnablePlugin } from 'kairo/extensions/plugins'
 
 // Create extensible plugins
 const authPlugin = createPlugin('auth', {
@@ -901,18 +921,18 @@ Now that you understand Kairo's Three-Pillar Architecture, explore more advanced
 
 ### 🔧 Core API Reference
 
-- [Native Schema API](/api/schema) - Complete schema validation reference
-- [Pipeline API](/api/pipeline) - Business logic composition patterns
-- [Resource API](/api/resource) - Zero-boilerplate API integration
-- [Repository API](/api/repository) - Data access with relationships
-- [Transform API](/api/transform) - Declarative data transformation
+- [Native Schema API](/api/core/schema) - Complete schema validation reference
+- [Pipeline API](/api/core/pipeline) - Business logic composition patterns
+- [Resource API](/api/core/resource) - Zero-boilerplate API integration
+- [Repository API](/api/core/repository) - Data access with relationships
+- [Transform API](/api/core/transform) - Declarative data transformation
 
-### ⚡ Advanced API Reference
+### ⚡ Extensions API Reference
 
-- [Event Bus API](/api/events) - Event-driven architecture and sagas
-- [Transaction API](/api/transactions) - ACID transactions and compensation
-- [Cache API](/api/cache) - Multi-level caching with analytics
-- [Plugin API](/api/plugins) - Extensible plugin architecture
+- [Event Bus API](/api/extensions/events) - Event-driven architecture and sagas
+- [Transaction API](/api/extensions/transactions) - ACID transactions and compensation
+- [Cache API](/api/extensions/cache) - Multi-level caching with analytics
+- [Plugin API](/api/extensions/plugins) - Extensible plugin architecture
 
 ### 💡 Real-World Examples
 
