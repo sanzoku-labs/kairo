@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { pipeline, tracing } from '../src/core/pipeline'
+import { pipeline, tracing } from './pipeline'
 
 // Type-safe mock interfaces
 interface MockStorage {
@@ -25,7 +25,7 @@ describe('Enhanced Tracing System', () => {
       key: vi.fn(),
       length: 0,
     }
-    globalThis.localStorage = mockStorage as unknown as Storage
+    globalThis.localStorage = mockStorage as unknown as typeof globalThis.localStorage
   })
 
   afterEach(() => {

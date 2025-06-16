@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { Result } from '../src/core/result'
-import { schema } from '../src'
-import { resource, resourceUtils, type ResourceMethod } from '../src/core/resource'
+import { Result } from './result'
+import { schema } from '../index'
+import { resource, resourceUtils, type ResourceMethod } from './resource'
 
 // Test error type interfaces
 interface TestHttpError {

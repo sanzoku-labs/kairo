@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { z } from 'zod'
-import { rule, rules, commonRules, pipeline, schema, Result } from '../src'
-import type { Rules } from '../src'
+import { rule, rules, commonRules, pipeline, schema, Result } from '../index'
+import type { Rules } from '../index'
 
 // Test data interfaces
 interface User {

@@ -1,9 +1,9 @@
 import { expect, it as test, describe, beforeEach, afterEach } from 'vitest'
-import { cache as advancedCache, CacheManager, MemoryStorage } from '../src/core/cache'
-import { cache as pipelineCache } from '../src/core/pipeline'
-import { invalidationStrategies, warmingStrategies } from '../src/core/cache-invalidation'
-import { CacheAnalytics, defaultAnalyticsConfig } from '../src/core/cache-analytics'
-import { Result } from '../src/core/result'
+import { cache as advancedCache, CacheManager, MemoryStorage } from './cache'
+import { cache as pipelineCache } from './pipeline'
+import { invalidationStrategies, warmingStrategies } from './cache-invalidation'
+import { CacheAnalytics, defaultAnalyticsConfig } from './cache-analytics'
+import { Result } from './result'
 
 describe('Advanced Caching System', () => {
   let testCacheManager: CacheManager

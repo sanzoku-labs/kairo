@@ -6,9 +6,9 @@ import {
   belongsTo,
   MemoryStorageAdapter,
   createRepositoryError,
-} from '../src/core/repository'
-import { schema } from '../src'
-import { Result } from '../src/core/result'
+} from './repository'
+import { schema } from '../index'
+import { Result } from './result'
 
 // Test schemas
 const UserSchema = schema.object({

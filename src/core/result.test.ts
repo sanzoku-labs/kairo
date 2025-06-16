@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { Result, map, flatMap, match } from '../src/core/result'
+import { Result, map, flatMap, match } from './result'
 
 describe('Result', () => {
   describe('when creating Ok result', () => {

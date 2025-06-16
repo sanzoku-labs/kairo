@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { pipeline } from '../src/core/pipeline'
-import { schema } from '../src'
-import { Result } from '../src/core/result'
-import type { HttpError } from '../src/core/pipeline'
-import type { ValidationError } from '../src/core/native-schema'
+import { pipeline } from './pipeline'
+import { schema } from '../index'
+import { Result } from './result'
+import type { HttpError } from './pipeline'
+import type { ValidationError } from './native-schema'
 
 describe('Pipeline', () => {
   beforeEach(() => {

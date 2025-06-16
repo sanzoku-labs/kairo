@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { nativeSchema, type Schema } from '../src/core/native-schema'
-import { Result } from '../src/core/result'
+import { nativeSchema, type Schema } from './native-schema'
+import { Result } from './result'
 
 describe('Native Schema System', () => {
   describe('Basic Types', () => {

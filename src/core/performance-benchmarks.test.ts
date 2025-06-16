@@ -1,10 +1,10 @@
 import { describe, it, expect, afterAll } from 'vitest'
-import { performanceTesting } from '../src/testing/performance-testing'
-import { pipeline } from '../src/core/pipeline'
-import { schema } from '../src'
-import { transform } from '../src/core/transform'
-import { repository } from '../src/core/repository'
-import { performance as perf } from '../src/core/performance'
+import { performanceTesting } from '../testing/performance-testing'
+import { pipeline } from './pipeline'
+import { schema } from '../index'
+import { transform } from './transform'
+import { repository } from './repository'
+import { performance as perf } from './performance'
 
 describe('Performance Benchmarks', () => {
   // Initialize performance monitoring

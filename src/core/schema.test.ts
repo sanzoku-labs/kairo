@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
-import { schema } from '../src/core/schema'
-import { Result } from '../src/core/result'
+import { schema } from './schema'
+import { Result } from './result'
 
 describe('Schema', () => {
   describe('string schema', () => {

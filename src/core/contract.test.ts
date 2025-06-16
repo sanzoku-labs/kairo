@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { z } from 'zod'
-import { resource, schema, createError } from '../src'
-import type { NetworkError, ValidationError } from '../src'
+import { resource, schema, createError } from '../index'
+import type { NetworkError, ValidationError } from '../index'
 
 describe('Contract Testing', () => {
   const UserSchema = schema.from(
@@ -46,7 +46,7 @@ describe('Contract Testing', () => {
 
     beforeEach(() => {
       fetchMock = vi.fn()
-      global.fetch = fetchMock
+      globalThis.fetch = fetchMock
     })
 
     it('should verify successful API contract', async () => {

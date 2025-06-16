@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { Result } from '../src/core/result'
+import { Result } from './result'
 import {
   createPlugin,
   registerPlugin,
@@ -16,10 +16,10 @@ import {
   PluginValidationError,
   PluginDependencyError,
   PluginLifecycleError,
-} from '../src/core/plugins'
-import { nativeSchema as schema } from '../src/core/native-schema'
-import { PluginRegistry, setGlobalPluginRegistry } from '../src/core/plugin-registry'
-import { PluginTester, pluginTestUtils } from '../src/testing/plugin-testing'
+} from './plugins'
+import { nativeSchema as schema } from './native-schema'
+import { PluginRegistry, setGlobalPluginRegistry } from './plugin-registry'
+import { PluginTester, pluginTestUtils } from '../testing/plugin-testing'
 
 describe('Plugin System', () => {
   let registry: PluginRegistry

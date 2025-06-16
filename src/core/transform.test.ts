@@ -7,7 +7,7 @@ import {
   schema,
   Result,
   type TransformContext,
-} from '../src'
+} from '../index'
 
 // Test data interfaces
 interface APIUser {
