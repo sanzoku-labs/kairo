@@ -1,4 +1,5 @@
 import { Result } from '../../core/result'
+import { pipe, filter } from '../../utils/fp'
 import type {
   EventBus,
   EventBusConfig,
@@ -49,18 +50,18 @@ export class InMemoryEventBus implements EventBus {
         }
       }
 
-      // Find matching subscriptions
-      const matchingSubscriptions = Array.from(this.subscriptions.values()).filter(
-        subscription =>
-          subscription.eventType === event.type &&
-          (!subscription.filter || subscription.filter(event))
-      )
+      // Find matching subscriptions using FP
+      const allSubscriptions = Array.from(this.subscriptions.values())
+      const matchingSubscriptions = pipe(
+        (subs: EventSubscription[]) =>
+          filter((sub: EventSubscription) => sub.eventType === event.type)(subs),
+        byType => filter((sub: EventSubscription) => !sub.filter || sub.filter(event))(byType)
+      )(allSubscriptions)
 
       // Process subscriptions in parallel
       const promises = matchingSubscriptions.map(subscription =>
         this.processSubscription(subscription, event)
       )
-
       await Promise.all(promises)
       return Result.Ok(undefined)
     } catch (error) {

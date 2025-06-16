@@ -409,39 +409,42 @@ class FallbackStep<I, O, F> implements Step<KairoError, O | F> {
     const start = performance.now()
     const logTrace = createTraceLogger(context)
 
+    const createFallbackError = (primaryError: unknown, fallbackError: unknown): KairoError => ({
+      ...createError('FALLBACK_ERROR', 'Both primary and fallback pipelines failed', {
+        primaryError,
+        fallbackError,
+      }),
+      code: 'FALLBACK_ERROR',
+    })
+
+    const logSuccess = (result: Result<unknown, O | F>) => {
+      logTrace(createTraceEntry(context, 'fallback', start, result, input))
+      return result as Result<KairoError, O | F>
+    }
+
+    const logError = (error: KairoError) => {
+      logTrace(createTraceEntry(context, 'fallback', start, Result.Err(error), input, error))
+      return Result.Err(error)
+    }
+
     try {
+      // Try primary pipeline first
       const primaryResult = await this.primaryPipeline.run(input as I)
 
       if (Result.isOk(primaryResult)) {
-        logTrace(createTraceEntry(context, 'fallback', start, primaryResult, input))
-        return Result.Ok(primaryResult.value)
+        return logSuccess(primaryResult)
       }
 
+      // Only try fallback if primary failed
       const fallbackResult = await this.fallbackPipeline.run(input as I)
 
       if (Result.isOk(fallbackResult)) {
-        logTrace(createTraceEntry(context, 'fallback', start, fallbackResult, input))
-        return Result.Ok(fallbackResult.value)
+        return logSuccess(fallbackResult)
       }
 
-      const fallbackError: KairoError = {
-        ...createError('FALLBACK_ERROR', 'Both primary and fallback pipelines failed', {
-          primaryError: primaryResult.error,
-          fallbackError: fallbackResult.error,
-        }),
-        code: 'FALLBACK_ERROR',
-      }
-      logTrace(
-        createTraceEntry(
-          context,
-          'fallback',
-          start,
-          Result.Err(fallbackError),
-          input,
-          fallbackError
-        )
-      )
-      return Result.Err(fallbackError)
+      // Both failed
+      const fallbackError = createFallbackError(primaryResult.error, fallbackResult.error)
+      return logError(fallbackError)
     } catch (error) {
       const fallbackError: KairoError = {
         ...createError(
@@ -451,17 +454,7 @@ class FallbackStep<I, O, F> implements Step<KairoError, O | F> {
         ),
         code: 'FALLBACK_ERROR',
       }
-      logTrace(
-        createTraceEntry(
-          context,
-          'fallback',
-          start,
-          Result.Err(fallbackError),
-          input,
-          fallbackError
-        )
-      )
-      return Result.Err(fallbackError)
+      return logError(fallbackError)
     }
   }
 }

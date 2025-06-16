@@ -96,9 +96,7 @@ export default defineConfig({
         {
           text: '🧪 Testing Framework',
           collapsed: true,
-          items: [
-            { text: 'Testing Guide', link: '/testing-guide' },
-          ],
+          items: [{ text: 'Testing Guide', link: '/testing-guide' }],
         },
       ],
       '/examples/': [

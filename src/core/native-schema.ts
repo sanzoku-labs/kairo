@@ -15,6 +15,7 @@
 import { Result } from './result'
 import { type KairoError } from './errors'
 import { performance as perf } from '../extensions/performance/performance'
+// Removed unused FP imports
 
 // ============================================================================
 // Core Types
@@ -393,13 +394,19 @@ class NativeNumberSchema extends BaseSchema<number> implements NumberSchema {
         )
       }
 
-      // Apply all constraints
-      for (const constraint of this.constraints) {
-        if (!constraint.validate(input)) {
-          return Result.Err(
-            createValidationError(constraint.message, path, input, 'number', constraint.code)
+      // Apply all constraints using FP
+      const failedConstraint = this.constraints.find(constraint => !constraint.validate(input))
+
+      if (failedConstraint) {
+        return Result.Err(
+          createValidationError(
+            failedConstraint.message,
+            path,
+            input,
+            'number',
+            failedConstraint.code
           )
-        }
+        )
       }
 
       return Result.Ok(input)

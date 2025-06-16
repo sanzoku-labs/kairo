@@ -1,5 +1,6 @@
 import { Result } from '../../core/result'
 import { type KairoError, createError } from '../../core/errors'
+import { pipe } from '../../utils/fp'
 import {
   InvalidationManager,
   type InvalidationTrigger,
@@ -246,28 +247,22 @@ export class MemoryStorage extends CacheStorage {
   private getEvictionCandidates(count: number, policy: string): string[] {
     const entries = Array.from(this.cache.entries())
 
+    const sortAndSlice = (sortFn: (a: [string, CacheEntry], b: [string, CacheEntry]) => number) =>
+      pipe(
+        (entries: [string, CacheEntry][]) => entries.sort(sortFn),
+        sorted => sorted.slice(0, count),
+        sliced => sliced.map(([key]) => key)
+      )(entries)
+
     switch (policy) {
-      case 'lru': // Least Recently Used
-        return entries
-          .sort(([a], [b]) => (this.accessOrder.get(a) || 0) - (this.accessOrder.get(b) || 0))
-          .slice(0, count)
-          .map(([key]) => key)
-
-      case 'lfu': // Least Frequently Used
-        return entries
-          .sort(([a], [b]) => (this.accessCount.get(a) || 0) - (this.accessCount.get(b) || 0))
-          .slice(0, count)
-          .map(([key]) => key)
-
-      case 'fifo': // First In, First Out
+      case 'lru':
+        return sortAndSlice(([a], [b]) => (this.accessOrder.get(a) || 0) - (this.accessOrder.get(b) || 0))
+      case 'lfu':
+        return sortAndSlice(([a], [b]) => (this.accessCount.get(a) || 0) - (this.accessCount.get(b) || 0))
+      case 'fifo':
         return this.insertionOrder.slice(0, count)
-
-      case 'ttl': // Time To Live (oldest entries first)
-        return entries
-          .sort(([, a], [, b]) => a.timestamp - b.timestamp)
-          .slice(0, count)
-          .map(([key]) => key)
-
+      case 'ttl':
+        return sortAndSlice(([, a], [, b]) => a.timestamp - b.timestamp)
       default:
         return entries.slice(0, count).map(([key]) => key)
     }
