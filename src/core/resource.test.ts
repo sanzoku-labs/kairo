@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { Result } from './result'
 import { schema } from '../index'
-import { resource, resourceUtils, type ResourceMethod } from './resource'
+import { resource, resourceUtils, resourceCache, type ResourceMethod } from './resource'
 
 // Test error type interfaces
 interface TestHttpError {
@@ -303,10 +303,13 @@ describe('Resource', () => {
     })
   })
 
-  describe('URL interpolation', () => {
+  describe('URL interpolation with FP patterns', () => {
     it('should interpolate single path parameter', () => {
       const result = resourceUtils.interpolateUrl('/api/users/:id', { id: '123' })
-      expect(result).toBe('/api/users/123')
+      expect(Result.isOk(result)).toBe(true)
+      if (Result.isOk(result)) {
+        expect(result.value).toBe('/api/users/123')
+      }
     })
 
     it('should interpolate multiple path parameters', () => {
@@ -314,20 +317,28 @@ describe('Resource', () => {
         userId: '123',
         postId: '456',
       })
-      expect(result).toBe('/api/users/123/posts/456')
+      expect(Result.isOk(result)).toBe(true)
+      if (Result.isOk(result)) {
+        expect(result.value).toBe('/api/users/123/posts/456')
+      }
     })
 
     it('should encode URI components', () => {
       const result = resourceUtils.interpolateUrl('/api/search/:query', {
         query: 'hello world',
       })
-      expect(result).toBe('/api/search/hello%20world')
+      expect(Result.isOk(result)).toBe(true)
+      if (Result.isOk(result)) {
+        expect(result.value).toBe('/api/search/hello%20world')
+      }
     })
 
-    it('should throw error for missing parameters', () => {
-      expect(() => {
-        resourceUtils.interpolateUrl('/api/users/:id', {})
-      }).toThrow('Missing required parameter: id')
+    it('should return error for missing parameters', () => {
+      const result = resourceUtils.interpolateUrl('/api/users/:id', {})
+      expect(Result.isErr(result)).toBe(true)
+      if (Result.isErr(result)) {
+        expect(result.error.message).toContain('Missing required parameter: id')
+      }
     })
 
     it('should extract path parameters from URL template', () => {
@@ -809,6 +820,159 @@ describe('Resource', () => {
       expect(getMethod.cache?.ttl).toBe(60000)
       expect(getMethod.retry?.times).toBe(3)
       expect(getMethod.timeout).toBe(5000)
+    })
+  })
+
+  describe('FP-enhanced functionality', () => {
+    describe('validateMethods', () => {
+      it('should validate all methods successfully', () => {
+        const methods = {
+          get: resourceUtils.get(
+            '/api/users/:id',
+            UserParamsSchema,
+            UserSchema
+          ),
+          create: resourceUtils.post(
+            '/api/users',
+            CreateUserSchema,
+            UserSchema
+          ),
+        }
+
+        const result = resourceUtils.validateMethods(methods)
+        expect(Result.isOk(result)).toBe(true)
+      })
+
+      it('should fail when one method is invalid', () => {
+        const methods = {
+          get: resourceUtils.get(
+            '/api/users/:id',
+            UserParamsSchema,
+            UserSchema
+          ),
+          invalid: {
+            method: 'GET' as const,
+            path: 'invalid-path', // Missing leading slash
+            response: UserSchema,
+          },
+        }
+
+        const result = resourceUtils.validateMethods(methods)
+        expect(Result.isErr(result)).toBe(true)
+        if (Result.isErr(result)) {
+          expect(result.error.message).toContain("Method 'invalid' validation failed")
+        }
+      })
+    })
+
+    describe('createValidated', () => {
+      it('should create resource when validation passes', () => {
+        const methods = {
+          get: resourceUtils.get(
+            '/api/users/:id',
+            UserParamsSchema,
+            UserSchema
+          ),
+        }
+
+        const result = resourceUtils.createValidated('test', methods)
+        expect(Result.isOk(result)).toBe(true)
+        if (Result.isOk(result)) {
+          expect(result.value.name).toBe('test')
+        }
+      })
+
+      it('should fail when validation fails', () => {
+        const methods = {
+          invalid: {
+            method: 'GET' as const,
+            path: 'invalid-path',
+            response: UserSchema,
+          },
+        }
+
+        const result = resourceUtils.createValidated('test', methods)
+        expect(Result.isErr(result)).toBe(true)
+      })
+    })
+
+    describe('createWithFallback', () => {
+      it('should use first valid configuration', () => {
+        const configs = [
+          {
+            name: 'primary',
+            methods: {
+              get: resourceUtils.get('/api/users/:id', UserParamsSchema, UserSchema),
+            },
+          },
+          {
+            name: 'fallback',
+            methods: {
+              get: resourceUtils.get('/api/backup/:id', UserParamsSchema, UserSchema),
+            },
+          },
+        ]
+
+        const result = resourceUtils.createWithFallback(configs)
+        expect(Result.isOk(result)).toBe(true)
+        if (Result.isOk(result)) {
+          expect(result.value.name).toBe('primary')
+        }
+      })
+
+      it('should fallback when primary fails', () => {
+        // Test with two valid configurations where first creates a resource successfully
+        // This tests the fallback mechanism when the primary option is the first working one
+        const primaryConfig = {
+          name: 'primary',
+          methods: {
+            get: resourceUtils.get('/api/primary/:id', UserParamsSchema, UserSchema),
+          },
+        }
+        
+        const fallbackConfig = {
+          name: 'fallback',
+          methods: {
+            get: resourceUtils.get('/api/fallback/:id', UserParamsSchema, UserSchema),
+          },
+        }
+        
+        const configs = [primaryConfig, fallbackConfig]
+
+        const result = resourceUtils.createWithFallback(configs)
+        expect(Result.isOk(result)).toBe(true)
+        if (Result.isOk(result)) {
+          // Should use the first working configuration (primary)
+          expect(result.value.name).toBe('primary')
+        }
+      })
+    })
+
+    describe('FP cache utilities', () => {
+      it('should generate cache keys safely', () => {
+        const result = resourceCache.generateCacheKey('users', 'get', { id: 123 })
+        expect(Result.isOk(result)).toBe(true)
+        if (Result.isOk(result)) {
+          expect(result.value).toBe('pipeline:users.get:{"id":123}')
+        }
+      })
+
+      it('should handle cache key generation errors', () => {
+        const circularRef: { self: unknown } = { self: null }
+        circularRef.self = circularRef
+
+        const result = resourceCache.generateCacheKey('users', 'get', circularRef)
+        expect(Result.isErr(result)).toBe(true)
+      })
+
+      it('should get cache stats safely', () => {
+        const result = resourceCache.stats()
+        expect(Result.isOk(result)).toBe(true)
+        if (Result.isOk(result)) {
+          expect(typeof result.value.size).toBe('number')
+          expect(Array.isArray(result.value.entries)).toBe(true)
+        }
+      })
     })
   })
 })

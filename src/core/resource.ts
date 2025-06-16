@@ -9,6 +9,15 @@ import {
   type MockedResource,
 } from '../extensions/contract'
 import { Lazy, ResourcePool } from '../extensions/performance/performance'
+import {
+  tryCatch,
+  mapError,
+  recover,
+  sequence,
+  firstOk,
+  mapResult,
+  asyncToResult,
+} from '../utils/fp'
 
 export interface ResourceError extends KairoError {
   code: 'RESOURCE_ERROR'
@@ -91,15 +100,24 @@ const createResourceError = (operation: string, message: string, context = {}): 
   operation,
 })
 
-// URL interpolation utility
-const interpolateUrl = (template: string, params: Record<string, unknown>): string => {
-  return template.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, (_match, paramName: string) => {
-    const value = params[paramName]
-    if (value === undefined || value === null) {
-      throw new Error(`Missing required parameter: ${paramName}`)
-    }
-    return encodeURIComponent(typeof value === 'string' ? value : JSON.stringify(value))
-  })
+// URL interpolation utility with FP error handling
+const interpolateUrl = (template: string, params: Record<string, unknown>): Result<ResourceError, string> => {
+  return tryCatch(
+    () => {
+      return template.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, (_match, paramName: string) => {
+        const value = params[paramName]
+        if (value === undefined || value === null) {
+          throw new Error(`Missing required parameter: ${paramName}`)
+        }
+        return encodeURIComponent(typeof value === 'string' ? value : JSON.stringify(value))
+      })
+    },
+    error => createResourceError(
+      'interpolateUrl',
+      error instanceof Error ? error.message : 'URL interpolation failed',
+      { template, params }
+    )
+  )
 }
 
 // Extract path parameters from URL template
@@ -108,23 +126,32 @@ const extractPathParams = (path: string): string[] => {
   return matches ? matches.map(match => match.substring(1)) : []
 }
 
-// Separate path params from body/query params
+// Separate path params from body/query params with FP error handling
 const separateParams = <T extends Record<string, unknown>>(
   input: T,
   pathParams: string[]
-): { pathParams: Record<string, unknown>; bodyParams: Record<string, unknown> } => {
-  const pathParamsObj: Record<string, unknown> = {}
-  const bodyParams: Record<string, unknown> = {}
+): Result<ResourceError, { pathParams: Record<string, unknown>; bodyParams: Record<string, unknown> }> => {
+  return tryCatch(
+    () => {
+      const pathParamsObj: Record<string, unknown> = {}
+      const bodyParams: Record<string, unknown> = {}
 
-  for (const [key, value] of Object.entries(input)) {
-    if (pathParams.includes(key)) {
-      pathParamsObj[key] = value
-    } else {
-      bodyParams[key] = value
-    }
-  }
+      for (const [key, value] of Object.entries(input)) {
+        if (pathParams.includes(key)) {
+          pathParamsObj[key] = value
+        } else {
+          bodyParams[key] = value
+        }
+      }
 
-  return { pathParams: pathParamsObj, bodyParams }
+      return { pathParams: pathParamsObj, bodyParams }
+    },
+    error => createResourceError(
+      'separateParams',
+      error instanceof Error ? error.message : 'Parameter separation failed',
+      { input, pathParams }
+    )
+  )
 }
 
 // Create pipeline for a resource method
@@ -149,17 +176,26 @@ const createMethodPipeline = (
   // since we need to handle combined param+body inputs properly
   // The validation will be handled in the individual method level
 
-  // Add fetch step with URL interpolation
+  // Add fetch step with FP-based URL interpolation
   basePipeline = basePipeline.fetch(
-    // URL function that handles parameter interpolation
+    // URL function that handles parameter interpolation with error handling
     (input: unknown) => {
       if (pathParams.length === 0) {
         return fullPath
       }
 
       const inputObj = input as Record<string, unknown>
-      const { pathParams: pathParamsObj } = separateParams(inputObj, pathParams)
-      return interpolateUrl(fullPath, pathParamsObj)
+      const separateResult = separateParams(inputObj, pathParams)
+      if (Result.isErr(separateResult)) {
+        throw new Error(separateResult.error.message)
+      }
+      
+      const interpolateResult = interpolateUrl(fullPath, separateResult.value.pathParams)
+      if (Result.isErr(interpolateResult)) {
+        throw new Error(interpolateResult.error.message)
+      }
+      
+      return interpolateResult.value
     },
     // Options function that handles HTTP method and body
     (input: unknown) => {
@@ -173,7 +209,11 @@ const createMethodPipeline = (
 
         if (pathParams.length > 0 && method.body) {
           // We have both path params and a body schema, separate them
-          const { bodyParams } = separateParams(inputObj, pathParams)
+          const separationResult = separateParams(inputObj, pathParams)
+          if (Result.isErr(separationResult)) {
+            throw new Error(separationResult.error.message)
+          }
+          const { bodyParams } = separationResult.value
           options.body = JSON.stringify(bodyParams)
         } else if (pathParams.length > 0) {
           // We have path params but no body schema, so don't include params in body
@@ -446,140 +486,227 @@ export const resourceUtils = {
     }) as ResourceMethod<TParams, undefined, TResponse>,
 
   // URL utilities
-  interpolateUrl,
+  interpolateUrl: (template: string, params: Record<string, unknown>) => interpolateUrl(template, params),
   extractPathParams,
 
-  // Validation helpers
-  validateMethod: (method: ResourceMethod): Result<ResourceError, void> => {
-    try {
-      // Validate path has proper format
-      if (!method.path.startsWith('/')) {
-        return Result.Err(
-          createResourceError('validateMethod', 'Resource path must start with /', {
-            path: method.path,
-          })
-        )
-      }
-
-      // Validate path parameters have corresponding schema
-      const pathParams = extractPathParams(method.path)
-      if (pathParams.length > 0 && !method.params) {
-        return Result.Err(
-          createResourceError('validateMethod', 'Path parameters require params schema', {
-            pathParams,
-            path: method.path,
-          })
-        )
-      }
-
-      // Validate body schema for appropriate methods
-      if (['POST', 'PUT', 'PATCH'].includes(method.method) && !method.body && !method.params) {
-        return Result.Err(
-          createResourceError(
-            'validateMethod',
-            `${method.method} method should have body or params schema`,
-            { method: method.method, path: method.path }
-          )
-        )
-      }
-
-      return Result.Ok(undefined)
-    } catch (error) {
-      return Result.Err(
-        createResourceError(
-          'validateMethod',
-          error instanceof Error ? error.message : 'Method validation failed',
-          { method }
-        )
-      )
-    }
+  // FP-based validation helpers
+  validatePath: (path: string): Result<ResourceError, string> => {
+    return path.startsWith('/')
+      ? Result.Ok(path)
+      : Result.Err(createResourceError('validatePath', 'Resource path must start with /', { path }))
   },
 
-  // Create resource with validation
+  validatePathParams: (path: string, method: ResourceMethod): Result<ResourceError, void> => {
+    const pathParams = extractPathParams(path)
+    return pathParams.length > 0 && !method.params
+      ? Result.Err(createResourceError('validatePathParams', 'Path parameters require params schema', {
+          pathParams,
+          path,
+        }))
+      : Result.Ok(undefined)
+  },
+
+  validateBodySchema: (method: ResourceMethod): Result<ResourceError, void> => {
+    return ['POST', 'PUT', 'PATCH'].includes(method.method) && !method.body && !method.params
+      ? Result.Err(createResourceError(
+          'validateBodySchema',
+          `${method.method} method should have body or params schema`,
+          { method: method.method, path: method.path }
+        ))
+      : Result.Ok(undefined)
+  },
+
+  // Composed validation using FP patterns
+  validateMethod: (method: ResourceMethod): Result<ResourceError, void> => {
+    const pathValidation = resourceUtils.validatePath(method.path)
+    if (Result.isErr(pathValidation)) return pathValidation
+    
+    const paramsValidation = resourceUtils.validatePathParams(method.path, method)
+    if (Result.isErr(paramsValidation)) return paramsValidation
+    
+    return resourceUtils.validateBodySchema(method)
+  },
+
+  // Validate multiple methods using sequence
+  validateMethods: <TMethods extends ResourceMethods>(
+    methods: TMethods
+  ): Result<ResourceError, void> => {
+    const validations = Object.entries(methods).map(([methodName, method]) => {
+      const validation = resourceUtils.validateMethod(method)
+      return mapError((error: ResourceError) => createResourceError(
+        'validateMethods',
+        `Method '${methodName}' validation failed: ${error.message}`,
+        { methodName, originalError: error }
+      ))(validation)
+    })
+
+    const sequenceResult = sequence(validations)
+    return mapResult(() => undefined)(sequenceResult) as Result<ResourceError, void>
+  },
+
+  // Create resource with FP-based validation
   createValidated: <TMethods extends ResourceMethods>(
     name: string,
     methods: TMethods,
     config: ResourceOptionsInternal = {}
   ): Result<ResourceError, Resource<TMethods>> => {
-    try {
-      // Validate all methods
-      for (const [methodName, method] of Object.entries(methods)) {
-        const validation = resourceUtils.validateMethod(method)
-        if (Result.isErr(validation)) {
-          return Result.Err(
-            createResourceError('createValidated', `Method '${methodName}' validation failed`, {
-              methodName,
-              originalError: validation.error,
-            })
-          )
-        }
-      }
-
-      const resourceInstance = resource(name, methods, config)
-      return Result.Ok(resourceInstance)
-    } catch (error) {
-      return Result.Err(
-        createResourceError(
-          'createValidated',
-          error instanceof Error ? error.message : 'Resource creation failed',
-          { name, config }
-        )
+    const validation = resourceUtils.validateMethods(methods)
+    if (Result.isErr(validation)) return validation
+    
+    return tryCatch(
+      () => resource(name, methods, config),
+      error => createResourceError(
+        'createValidated',
+        error instanceof Error ? error.message : 'Resource creation failed',
+        { name, config }
       )
-    }
+    )
+  },
+
+  // Create resource with fallback strategies using FP patterns
+  createWithFallback: <TMethods extends ResourceMethods>(
+    configurations: Array<{
+      name: string
+      methods: TMethods
+      config?: ResourceOptionsInternal
+    }>
+  ): Result<ResourceError, Resource<TMethods>> => {
+    const results = configurations.map(({ name, methods, config }) =>
+      resourceUtils.createValidated(name, methods, config || {})
+    )
+    return firstOk(results)
+  },
+
+  // Compose multiple resource configurations with error recovery
+  composeResources: <TMethods extends ResourceMethods>(
+    primaryConfig: { name: string; methods: TMethods; config?: ResourceOptionsInternal },
+    fallbackConfigs: Array<{ name: string; methods: TMethods; config?: ResourceOptionsInternal }>
+  ): Result<ResourceError, Resource<TMethods>> => {
+    const primaryResult = resourceUtils.createValidated(primaryConfig.name, primaryConfig.methods, primaryConfig.config || {})
+    return recover(() => resourceUtils.createWithFallback(fallbackConfigs))(primaryResult)
   },
 }
 
-// Cache system integration
+// FP-enhanced cache system integration
 export const resourceCache = {
-  // Invalidate cache for specific resource method
+  // Invalidate cache for specific resource method with FP error handling
   invalidate: async (
     resourceName: string,
     methodName: string,
     input?: unknown
-  ): Promise<number> => {
-    const pipelineName = `${resourceName}.${methodName}`
-    if (input) {
-      // Invalidate specific cache entry
-      const cacheKey = `pipeline:${pipelineName}:${JSON.stringify(input)}`
-      return await cache.invalidate(`^${cacheKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
-    } else {
-      // Invalidate all cache entries for this pipeline
-      return await cache.invalidateByPipeline(pipelineName)
+  ): Promise<Result<ResourceError, number>> => {
+    const operation = async (): Promise<number> => {
+      const pipelineName = `${resourceName}.${methodName}`
+      if (input) {
+        // Invalidate specific cache entry
+        const cacheKey = `pipeline:${pipelineName}:${JSON.stringify(input)}`
+        return await cache.invalidate(`^${cacheKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+      } else {
+        // Invalidate all cache entries for this pipeline
+        return await cache.invalidateByPipeline(pipelineName)
+      }
     }
+
+    const result = await asyncToResult(operation())
+    return mapError((error: Error) => createResourceError(
+      'invalidateCache',
+      error.message,
+      { resourceName, methodName, input }
+    ))(result) as Result<ResourceError, number>
   },
 
-  // Invalidate cache for entire resource
-  invalidateResource: async (resourceName: string): Promise<number> => {
-    return await cache.invalidate(`^pipeline:${resourceName}\\.`)
+  // FP-based cache key generation
+  generateCacheKey: (
+    resourceName: string,
+    methodName: string,
+    input?: unknown
+  ): Result<ResourceError, string> => {
+    return tryCatch(
+      () => {
+        const pipelineName = `${resourceName}.${methodName}`
+        return input
+          ? `pipeline:${pipelineName}:${JSON.stringify(input)}`
+          : `pipeline:${pipelineName}`
+      },
+      error => createResourceError(
+        'generateCacheKey',
+        error instanceof Error ? error.message : 'Cache key generation failed',
+        { resourceName, methodName, input }
+      )
+    )
   },
 
-  // Invalidate cache by pattern
-  invalidateByPattern: async (pattern: string | RegExp): Promise<number> => {
-    return await cache.invalidate(pattern)
+  // Invalidate cache for entire resource with error handling
+  invalidateResource: async (resourceName: string): Promise<Result<ResourceError, number>> => {
+    const result = await asyncToResult(cache.invalidate(`^pipeline:${resourceName}\\.`))
+    return mapError((error: Error) => createResourceError(
+      'invalidateResource',
+      error.message,
+      { resourceName }
+    ))(result) as Result<ResourceError, number>
   },
 
-  // Invalidate cache by tags (for future enhancement)
-  invalidateByTag: async (tag: string): Promise<number> => {
-    return await cache.invalidateByTag(tag)
+  // Composed cache operations
+  invalidateByPattern: async (pattern: string | RegExp): Promise<Result<ResourceError, number>> => {
+    const result = await asyncToResult(cache.invalidate(pattern))
+    return mapError((error: Error) => createResourceError(
+      'invalidateByPattern',
+      error.message,
+      { pattern }
+    ))(result) as Result<ResourceError, number>
   },
 
-  // Clear all resource caches
-  clear: (): void => {
-    void cache.clear()
+  // Invalidate cache by tags with error handling
+  invalidateByTag: async (tag: string): Promise<Result<ResourceError, number>> => {
+    const result = await asyncToResult(cache.invalidateByTag(tag))
+    return mapError((error: Error) => createResourceError(
+      'invalidateByTag',
+      error.message,
+      { tag }
+    ))(result) as Result<ResourceError, number>
   },
 
-  // Get cache statistics
-  stats: () => ({
-    size: cache.size(),
-    entries: cache.entries().map(([key, entry]) => ({
-      key,
-      timestamp: entry.timestamp,
-      age: Date.now() - entry.timestamp,
-    })),
-  }),
+  // Safe cache statistics with error handling
+  stats: (): Result<ResourceError, { size: number; entries: Array<{ key: string; timestamp: number; age: number }> }> => {
+    return tryCatch(
+      () => ({
+        size: cache.size(),
+        entries: cache.entries().map(([key, entry]) => ({
+          key,
+          timestamp: entry.timestamp,
+          age: Date.now() - entry.timestamp,
+        })),
+      }),
+      error => createResourceError(
+        'cacheStats',
+        error instanceof Error ? error.message : 'Cache statistics retrieval failed'
+      )
+    )
+  },
 
-  // Cleanup expired cache entries
-  cleanup: (): void => {
-    void cache.cleanup()
+  // Safe cleanup with error handling
+  cleanup: (): Result<ResourceError, void> => {
+    return tryCatch(
+      () => {
+        void cache.cleanup()
+      },
+      error => createResourceError(
+        'cacheCleanup',
+        error instanceof Error ? error.message : 'Cache cleanup failed'
+      )
+    )
+  },
+
+  // Clear all resource caches safely
+  clear: (): Result<ResourceError, void> => {
+    return tryCatch(
+      () => {
+        void cache.clear()
+      },
+      error => createResourceError(
+        'cacheClear',
+        error instanceof Error ? error.message : 'Cache clear failed'
+      )
+    )
   },
 }
