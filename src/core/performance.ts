@@ -209,11 +209,15 @@ class PerformanceMonitor {
     }
   }
 
-  private collectAllSpans(span: PerformanceSpan, visited = new Set<PerformanceSpan>(), depth = 0): PerformanceSpan[] {
+  private collectAllSpans(
+    span: PerformanceSpan,
+    visited = new Set<PerformanceSpan>(),
+    depth = 0
+  ): PerformanceSpan[] {
     if (visited.has(span) || depth > 100) {
       return []
     }
-    
+
     visited.add(span)
     const spans: PerformanceSpan[] = [span]
 

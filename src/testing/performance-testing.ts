@@ -378,11 +378,12 @@ export class PerformanceTester {
 
     // Analyze results
     const heapSizes = samples.map(s => s.memory.heapUsed ?? 0)
-    const peak = samples.length > 0 
-      ? samples.reduce((max, sample) =>
-          (sample.memory.heapUsed ?? 0) > (max.memory.heapUsed ?? 0) ? sample : max
-        ).memory
-      : { heapUsed: 0, heapTotal: 0, external: 0, arrayBuffers: 0, rss: 0 }
+    const peak =
+      samples.length > 0
+        ? samples.reduce((max, sample) =>
+            (sample.memory.heapUsed ?? 0) > (max.memory.heapUsed ?? 0) ? sample : max
+          ).memory
+        : { heapUsed: 0, heapTotal: 0, external: 0, arrayBuffers: 0, rss: 0 }
 
     // Check for memory leaks (simple heuristic)
     const firstQuarter = heapSizes.slice(0, Math.floor(heapSizes.length / 4))

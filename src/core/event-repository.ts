@@ -217,7 +217,7 @@ export class EventRepository<T extends Record<string, unknown>> {
     try {
       // Create entity with ID first, then validate
       const entityWithId = { ...entity, id: entityId } as unknown as T
-      
+
       // Validate the complete entity
       const validationResult = this.config.schema.parse(entityWithId)
       if (Result.isErr(validationResult)) {
