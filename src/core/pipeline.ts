@@ -5,6 +5,7 @@ import { type KairoError, createError } from './errors'
 import type { Rule, Rules, BusinessRuleError, RuleValidationContext } from './rules'
 import type { Transform, TransformError, TransformContext } from './transform'
 import { performance as perf } from './performance'
+import { cache as advancedCache, type CacheConfig as AdvancedCacheConfig } from './cache'
 
 export interface HttpError extends KairoError {
   code: 'HTTP_ERROR'
@@ -473,6 +474,12 @@ interface TimeoutConfig {
 
 interface CacheConfig {
   ttl: number
+  strategy?: 'memory' | 'distributed' | 'multi-level'
+  evictionPolicy?: 'lru' | 'lfu' | 'fifo' | 'ttl'
+  tags?: string[]
+  namespace?: string
+  maxSize?: number
+  maxMemory?: number
 }
 
 interface CacheEntry {
@@ -749,14 +756,19 @@ export class Pipeline<Input, Output> {
     )
   }
 
-  cache(ttl: number): Pipeline<Input, Output> {
+  cache(ttl: number): Pipeline<Input, Output>
+  cache(config: CacheConfig): Pipeline<Input, Output>
+  cache(ttlOrConfig: number | CacheConfig): Pipeline<Input, Output> {
+    const cacheConfig: CacheConfig =
+      typeof ttlOrConfig === 'number' ? { ttl: ttlOrConfig } : ttlOrConfig
+
     return new Pipeline<Input, Output>(
       this.steps,
       this.name,
       this.deps,
       this.retryConfig,
       this.timeoutConfig,
-      { ttl }
+      cacheConfig
     )
   }
 
@@ -786,12 +798,38 @@ export class Pipeline<Input, Output> {
     const start = performance.now()
     const span = perf.startSpan(`pipeline:${this.name}`, { input })
 
-    // Cache logic
+    // Advanced cache logic
     if (this.cacheConfig) {
       const cacheKey = `pipeline:${this.name}:${JSON.stringify(input || {})}`
+
+      // Use advanced cache for enhanced strategies
+      if (
+        this.cacheConfig.strategy === 'multi-level' ||
+        this.cacheConfig.strategy === 'distributed'
+      ) {
+        try {
+          const cached = await advancedCache.get<Result<unknown, Output>>(
+            cacheKey,
+            this.cacheConfig.namespace
+          )
+          if (cached) {
+            span.metadata = {
+              ...span.metadata,
+              cacheHit: true,
+              cacheStrategy: this.cacheConfig.strategy,
+            }
+            perf.endSpan(span)
+            return cached.value
+          }
+        } catch (error) {
+          console.warn('Advanced cache read failed, falling back to basic cache:', error)
+        }
+      }
+
+      // Fallback to basic cache
       const cached = PipelineCache.get(cacheKey)
       if (cached && Date.now() - cached.timestamp < this.cacheConfig.ttl) {
-        span.metadata = { ...span.metadata, cacheHit: true }
+        span.metadata = { ...span.metadata, cacheHit: true, cacheStrategy: 'memory' }
         perf.endSpan(span)
         return cached.result as Result<unknown, Output>
       }
@@ -914,13 +952,45 @@ export class Pipeline<Input, Output> {
       ? await executeWithTimeout()
       : await this.executeWithRetry(executeWithTimeout, input)
 
-    // Cache successful results
+    // Cache successful results with advanced strategies
     if (this.cacheConfig && Result.isOk(finalResult)) {
       const cacheKey = `pipeline:${this.name}:${JSON.stringify(input || {})}`
-      PipelineCache.set(cacheKey, {
-        result: finalResult,
-        timestamp: Date.now(),
-      })
+
+      // Use advanced cache for enhanced strategies
+      if (
+        this.cacheConfig.strategy === 'multi-level' ||
+        this.cacheConfig.strategy === 'distributed'
+      ) {
+        try {
+          await advancedCache.set(
+            cacheKey,
+            finalResult,
+            {
+              ttl: this.cacheConfig.ttl,
+              ...(this.cacheConfig.tags && { tags: this.cacheConfig.tags }),
+              ...(this.cacheConfig.evictionPolicy && {
+                evictionPolicy: this.cacheConfig.evictionPolicy,
+              }),
+              ...(this.cacheConfig.maxSize && { maxSize: this.cacheConfig.maxSize }),
+              ...(this.cacheConfig.maxMemory && { maxMemory: this.cacheConfig.maxMemory }),
+            },
+            this.cacheConfig.namespace
+          )
+        } catch (error) {
+          console.warn('Advanced cache write failed, falling back to basic cache:', error)
+          // Fallback to basic cache
+          PipelineCache.set(cacheKey, {
+            result: finalResult,
+            timestamp: Date.now(),
+          })
+        }
+      } else {
+        // Use basic cache for simple strategies
+        PipelineCache.set(cacheKey, {
+          result: finalResult,
+          timestamp: Date.now(),
+        })
+      }
     }
 
     // End performance span
@@ -1289,13 +1359,46 @@ export const tracing = {
 
 // Export cache utilities
 export const cache = {
-  clear: () => PipelineCache.clear(),
-  cleanup: () => PipelineCache.cleanup(),
-  invalidate: (pattern: string | RegExp) => PipelineCache.invalidate(pattern),
-  invalidateByPipeline: (pipelineName: string) => PipelineCache.invalidateByPipeline(pipelineName),
-  invalidateByTag: (tag: string) => PipelineCache.invalidateByTag(tag),
-  size: () => PipelineCache.size(),
+  // Basic cache operations (backward compatibility)
+  clear: async () => {
+    PipelineCache.clear()
+    await advancedCache.clear()
+  },
+  cleanup: async () => {
+    PipelineCache.cleanup()
+    await advancedCache.cleanup()
+  },
+  invalidate: async (pattern: string | RegExp) => {
+    const basicCount = PipelineCache.invalidate(pattern)
+    const advancedCount = await advancedCache.invalidateByPattern(pattern)
+    return basicCount + advancedCount
+  },
+  invalidateByPipeline: async (pipelineName: string) => {
+    const basicCount = PipelineCache.invalidateByPipeline(pipelineName)
+    const pattern = `^pipeline:${pipelineName}:`
+    const advancedCount = await advancedCache.invalidateByPattern(pattern)
+    return basicCount + advancedCount
+  },
+  invalidateByTag: async (tag: string) => {
+    const basicCount = PipelineCache.invalidateByTag(tag)
+    const advancedCount = await advancedCache.invalidateByTag(tag)
+    return basicCount + advancedCount
+  },
+  size: () => {
+    const basicSize = PipelineCache.size()
+    const stats = advancedCache.stats()
+    return basicSize + stats.size
+  },
   entries: () => PipelineCache.entries(),
+
+  // Advanced cache operations
+  stats: () => advancedCache.stats(),
+  warmCache: <T>(
+    entries: Array<{ key: string; value: T; config?: Partial<AdvancedCacheConfig> }>
+  ) => advancedCache.warmCache(entries),
+  addLayer: (config: Parameters<typeof advancedCache.addLayer>[0]) =>
+    advancedCache.addLayer(config),
+  removeLayer: (name: string) => advancedCache.removeLayer(name),
 }
 
 const isTraceEnabled = (): boolean =>

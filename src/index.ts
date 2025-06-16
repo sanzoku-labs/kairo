@@ -1,7 +1,7 @@
 export { Result, map, flatMap, mapError, match, chain } from './core/result'
 export type { OkResult, ErrResult } from './core/result'
 
-export { pipeline, tracing } from './core/pipeline'
+export { pipeline, tracing, cache } from './core/pipeline'
 export type {
   Pipeline,
   HttpError,
@@ -169,6 +169,35 @@ export {
   hasErrorCode,
 } from './core/errors'
 export type { KairoError, ErrorWithCause } from './core/errors'
+
+// Export advanced caching system
+export {
+  CacheManager,
+  MemoryStorage,
+  RedisStorage,
+  cacheManager,
+  cache as advancedCache,
+} from './core/cache'
+export type {
+  CacheError,
+  CacheEntry,
+  CacheStats,
+  CacheConfig,
+  CacheLayerConfig,
+  CacheStorage,
+} from './core/cache'
+
+// Export cache analytics
+export { CacheAnalytics, defaultAnalyticsConfig } from './core/cache-analytics'
+export type {
+  AnalyticsError,
+  CacheMetrics,
+  PerformanceMetrics,
+  HealthMetrics,
+  MetricDataPoint,
+  AggregationPeriod,
+  AnalyticsConfig,
+} from './core/cache-analytics'
 
 // Export testing utilities
 export * from './testing'

@@ -376,8 +376,17 @@ export class ResourcePool<T> {
       idleTimeout: options.idleTimeout ?? 30000, // 30 seconds
       acquireTimeout: options.acquireTimeout ?? 5000, // 5 seconds
       createResource: options.createResource,
-      destroyResource: options.destroyResource ?? (async () => { await Promise.resolve() }),
-      validateResource: options.validateResource ?? (async () => { await Promise.resolve(); return true }),
+      destroyResource:
+        options.destroyResource ??
+        (async () => {
+          await Promise.resolve()
+        }),
+      validateResource:
+        options.validateResource ??
+        (async () => {
+          await Promise.resolve()
+          return true
+        }),
     }
 
     // Initialize minimum resources

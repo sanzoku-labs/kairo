@@ -283,7 +283,8 @@ class ResourceImpl<TMethods extends ResourceMethods> {
       if (_config.lazy) {
         // Create lazy-loaded pipeline
         const lazyPipeline = new Lazy({
-          loader: () => Promise.resolve(createMethodPipeline(name, methodName, methodConfig, this._config)),
+          loader: () =>
+            Promise.resolve(createMethodPipeline(name, methodName, methodConfig, this._config)),
           cache: true,
           onLoad: () => {
             console.log(`[Lazy] Loaded pipeline: ${name}.${methodName}`)
@@ -531,36 +532,40 @@ export const resourceUtils = {
 // Cache system integration
 export const resourceCache = {
   // Invalidate cache for specific resource method
-  invalidate: (resourceName: string, methodName: string, input?: unknown): number => {
+  invalidate: async (
+    resourceName: string,
+    methodName: string,
+    input?: unknown
+  ): Promise<number> => {
     const pipelineName = `${resourceName}.${methodName}`
     if (input) {
       // Invalidate specific cache entry
       const cacheKey = `pipeline:${pipelineName}:${JSON.stringify(input)}`
-      return cache.invalidate(`^${cacheKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+      return await cache.invalidate(`^${cacheKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
     } else {
       // Invalidate all cache entries for this pipeline
-      return cache.invalidateByPipeline(pipelineName)
+      return await cache.invalidateByPipeline(pipelineName)
     }
   },
 
   // Invalidate cache for entire resource
-  invalidateResource: (resourceName: string): number => {
-    return cache.invalidate(`^pipeline:${resourceName}\\.`)
+  invalidateResource: async (resourceName: string): Promise<number> => {
+    return await cache.invalidate(`^pipeline:${resourceName}\\.`)
   },
 
   // Invalidate cache by pattern
-  invalidateByPattern: (pattern: string | RegExp): number => {
-    return cache.invalidate(pattern)
+  invalidateByPattern: async (pattern: string | RegExp): Promise<number> => {
+    return await cache.invalidate(pattern)
   },
 
   // Invalidate cache by tags (for future enhancement)
-  invalidateByTag: (tag: string): number => {
-    return cache.invalidateByTag(tag)
+  invalidateByTag: async (tag: string): Promise<number> => {
+    return await cache.invalidateByTag(tag)
   },
 
   // Clear all resource caches
   clear: (): void => {
-    cache.clear()
+    void cache.clear()
   },
 
   // Get cache statistics
@@ -575,6 +580,6 @@ export const resourceCache = {
 
   // Cleanup expired cache entries
   cleanup: (): void => {
-    cache.cleanup()
+    void cache.cleanup()
   },
 }
