@@ -49,33 +49,55 @@ export default defineConfig({
       '/api/': [
         {
           text: 'API Reference',
-          items: [{ text: 'Overview', link: '/api/' }],
-        },
-        {
-          text: '🚀 Core Foundation',
-          items: [{ text: 'Result Pattern', link: '/api/result' }],
-        },
-        {
-          text: '🔗 INTERFACE Pillar',
           items: [
-            { text: 'Resource API', link: '/api/resource' },
-            { text: 'Contract Testing', link: '/api/contract' },
+            { text: 'Overview', link: '/api/' },
+            { text: 'Result Pattern', link: '/api/core/result' },
           ],
         },
         {
-          text: '⚡ PROCESS Pillar',
+          text: '🏛️ Core APIs (~20KB)',
+          collapsed: false,
           items: [
-            { text: 'Pipeline API', link: '/api/pipeline' },
-            { text: 'Business Rules API', link: '/api/rules' },
-            { text: 'Workflow API', link: '/api/workflow' },
+            {
+              text: '🔗 INTERFACE Pillar',
+              items: [
+                { text: 'Resource API', link: '/api/core/resource' },
+                { text: 'Contract Verification', link: '/api/core/contracts' },
+              ],
+            },
+            {
+              text: '⚡ PROCESS Pillar',
+              items: [
+                { text: 'Pipeline API', link: '/api/core/pipeline' },
+                { text: 'Business Rules API', link: '/api/core/rules' },
+              ],
+            },
+            {
+              text: '🛡️ DATA Pillar',
+              items: [
+                { text: 'Native Schema API', link: '/api/core/schema' },
+                { text: 'Transform API', link: '/api/core/transform' },
+                { text: 'Repository API', link: '/api/core/repository' },
+              ],
+            },
           ],
         },
         {
-          text: '🛡️ DATA Pillar',
+          text: '⚡ Extensions (~30KB)',
+          collapsed: true,
           items: [
-            { text: 'Native Schema API', link: '/api/schema' },
-            { text: 'Transform API', link: '/api/transform' },
-            { text: 'Repository API', link: '/api/repository' },
+            { text: 'Event-Driven Architecture', link: '/api/extensions/events' },
+            { text: 'Transaction Management', link: '/api/extensions/transactions' },
+            { text: 'Advanced Caching', link: '/api/extensions/cache' },
+            { text: 'Complex Workflows', link: '/api/extensions/workflow' },
+            { text: 'Plugin System', link: '/api/extensions/plugins' },
+          ],
+        },
+        {
+          text: '🧪 Testing Framework',
+          collapsed: true,
+          items: [
+            { text: 'Testing Guide', link: '/testing-guide' },
           ],
         },
       ],

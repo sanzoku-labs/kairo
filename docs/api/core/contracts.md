@@ -1,6 +1,8 @@
-# Contract Testing API
+# Contract Verification API
 
-Contract testing ensures your API integrations work correctly by verifying endpoints exist, accept expected parameters, and return data matching your schemas.
+Contract verification is a core feature of the INTERFACE pillar that ensures your API integrations work correctly by verifying endpoints exist, accept expected parameters, and return data matching your schemas.
+
+> **Core Feature**: Contract verification is fundamental to Kairo's "make infrastructure disappear" philosophy by providing built-in API reliability testing.
 
 ## Overview
 
