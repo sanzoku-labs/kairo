@@ -7,26 +7,26 @@ import type {
   ResourceHookContext,
   PipelineHookContext,
   RepositoryHookContext,
+  StorageAdapterConstructor,
 } from './plugin'
 import {
-  PluginState,
   PluginValidationError,
   PluginLifecycleError,
   validatePlugin,
   validatePluginDependencies,
-  HookContext,
-  PerformanceMetrics,
 } from './plugin'
+import type { Schema } from './native-schema'
 
 export class PluginRegistry {
   private plugins = new Map<string, PluginInstance>()
   private dependencyGraph = new Map<string, string[]>()
-  private hookExecutionOrder = new Map<string, string[]>()
+  // Hook execution order would be used for complex plugin ordering
+  // private _hookExecutionOrder = new Map<string, string[]>()
 
   // Register a plugin
   registerPlugin(
     plugin: PluginDefinition,
-    config: Record<string, any> = {}
+    config: Record<string, unknown> = {}
   ): Result<PluginValidationError | PluginDependencyError, void> {
     // Validate plugin definition
     const validationResult = validatePlugin(plugin)
@@ -107,10 +107,14 @@ export class PluginRegistry {
       instance.state = 'failed'
       instance.error = createError(
         'PLUGIN_LOAD_ERROR',
-        `Failed to load plugin '${name}': ${error}`
-      ) as any
+        `Failed to load plugin '${name}': ${String(error)}`
+      )
       return Result.Err(
-        new PluginLifecycleError(`Failed to load plugin '${name}': ${error}`, name, 'failed')
+        new PluginLifecycleError(
+          `Failed to load plugin '${name}': ${String(error)}`,
+          name,
+          'failed'
+        )
       )
     }
   }
@@ -149,10 +153,14 @@ export class PluginRegistry {
       instance.state = 'failed'
       instance.error = createError(
         'PLUGIN_ENABLE_ERROR',
-        `Failed to enable plugin '${name}': ${error}`
-      ) as any
+        `Failed to enable plugin '${name}': ${String(error)}`
+      )
       return Result.Err(
-        new PluginLifecycleError(`Failed to enable plugin '${name}': ${error}`, name, 'failed')
+        new PluginLifecycleError(
+          `Failed to enable plugin '${name}': ${String(error)}`,
+          name,
+          'failed'
+        )
       )
     }
   }
@@ -186,10 +194,14 @@ export class PluginRegistry {
       instance.state = 'failed'
       instance.error = createError(
         'PLUGIN_DISABLE_ERROR',
-        `Failed to disable plugin '${name}': ${error}`
-      ) as any
+        `Failed to disable plugin '${name}': ${String(error)}`
+      )
       return Result.Err(
-        new PluginLifecycleError(`Failed to disable plugin '${name}': ${error}`, name, 'failed')
+        new PluginLifecycleError(
+          `Failed to disable plugin '${name}': ${String(error)}`,
+          name,
+          'failed'
+        )
       )
     }
   }
@@ -223,19 +235,23 @@ export class PluginRegistry {
 
       // Update state
       instance.state = 'unloaded'
-      instance.loadedAt = undefined
-      instance.enabledAt = undefined
-      instance.error = undefined
+      delete instance.loadedAt
+      delete instance.enabledAt
+      delete instance.error
 
       return Result.Ok(undefined)
     } catch (error) {
       instance.state = 'failed'
       instance.error = createError(
         'PLUGIN_UNLOAD_ERROR',
-        `Failed to unload plugin '${name}': ${error}`
-      ) as any
+        `Failed to unload plugin '${name}': ${String(error)}`
+      )
       return Result.Err(
-        new PluginLifecycleError(`Failed to unload plugin '${name}': ${error}`, name, 'failed')
+        new PluginLifecycleError(
+          `Failed to unload plugin '${name}': ${String(error)}`,
+          name,
+          'failed'
+        )
       )
     }
   }
@@ -274,7 +290,7 @@ export class PluginRegistry {
         return Result.Ok(healthy)
       }
       return Result.Ok(true)
-    } catch (error) {
+    } catch {
       return Result.Ok(false)
     }
   }
@@ -283,16 +299,16 @@ export class PluginRegistry {
   async executeResourceHooks(
     hookName: keyof NonNullable<PluginDefinition['resourceHooks']>,
     context: ResourceHookContext,
-    ...args: any[]
-  ): Promise<any[]> {
-    const results: any[] = []
+    ...args: unknown[]
+  ): Promise<unknown[]> {
+    const results: unknown[] = []
     const enabledPlugins = this.listEnabledPlugins()
 
     for (const plugin of enabledPlugins) {
       const hook = plugin.definition.resourceHooks?.[hookName]
       if (hook) {
         try {
-          const result = await hook(...args, context)
+          const result = await (hook as (...args: unknown[]) => unknown)(...args, context)
           results.push(result)
         } catch (error) {
           // Log error but continue with other plugins
@@ -310,16 +326,16 @@ export class PluginRegistry {
   async executePipelineHooks(
     hookName: keyof NonNullable<PluginDefinition['pipelineHooks']>,
     context: PipelineHookContext,
-    ...args: any[]
-  ): Promise<any[]> {
-    const results: any[] = []
+    ...args: unknown[]
+  ): Promise<unknown[]> {
+    const results: unknown[] = []
     const enabledPlugins = this.listEnabledPlugins()
 
     for (const plugin of enabledPlugins) {
       const hook = plugin.definition.pipelineHooks?.[hookName]
       if (hook) {
         try {
-          const result = await hook(...args, context)
+          const result = await (hook as (...args: unknown[]) => unknown)(...args, context)
           results.push(result)
         } catch (error) {
           console.error(
@@ -336,16 +352,16 @@ export class PluginRegistry {
   async executeRepositoryHooks(
     hookName: keyof NonNullable<PluginDefinition['repositoryHooks']>,
     context: RepositoryHookContext,
-    ...args: any[]
-  ): Promise<any[]> {
-    const results: any[] = []
+    ...args: unknown[]
+  ): Promise<unknown[]> {
+    const results: unknown[] = []
     const enabledPlugins = this.listEnabledPlugins()
 
     for (const plugin of enabledPlugins) {
       const hook = plugin.definition.repositoryHooks?.[hookName]
       if (hook) {
         try {
-          const result = await hook(...args, context)
+          const result = await (hook as (...args: unknown[]) => unknown)(...args, context)
           results.push(result)
         } catch (error) {
           console.error(
@@ -361,7 +377,7 @@ export class PluginRegistry {
 
   async executeGlobalHooks(
     hookName: keyof NonNullable<PluginDefinition['globalHooks']>,
-    ...args: any[]
+    ...args: unknown[]
   ): Promise<void> {
     const enabledPlugins = this.listEnabledPlugins()
 
@@ -369,7 +385,7 @@ export class PluginRegistry {
       const hook = plugin.definition.globalHooks?.[hookName]
       if (hook) {
         try {
-          await hook(...args)
+          await (hook as (...args: unknown[]) => Promise<void> | void)(...args)
         } catch (error) {
           console.error(
             `Error executing ${hookName} global hook for plugin ${plugin.definition.metadata.name}:`,
@@ -381,8 +397,8 @@ export class PluginRegistry {
   }
 
   // Get extensions
-  getSchemaExtensions(): Record<string, Record<string, any>> {
-    const extensions: Record<string, Record<string, any>> = {}
+  getSchemaExtensions(): Record<string, Record<string, Schema<unknown>>> {
+    const extensions: Record<string, Record<string, Schema<unknown>>> = {}
     const enabledPlugins = this.listEnabledPlugins()
 
     for (const plugin of enabledPlugins) {
@@ -394,8 +410,14 @@ export class PluginRegistry {
     return extensions
   }
 
-  getRuleExtensions(): Record<string, any> {
-    const extensions: Record<string, any> = {}
+  getRuleExtensions(): Record<
+    string,
+    (...args: unknown[]) => (value: unknown, context?: unknown) => boolean | Promise<boolean>
+  > {
+    const extensions: Record<
+      string,
+      (...args: unknown[]) => (value: unknown, context?: unknown) => boolean | Promise<boolean>
+    > = {}
     const enabledPlugins = this.listEnabledPlugins()
 
     for (const plugin of enabledPlugins) {
@@ -407,8 +429,14 @@ export class PluginRegistry {
     return extensions
   }
 
-  getPipelineSteps(): Record<string, any> {
-    const steps: Record<string, any> = {}
+  getPipelineSteps(): Record<
+    string,
+    (...args: unknown[]) => (data: unknown, context?: unknown) => unknown
+  > {
+    const steps: Record<
+      string,
+      (...args: unknown[]) => (data: unknown, context?: unknown) => unknown
+    > = {}
     const enabledPlugins = this.listEnabledPlugins()
 
     for (const plugin of enabledPlugins) {
@@ -420,8 +448,8 @@ export class PluginRegistry {
     return steps
   }
 
-  getStorageAdapters(): Record<string, any> {
-    const adapters: Record<string, any> = {}
+  getStorageAdapters(): Record<string, StorageAdapterConstructor> {
+    const adapters: Record<string, StorageAdapterConstructor> = {}
     const enabledPlugins = this.listEnabledPlugins()
 
     for (const plugin of enabledPlugins) {
@@ -451,7 +479,7 @@ export function setGlobalPluginRegistry(registry: PluginRegistry): void {
 // Convenience function for registering plugins globally
 export function registerPlugin(
   plugin: PluginDefinition,
-  config?: Record<string, any>
+  config?: Record<string, unknown>
 ): Result<PluginValidationError | PluginDependencyError, void> {
   return getGlobalPluginRegistry().registerPlugin(plugin, config)
 }

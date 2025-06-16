@@ -1,15 +1,21 @@
-import { Result } from './result'
 import { getGlobalPluginRegistry } from './plugin-registry'
-import type { ResourceHookContext, PipelineHookContext, RepositoryHookContext } from './plugin'
+import type {
+  ResourceHookContext,
+  PipelineHookContext,
+  RepositoryHookContext,
+  ResourceRequest,
+  ResourceResponse,
+  ResourceError,
+} from './plugin'
 
 // Integration utilities for Resources (INTERFACE pillar)
 export class ResourcePluginIntegration {
   static async beforeRequest(
     resourceName: string,
     operation: string,
-    request: any,
+    request: ResourceRequest,
     context: Partial<ResourceHookContext> = {}
-  ): Promise<any> {
+  ): Promise<ResourceRequest> {
     const registry = getGlobalPluginRegistry()
     const hookContext: ResourceHookContext = {
       pluginName: '',
@@ -24,8 +30,8 @@ export class ResourcePluginIntegration {
     // Apply transformations in sequence
     let transformedRequest = request
     for (const result of results) {
-      if (result !== undefined) {
-        transformedRequest = result
+      if (result !== undefined && result !== null) {
+        transformedRequest = result as ResourceRequest
       }
     }
 
@@ -35,10 +41,10 @@ export class ResourcePluginIntegration {
   static async afterRequest(
     resourceName: string,
     operation: string,
-    response: any,
-    request: any,
+    response: ResourceResponse,
+    request: ResourceRequest,
     context: Partial<ResourceHookContext> = {}
-  ): Promise<any> {
+  ): Promise<ResourceResponse> {
     const registry = getGlobalPluginRegistry()
     const hookContext: ResourceHookContext = {
       pluginName: '',
@@ -58,8 +64,8 @@ export class ResourcePluginIntegration {
     // Apply transformations in sequence
     let transformedResponse = response
     for (const result of results) {
-      if (result !== undefined) {
-        transformedResponse = result
+      if (result !== undefined && result !== null) {
+        transformedResponse = result as ResourceResponse
       }
     }
 
@@ -69,9 +75,9 @@ export class ResourcePluginIntegration {
   static async onError(
     resourceName: string,
     operation: string,
-    error: any,
+    error: ResourceError,
     context: Partial<ResourceHookContext> = {}
-  ): Promise<{ retry?: boolean; error?: any }> {
+  ): Promise<{ retry?: boolean; error?: ResourceError }> {
     const registry = getGlobalPluginRegistry()
     const hookContext: ResourceHookContext = {
       pluginName: '',
@@ -88,11 +94,14 @@ export class ResourcePluginIntegration {
     let transformedError = error
 
     for (const result of results) {
-      if (result?.retry) {
-        shouldRetry = true
-      }
-      if (result?.error !== undefined) {
-        transformedError = result.error
+      if (result && typeof result === 'object' && 'retry' in result) {
+        const errorResult = result as { retry?: boolean; error?: ResourceError }
+        if (errorResult.retry) {
+          shouldRetry = true
+        }
+        if (errorResult.error !== undefined) {
+          transformedError = errorResult.error
+        }
       }
     }
 
@@ -102,7 +111,7 @@ export class ResourcePluginIntegration {
   static async onSuccess(
     resourceName: string,
     operation: string,
-    response: any,
+    response: ResourceResponse,
     context: Partial<ResourceHookContext> = {}
   ): Promise<void> {
     const registry = getGlobalPluginRegistry()
@@ -122,9 +131,9 @@ export class ResourcePluginIntegration {
 export class PipelinePluginIntegration {
   static async beforeExecute(
     pipelineName: string,
-    input: any,
+    input: unknown,
     context: Partial<PipelineHookContext> = {}
-  ): Promise<any> {
+  ): Promise<unknown> {
     const registry = getGlobalPluginRegistry()
     const hookContext: PipelineHookContext = {
       pluginName: '',
@@ -148,10 +157,10 @@ export class PipelinePluginIntegration {
 
   static async afterExecute(
     pipelineName: string,
-    output: any,
-    input: any,
+    output: unknown,
+    input: unknown,
     context: Partial<PipelineHookContext> = {}
-  ): Promise<any> {
+  ): Promise<unknown> {
     const registry = getGlobalPluginRegistry()
     const hookContext: PipelineHookContext = {
       pluginName: '',
@@ -177,9 +186,9 @@ export class PipelinePluginIntegration {
     pipelineName: string,
     stepName: string,
     stepIndex: number,
-    input: any,
+    input: unknown,
     context: Partial<PipelineHookContext> = {}
-  ): Promise<any> {
+  ): Promise<unknown> {
     const registry = getGlobalPluginRegistry()
     const hookContext: PipelineHookContext = {
       pluginName: '',
@@ -207,10 +216,10 @@ export class PipelinePluginIntegration {
     pipelineName: string,
     stepName: string,
     stepIndex: number,
-    output: any,
-    input: any,
+    output: unknown,
+    input: unknown,
     context: Partial<PipelineHookContext> = {}
-  ): Promise<any> {
+  ): Promise<unknown> {
     const registry = getGlobalPluginRegistry()
     const hookContext: PipelineHookContext = {
       pluginName: '',
@@ -236,9 +245,9 @@ export class PipelinePluginIntegration {
 
   static async onError(
     pipelineName: string,
-    error: any,
+    error: unknown,
     context: Partial<PipelineHookContext> = {}
-  ): Promise<any> {
+  ): Promise<unknown> {
     const registry = getGlobalPluginRegistry()
     const hookContext: PipelineHookContext = {
       pluginName: '',
@@ -261,7 +270,7 @@ export class PipelinePluginIntegration {
 
   static async onComplete(
     pipelineName: string,
-    output: any,
+    output: unknown,
     context: Partial<PipelineHookContext> = {}
   ): Promise<void> {
     const registry = getGlobalPluginRegistry()
@@ -280,9 +289,9 @@ export class PipelinePluginIntegration {
 export class RepositoryPluginIntegration {
   static async beforeCreate(
     repositoryName: string,
-    data: any,
+    data: Record<string, unknown>,
     context: Partial<RepositoryHookContext> = {}
-  ): Promise<any> {
+  ): Promise<Record<string, unknown>> {
     const registry = getGlobalPluginRegistry()
     const hookContext: RepositoryHookContext = {
       pluginName: '',
@@ -297,8 +306,8 @@ export class RepositoryPluginIntegration {
     // Apply transformations in sequence
     let transformedData = data
     for (const result of results) {
-      if (result !== undefined) {
-        transformedData = result
+      if (result !== undefined && result !== null) {
+        transformedData = result as Record<string, unknown>
       }
     }
 
@@ -307,16 +316,16 @@ export class RepositoryPluginIntegration {
 
   static async afterCreate(
     repositoryName: string,
-    entity: any,
+    entity: Record<string, unknown>,
     context: Partial<RepositoryHookContext> = {}
-  ): Promise<any> {
+  ): Promise<Record<string, unknown>> {
     const registry = getGlobalPluginRegistry()
     const hookContext: RepositoryHookContext = {
       pluginName: '',
       timestamp: Date.now(),
       repositoryName,
       operation: 'create',
-      entityId: entity?.id,
+      ...(entity?.id !== undefined && { entityId: entity.id as string | number }),
       ...context,
     }
 
@@ -325,8 +334,8 @@ export class RepositoryPluginIntegration {
     // Apply transformations in sequence
     let transformedEntity = entity
     for (const result of results) {
-      if (result !== undefined) {
-        transformedEntity = result
+      if (result !== undefined && result !== null) {
+        transformedEntity = result as Record<string, unknown>
       }
     }
 
@@ -335,17 +344,17 @@ export class RepositoryPluginIntegration {
 
   static async beforeUpdate(
     repositoryName: string,
-    id: any,
-    data: any,
+    id: string | number,
+    data: Record<string, unknown>,
     context: Partial<RepositoryHookContext> = {}
-  ): Promise<any> {
+  ): Promise<Record<string, unknown>> {
     const registry = getGlobalPluginRegistry()
     const hookContext: RepositoryHookContext = {
       pluginName: '',
       timestamp: Date.now(),
       repositoryName,
       operation: 'update',
-      entityId: id,
+      ...(id !== undefined && { entityId: id }),
       ...context,
     }
 
@@ -354,8 +363,8 @@ export class RepositoryPluginIntegration {
     // Apply transformations in sequence
     let transformedData = data
     for (const result of results) {
-      if (result !== undefined) {
-        transformedData = result
+      if (result !== undefined && result !== null) {
+        transformedData = result as Record<string, unknown>
       }
     }
 
@@ -364,16 +373,16 @@ export class RepositoryPluginIntegration {
 
   static async afterUpdate(
     repositoryName: string,
-    entity: any,
+    entity: Record<string, unknown>,
     context: Partial<RepositoryHookContext> = {}
-  ): Promise<any> {
+  ): Promise<Record<string, unknown>> {
     const registry = getGlobalPluginRegistry()
     const hookContext: RepositoryHookContext = {
       pluginName: '',
       timestamp: Date.now(),
       repositoryName,
       operation: 'update',
-      entityId: entity?.id,
+      ...(entity?.id !== undefined && { entityId: entity.id as string | number }),
       ...context,
     }
 
@@ -382,8 +391,8 @@ export class RepositoryPluginIntegration {
     // Apply transformations in sequence
     let transformedEntity = entity
     for (const result of results) {
-      if (result !== undefined) {
-        transformedEntity = result
+      if (result !== undefined && result !== null) {
+        transformedEntity = result as Record<string, unknown>
       }
     }
 
@@ -392,7 +401,7 @@ export class RepositoryPluginIntegration {
 
   static async beforeDelete(
     repositoryName: string,
-    id: any,
+    id: string | number,
     context: Partial<RepositoryHookContext> = {}
   ): Promise<void> {
     const registry = getGlobalPluginRegistry()
@@ -401,7 +410,7 @@ export class RepositoryPluginIntegration {
       timestamp: Date.now(),
       repositoryName,
       operation: 'delete',
-      entityId: id,
+      ...(id !== undefined && { entityId: id }),
       ...context,
     }
 
@@ -410,7 +419,7 @@ export class RepositoryPluginIntegration {
 
   static async afterDelete(
     repositoryName: string,
-    id: any,
+    id: string | number,
     context: Partial<RepositoryHookContext> = {}
   ): Promise<void> {
     const registry = getGlobalPluginRegistry()
@@ -419,7 +428,7 @@ export class RepositoryPluginIntegration {
       timestamp: Date.now(),
       repositoryName,
       operation: 'delete',
-      entityId: id,
+      ...(id !== undefined && { entityId: id }),
       ...context,
     }
 
@@ -428,7 +437,7 @@ export class RepositoryPluginIntegration {
 
   static async beforeFind(
     repositoryName: string,
-    id: any,
+    id: string | number,
     context: Partial<RepositoryHookContext> = {}
   ): Promise<void> {
     const registry = getGlobalPluginRegistry()
@@ -437,7 +446,7 @@ export class RepositoryPluginIntegration {
       timestamp: Date.now(),
       repositoryName,
       operation: 'find',
-      entityId: id,
+      ...(id !== undefined && { entityId: id }),
       ...context,
     }
 
@@ -446,16 +455,16 @@ export class RepositoryPluginIntegration {
 
   static async afterFind(
     repositoryName: string,
-    entity: any,
+    entity: Record<string, unknown> | null,
     context: Partial<RepositoryHookContext> = {}
-  ): Promise<any> {
+  ): Promise<Record<string, unknown> | null> {
     const registry = getGlobalPluginRegistry()
     const hookContext: RepositoryHookContext = {
       pluginName: '',
       timestamp: Date.now(),
       repositoryName,
       operation: 'find',
-      entityId: entity?.id,
+      ...(entity?.id !== undefined && { entityId: entity.id as string | number }),
       ...context,
     }
 
@@ -465,7 +474,7 @@ export class RepositoryPluginIntegration {
     let transformedEntity = entity
     for (const result of results) {
       if (result !== undefined) {
-        transformedEntity = result
+        transformedEntity = result as Record<string, unknown> | null
       }
     }
 
@@ -485,7 +494,7 @@ export class GlobalPluginIntegration {
   }
 
   static async onError(
-    error: any,
+    error: unknown,
     pillar: 'interface' | 'process' | 'data',
     operation: string
   ): Promise<void> {

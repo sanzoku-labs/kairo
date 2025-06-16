@@ -53,11 +53,11 @@ export class PluginTester {
   }
 
   async runTest(testCase: PluginTestCase): Promise<PluginTestResult> {
-    const startTime = Date.now()
+    const startTime = performance.now()
     const context: PluginTestContext = {
       pluginName: testCase.plugin.metadata.name,
       registry: this.registry,
-      originalRegistry: this.originalRegistry,
+      ...(this.originalRegistry && { originalRegistry: this.originalRegistry }),
     }
 
     try {
@@ -92,41 +92,44 @@ export class PluginTester {
         await testCase.teardown(context)
       }
 
-      const duration = Date.now() - startTime
+      const duration = performance.now() - startTime
+      const state = this.registry.getPlugin(testCase.plugin.metadata.name)?.state
       return {
         testName: testCase.name,
         pluginName: testCase.plugin.metadata.name,
         success: true,
         duration,
-        state: this.registry.getPlugin(testCase.plugin.metadata.name)?.state,
+        ...(state && { state }),
       }
     } catch (error) {
       if (testCase.shouldFail) {
         // Expected failure
-        const duration = Date.now() - startTime
+        const duration = performance.now() - startTime
+        const state = this.registry.getPlugin(testCase.plugin.metadata.name)?.state
         return {
           testName: testCase.name,
           pluginName: testCase.plugin.metadata.name,
           success: true,
           duration,
-          state: this.registry.getPlugin(testCase.plugin.metadata.name)?.state,
+          ...(state && { state }),
         }
       }
 
-      const duration = Date.now() - startTime
+      const duration = performance.now() - startTime
+      const state = this.registry.getPlugin(testCase.plugin.metadata.name)?.state
       return {
         testName: testCase.name,
         pluginName: testCase.plugin.metadata.name,
         success: false,
         error: error instanceof Error ? error : new Error(String(error)),
         duration,
-        state: this.registry.getPlugin(testCase.plugin.metadata.name)?.state,
+        ...(state && { state }),
       }
     }
   }
 
   async runTestSuite(suite: PluginTestSuite): Promise<PluginTestSuiteResult> {
-    const startTime = Date.now()
+    const startTime = performance.now()
     const results: PluginTestResult[] = []
 
     try {
@@ -160,7 +163,7 @@ export class PluginTester {
       }
     }
 
-    const duration = Date.now() - startTime
+    const duration = performance.now() - startTime
     const passedTests = results.filter(r => r.success).length
     const failedTests = results.length - passedTests
 
@@ -179,7 +182,7 @@ export class PluginTester {
     return {
       name: `Load plugin ${plugin.metadata.name}`,
       plugin,
-      config,
+      ...(config !== undefined && { config }),
       test: async context => {
         const loadResult = await context.registry.loadPlugin(context.pluginName)
         if (Result.isErr(loadResult)) {
@@ -197,7 +200,7 @@ export class PluginTester {
     return {
       name: `Enable plugin ${plugin.metadata.name}`,
       plugin,
-      config,
+      ...(config !== undefined && { config }),
       test: async context => {
         // Load first
         const loadResult = await context.registry.loadPlugin(context.pluginName)
@@ -222,7 +225,7 @@ export class PluginTester {
     return {
       name: `Full lifecycle test for ${plugin.metadata.name}`,
       plugin,
-      config,
+      ...(config !== undefined && { config }),
       test: async context => {
         const { registry, pluginName } = context
 
@@ -288,7 +291,7 @@ export class PluginTester {
     return {
       name: `Hook test for ${plugin.metadata.name} (${hookType})`,
       plugin,
-      config,
+      ...(config !== undefined && { config }),
       test: async context => {
         // Load and enable plugin
         const loadResult = await context.registry.loadPlugin(context.pluginName)
@@ -316,7 +319,7 @@ export class PluginTester {
     return {
       name: `Dependency test for ${plugin.metadata.name}`,
       plugin,
-      config,
+      ...(config !== undefined && { config }),
       setup: async context => {
         // Register dependencies first
         for (const dep of dependencies) {
@@ -358,12 +361,12 @@ export function createSimplePluginTest(
   name: string,
   plugin: PluginDefinition,
   testFn: (context: PluginTestContext) => Promise<void> | void,
-  config?: Record<string, any>
+  config?: Record<string, unknown>
 ): PluginTestCase {
   return {
     name,
     plugin,
-    config,
+    ...(config !== undefined && { config }),
     test: testFn,
   }
 }

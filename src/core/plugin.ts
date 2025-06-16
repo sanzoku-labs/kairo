@@ -45,35 +45,87 @@ export interface RepositoryHookContext extends HookContext {
 }
 
 // Hook definitions for each pillar
+export interface ResourceRequest {
+  url?: string
+  method?: string
+  headers?: Record<string, string>
+  body?: unknown
+  params?: Record<string, unknown>
+  [key: string]: unknown
+}
+
+export interface ResourceResponse {
+  status?: number
+  headers?: Record<string, string>
+  data?: unknown
+  [key: string]: unknown
+}
+
+export interface ResourceError {
+  status?: number
+  message?: string
+  code?: string
+  [key: string]: unknown
+}
+
 export interface ResourceHooks {
-  beforeRequest?: (request: any, context: ResourceHookContext) => Promise<any> | any
-  afterRequest?: (response: any, request: any, context: ResourceHookContext) => Promise<any> | any
-  onError?: (
-    error: any,
+  beforeRequest?: (
+    request: ResourceRequest,
     context: ResourceHookContext
-  ) => Promise<{ retry?: boolean; error?: any }> | { retry?: boolean; error?: any }
-  onRetry?: (attempt: number, error: any, context: ResourceHookContext) => Promise<void> | void
-  onSuccess?: (response: any, context: ResourceHookContext) => Promise<void> | void
+  ) => Promise<ResourceRequest> | ResourceRequest
+  afterRequest?: (
+    response: ResourceResponse,
+    request: ResourceRequest,
+    context: ResourceHookContext
+  ) => Promise<ResourceResponse> | ResourceResponse
+  onError?: (
+    error: ResourceError,
+    context: ResourceHookContext
+  ) =>
+    | Promise<{ retry?: boolean; error?: ResourceError }>
+    | { retry?: boolean; error?: ResourceError }
+  onRetry?: (
+    attempt: number,
+    error: ResourceError,
+    context: ResourceHookContext
+  ) => Promise<void> | void
+  onSuccess?: (response: ResourceResponse, context: ResourceHookContext) => Promise<void> | void
 }
 
 export interface PipelineHooks {
-  beforeExecute?: (input: any, context: PipelineHookContext) => Promise<any> | any
-  afterExecute?: (output: any, input: any, context: PipelineHookContext) => Promise<any> | any
-  beforeStep?: (input: any, context: PipelineHookContext) => Promise<any> | any
-  afterStep?: (output: any, input: any, context: PipelineHookContext) => Promise<any> | any
-  onError?: (error: any, context: PipelineHookContext) => Promise<any> | any
-  onComplete?: (output: any, context: PipelineHookContext) => Promise<void> | void
+  beforeExecute?: (input: unknown, context: PipelineHookContext) => unknown
+  afterExecute?: (output: unknown, input: unknown, context: PipelineHookContext) => unknown
+  beforeStep?: (input: unknown, context: PipelineHookContext) => unknown
+  afterStep?: (output: unknown, input: unknown, context: PipelineHookContext) => unknown
+  onError?: (error: unknown, context: PipelineHookContext) => unknown
+  onComplete?: (output: unknown, context: PipelineHookContext) => Promise<void> | void
 }
 
 export interface RepositoryHooks {
-  beforeCreate?: (data: any, context: RepositoryHookContext) => Promise<any> | any
-  afterCreate?: (entity: any, context: RepositoryHookContext) => Promise<any> | any
-  beforeUpdate?: (id: any, data: any, context: RepositoryHookContext) => Promise<any> | any
-  afterUpdate?: (entity: any, context: RepositoryHookContext) => Promise<any> | any
-  beforeDelete?: (id: any, context: RepositoryHookContext) => Promise<void> | void
-  afterDelete?: (id: any, context: RepositoryHookContext) => Promise<void> | void
-  beforeFind?: (id: any, context: RepositoryHookContext) => Promise<void> | void
-  afterFind?: (entity: any, context: RepositoryHookContext) => Promise<any> | any
+  beforeCreate?: (
+    data: Record<string, unknown>,
+    context: RepositoryHookContext
+  ) => Promise<Record<string, unknown>> | Record<string, unknown>
+  afterCreate?: (
+    entity: Record<string, unknown>,
+    context: RepositoryHookContext
+  ) => Promise<Record<string, unknown>> | Record<string, unknown>
+  beforeUpdate?: (
+    id: string | number,
+    data: Record<string, unknown>,
+    context: RepositoryHookContext
+  ) => Promise<Record<string, unknown>> | Record<string, unknown>
+  afterUpdate?: (
+    entity: Record<string, unknown>,
+    context: RepositoryHookContext
+  ) => Promise<Record<string, unknown>> | Record<string, unknown>
+  beforeDelete?: (id: string | number, context: RepositoryHookContext) => Promise<void> | void
+  afterDelete?: (id: string | number, context: RepositoryHookContext) => Promise<void> | void
+  beforeFind?: (id: string | number, context: RepositoryHookContext) => Promise<void> | void
+  afterFind?: (
+    entity: Record<string, unknown> | null,
+    context: RepositoryHookContext
+  ) => Record<string, unknown> | null
 }
 
 // Global hooks that apply across all pillars
@@ -84,7 +136,7 @@ export interface GlobalHooks {
     duration: number
   ) => Promise<void> | void
   onError?: (
-    error: any,
+    error: unknown,
     pillar: 'interface' | 'process' | 'data',
     operation: string
   ) => Promise<void> | void
@@ -102,33 +154,50 @@ export interface PerformanceMetrics {
 
 // Extension points for each pillar
 export interface SchemaExtensions {
-  [schemaName: string]: Record<string, Schema<any>>
+  [schemaName: string]: Record<string, Schema<unknown>>
 }
 
 export interface RuleExtensions {
-  [ruleName: string]: (...args: any[]) => any
+  [ruleName: string]: (
+    ...args: unknown[]
+  ) => (value: unknown, context?: unknown) => boolean | Promise<boolean>
 }
 
 export interface PipelineSteps {
-  [stepName: string]: (data: any, context?: any) => Promise<any> | any
+  [stepName: string]: (...args: unknown[]) => (data: unknown, context?: unknown) => unknown
+}
+
+export interface StorageAdapter {
+  create(data: Record<string, unknown>): Promise<Result<unknown, unknown>>
+  findMany(query?: Record<string, unknown>): Promise<Result<unknown, unknown[]>>
+  findOne?(query: Record<string, unknown>): Promise<Result<unknown, unknown>>
+  find?(id: string | number): Promise<Result<unknown, unknown>>
+  update?(id: string | number, data: Record<string, unknown>): Promise<Result<unknown, unknown>>
+  delete?(id: string | number): Promise<Result<unknown, boolean>>
+  count?(query?: Record<string, unknown>): Promise<Result<unknown, number>>
+  exists?(query: Record<string, unknown>): Promise<Result<unknown, boolean>>
+}
+
+export interface StorageAdapterConstructor {
+  new (config?: Record<string, unknown>): StorageAdapter
 }
 
 export interface StorageAdapters {
-  [adapterName: string]: new (...args: any[]) => any
+  [adapterName: string]: StorageAdapterConstructor
 }
 
 export interface ResourceExtensions {
-  [methodName: string]: (resource: any) => any
+  [methodName: string]: (resource: unknown) => unknown
 }
 
 export interface RepositoryExtensions {
-  [methodName: string]: (repository: any) => any
+  [methodName: string]: (repository: unknown) => unknown
 }
 
 // Main plugin definition interface
 export interface PluginDefinition {
   metadata: PluginMetadata
-  config?: Record<string, any>
+  config?: Record<string, unknown>
 
   // Hooks for each pillar
   resourceHooks?: ResourceHooks
@@ -145,7 +214,7 @@ export interface PluginDefinition {
   repositoryExtensions?: RepositoryExtensions
 
   // Lifecycle hooks
-  onLoad?: (config?: Record<string, any>) => Promise<void> | void
+  onLoad?: (config?: Record<string, unknown>) => Promise<void> | void
   onUnload?: () => Promise<void> | void
   onEnable?: () => Promise<void> | void
   onDisable?: () => Promise<void> | void
@@ -158,7 +227,7 @@ export interface PluginDefinition {
 export interface PluginInstance {
   definition: PluginDefinition
   state: PluginState
-  config: Record<string, any>
+  config: Record<string, unknown>
   loadedAt?: Date
   enabledAt?: Date
   error?: KairoError

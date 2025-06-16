@@ -385,5 +385,4 @@ export type {
   ResourceHookContext,
   PipelineHookContext,
   RepositoryHookContext,
-  PerformanceMetrics,
 } from './core/plugins'

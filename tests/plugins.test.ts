@@ -17,6 +17,7 @@ import {
   PluginDependencyError,
   PluginLifecycleError,
 } from '../src/core/plugins'
+import { nativeSchema as schema } from '../src/core/native-schema'
 import { PluginRegistry, setGlobalPluginRegistry } from '../src/core/plugin-registry'
 import { PluginTester, pluginTestUtils } from '../src/testing/plugin-testing'
 
@@ -76,7 +77,9 @@ describe('Plugin System', () => {
       const result = registerPlugin(plugin)
 
       expect(Result.isErr(result)).toBe(true)
-      expect(result.error).toBeInstanceOf(PluginValidationError)
+      if (Result.isErr(result)) {
+        expect(result.error).toBeInstanceOf(PluginValidationError)
+      }
     })
 
     it('should reject plugins with invalid versions', () => {
@@ -86,7 +89,9 @@ describe('Plugin System', () => {
       const result = registerPlugin(plugin)
 
       expect(Result.isErr(result)).toBe(true)
-      expect(result.error).toBeInstanceOf(PluginValidationError)
+      if (Result.isErr(result)) {
+        expect(result.error).toBeInstanceOf(PluginValidationError)
+      }
     })
 
     it('should reject duplicate plugin names', () => {
@@ -98,7 +103,9 @@ describe('Plugin System', () => {
 
       expect(Result.isOk(result1)).toBe(true)
       expect(Result.isErr(result2)).toBe(true)
-      expect(result2.error).toBeInstanceOf(PluginValidationError)
+      if (Result.isErr(result2)) {
+        expect(result2.error).toBeInstanceOf(PluginValidationError)
+      }
     })
   })
 
@@ -172,7 +179,9 @@ describe('Plugin System', () => {
       const result = await loadPlugin('failing-plugin')
 
       expect(Result.isErr(result)).toBe(true)
-      expect(result.error).toBeInstanceOf(PluginLifecycleError)
+      if (Result.isErr(result)) {
+        expect(result.error).toBeInstanceOf(PluginLifecycleError)
+      }
       expect(getPlugin('failing-plugin')?.state).toBe('failed')
     })
   })
@@ -201,7 +210,9 @@ describe('Plugin System', () => {
       const result = registerPlugin(plugin)
 
       expect(Result.isErr(result)).toBe(true)
-      expect(result.error).toBeInstanceOf(PluginDependencyError)
+      if (Result.isErr(result)) {
+        expect(result.error).toBeInstanceOf(PluginDependencyError)
+      }
     })
   })
 
@@ -210,7 +221,7 @@ describe('Plugin System', () => {
       const plugin = createPlugin('resource-hook-plugin', {
         resourceHooks: {
           beforeRequest: request => {
-            const headers = request.headers as Record<string, string> | undefined
+            const headers = request.headers ?? {}
             request.headers = { ...headers, 'X-Plugin': 'test' }
             return request
           },
@@ -227,7 +238,7 @@ describe('Plugin System', () => {
       const plugin = createPlugin('pipeline-hook-plugin', {
         pipelineHooks: {
           beforeExecute: input => {
-            return { ...input, pluginProcessed: true }
+            return { ...(input as Record<string, unknown>), pluginProcessed: true }
           },
         },
       })
@@ -257,7 +268,7 @@ describe('Plugin System', () => {
       const plugin = createPlugin('schema-extension-plugin', {
         schemaExtensions: {
           user: {
-            pluginField: 'string',
+            pluginField: schema.string(),
           },
         },
       })
@@ -267,13 +278,19 @@ describe('Plugin System', () => {
 
       const extensions = getExtensions()
       expect(extensions.schemas.user).toBeDefined()
-      expect(extensions.schemas.user.pluginField).toBe('string')
+      expect(extensions.schemas.user?.pluginField).toBeDefined()
+      if (extensions.schemas.user?.pluginField) {
+        expect(typeof extensions.schemas.user.pluginField).toBe('object')
+      }
     })
 
     it('should provide rule extensions', async () => {
       const plugin = createPlugin('rule-extension-plugin', {
         ruleExtensions: {
-          customRule: () => 'custom validation',
+          customRule:
+            (..._args: unknown[]) =>
+            (_value: unknown, _context?: unknown) =>
+              true,
         },
       })
 
@@ -288,7 +305,10 @@ describe('Plugin System', () => {
     it('should provide pipeline steps', async () => {
       const plugin = createPlugin('pipeline-step-plugin', {
         pipelineSteps: {
-          customStep: data => ({ ...data, processed: true }),
+          customStep: () => (data: unknown) => ({
+            ...(data as Record<string, unknown>),
+            processed: true,
+          }),
         },
       })
 
@@ -303,7 +323,14 @@ describe('Plugin System', () => {
     it('should provide storage adapters', async () => {
       const plugin = createPlugin('storage-adapter-plugin', {
         storageAdapters: {
-          customStorage: class CustomStorageAdapter {},
+          customStorage: class CustomStorageAdapter {
+            create(_data: Record<string, unknown>) {
+              return Promise.resolve(Result.Ok({}))
+            }
+            findMany(_query?: Record<string, unknown>) {
+              return Promise.resolve(Result.Ok([]))
+            }
+          },
         },
       })
 
@@ -327,7 +354,9 @@ describe('Plugin System', () => {
 
       const result = await checkPluginHealth('healthy-plugin')
       expect(Result.isOk(result)).toBe(true)
-      expect(result.value).toBe(true)
+      if (Result.isOk(result)) {
+        expect(result.value).toBe(true)
+      }
     })
 
     it('should detect unhealthy plugins', async () => {
@@ -340,12 +369,14 @@ describe('Plugin System', () => {
 
       const result = await checkPluginHealth('unhealthy-plugin')
       expect(Result.isOk(result)).toBe(true)
-      expect(result.value).toBe(false)
+      if (Result.isOk(result)) {
+        expect(result.value).toBe(false)
+      }
     })
   })
 
   describe('Plugin Listing', () => {
-    it('should list all plugins', async () => {
+    it('should list all plugins', () => {
       const plugin1 = createPlugin('plugin-1', {})
       const plugin2 = createPlugin('plugin-2', {})
 
@@ -354,8 +385,8 @@ describe('Plugin System', () => {
 
       const plugins = listPlugins()
       expect(plugins).toHaveLength(2)
-      expect(plugins.map(p => p.definition.metadata.name)).toContain('plugin-1')
-      expect(plugins.map(p => p.definition.metadata.name)).toContain('plugin-2')
+      expect(plugins.map(p => p?.definition.metadata.name)).toContain('plugin-1')
+      expect(plugins.map(p => p?.definition.metadata.name)).toContain('plugin-2')
     })
 
     it('should list only enabled plugins', async () => {
@@ -372,7 +403,7 @@ describe('Plugin System', () => {
 
       const enabledPlugins = listEnabledPlugins()
       expect(enabledPlugins).toHaveLength(1)
-      expect(enabledPlugins[0].definition.metadata.name).toBe('enabled-plugin')
+      expect(enabledPlugins[0]?.definition.metadata.name).toBe('enabled-plugin')
     })
   })
 })
@@ -450,13 +481,15 @@ describe('Plugin Testing Framework', () => {
 
   describe('Plugin Test Suites', () => {
     it('should run a complete test suite', async () => {
-      const plugin = pluginTestUtils.createMockPlugin('suite-test')
+      const plugin1 = pluginTestUtils.createMockPlugin('suite-test-1')
+      const plugin2 = pluginTestUtils.createMockPlugin('suite-test-2')
+      const plugin3 = pluginTestUtils.createMockPlugin('suite-test-3')
       const testSuite = {
         name: 'Test Suite',
         tests: [
-          tester.createPluginLoadTest(plugin),
-          tester.createPluginEnableTest(plugin),
-          tester.createPluginLifecycleTest(plugin),
+          tester.createPluginLoadTest(plugin1),
+          tester.createPluginEnableTest(plugin2),
+          tester.createPluginLifecycleTest(plugin3),
         ],
       }
 
