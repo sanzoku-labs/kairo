@@ -753,17 +753,153 @@ const tracedPipeline = userPipeline
   })
 ```
 
+## Advanced Features (Optional)
+
+Once you're comfortable with the three pillars, explore Kairo's enterprise-grade advanced features:
+
+### Event-Driven Architecture
+
+```typescript
+import { createEventBus, createEvent, saga, sagaStep } from 'kairo/events'
+
+// Create event bus
+const eventBus = createEventBus()
+
+// Publish events
+const userCreatedEvent = createEvent('user.created', {
+  userId: '123',
+  name: 'John Doe',
+  email: 'john@example.com',
+})
+
+await eventBus.publish(userCreatedEvent)
+
+// Subscribe to events
+eventBus.subscribe({
+  eventType: 'user.created',
+  handler: async event => {
+    await sendWelcomeEmail(event.payload)
+    return Result.Ok(undefined)
+  },
+})
+
+// Complex workflows with sagas
+const userOnboardingSaga = saga(
+  'user-onboarding',
+  [
+    sagaStep('create-user', async input => {
+      const user = await userService.create(input.userData)
+      return Result.Ok(user)
+    }),
+    sagaStep('send-welcome', async user => {
+      await emailService.sendWelcome(user.email)
+      return Result.Ok(undefined)
+    }),
+  ],
+  { rollbackOnFailure: true }
+)
+```
+
+### Transaction Management
+
+```typescript
+import { transaction, transactionStep, createTransactionManager } from 'kairo/transactions'
+
+const transactionManager = createTransactionManager()
+
+// ACID transactions with automatic rollback
+const transferFunds = transaction(
+  'transfer-funds',
+  [
+    transactionStep('debit-source', async input => {
+      return await accountService.debit(input.fromAccount, input.amount)
+    }),
+    transactionStep('credit-target', async input => {
+      return await accountService.credit(input.toAccount, input.amount)
+    }),
+  ],
+  {
+    isolation: 'serializable',
+    timeout: 30000,
+  }
+)
+
+const result = await transactionManager.execute(transferFunds, transferData)
+```
+
+### Advanced Caching
+
+```typescript
+import { CacheManager, MemoryStorage, RedisStorage } from 'kairo/cache'
+
+// Multi-level cache with analytics
+const cacheManager = new CacheManager({
+  layers: [
+    { name: 'memory', storage: new MemoryStorage(), ttl: 300000 },
+    { name: 'redis', storage: new RedisStorage(), ttl: 3600000 },
+  ],
+  analytics: { enabled: true },
+})
+
+// Cache with intelligent invalidation
+await cacheManager.set('user:123', userData, {
+  tags: ['user', 'profile'],
+  ttl: 1800000,
+})
+
+// Tag-based invalidation
+await cacheManager.invalidateByTag('user')
+
+// Real-time analytics
+const analytics = cacheManager.getAnalytics()
+console.log(`Hit rate: ${analytics.hitRate}%`)
+```
+
+### Plugin System
+
+```typescript
+import { createPlugin, registerPlugin, loadAndEnablePlugin } from 'kairo/plugins'
+
+// Create extensible plugins
+const authPlugin = createPlugin('auth', {
+  resourceHooks: {
+    beforeRequest: async (request, context) => {
+      const token = await getAuthToken()
+      request.headers.Authorization = `Bearer ${token}`
+      return request
+    },
+  },
+  pipelineSteps: {
+    authorize: (permission: string) => async (data, context) => {
+      if (!(await authService.hasPermission(context.user, permission))) {
+        throw new AuthorizationError(`Missing permission: ${permission}`)
+      }
+      return data
+    },
+  },
+})
+
+// Register and activate
+registerPlugin(authPlugin)
+await loadAndEnablePlugin('auth')
+
+// All operations automatically enhanced
+const userPipeline = pipeline('process-user')
+  .step('authorize', step => step.authorize('user:create'))
+  .pipeline(UserAPI.create) // Auth headers added automatically
+```
+
 ## Next Steps
 
 Now that you understand Kairo's Three-Pillar Architecture, explore more advanced features:
 
 ### 📚 Learn More
 
-- [Three-Pillar Architecture Guide](/guide/architecture) - Deep dive into the architectural patterns
+- [Three-Pillar Architecture Guide](/guide/architecture) - Deep dive into architectural patterns and enterprise features
 - [Core Concepts](/guide/concepts) - Understanding Result patterns, composition, and more
 - [Enhanced Testing Integration](/testing-guide) - Comprehensive testing across all pillars
 
-### 🔧 API Reference
+### 🔧 Core API Reference
 
 - [Native Schema API](/api/schema) - Complete schema validation reference
 - [Pipeline API](/api/pipeline) - Business logic composition patterns
@@ -771,12 +907,20 @@ Now that you understand Kairo's Three-Pillar Architecture, explore more advanced
 - [Repository API](/api/repository) - Data access with relationships
 - [Transform API](/api/transform) - Declarative data transformation
 
+### ⚡ Advanced API Reference
+
+- [Event Bus API](/api/events) - Event-driven architecture and sagas
+- [Transaction API](/api/transactions) - ACID transactions and compensation
+- [Cache API](/api/cache) - Multi-level caching with analytics
+- [Plugin API](/api/plugins) - Extensible plugin architecture
+
 ### 💡 Real-World Examples
 
-- [E-commerce Platform](/examples/ecommerce) - Complete three-pillar application
-- [User Management System](/examples/user-management) - Authentication and authorization
-- [Data Processing Pipeline](/examples/data-processing) - ETL and batch processing
-- [Microservices Architecture](/examples/microservices) - Service-to-service communication
+- [Basic Examples](/examples/) - Simple patterns to get started
+- [Event-Driven Architecture](/examples/event-driven-architecture) - Reactive applications with events
+- [Enterprise Integration](/examples/enterprise-integration) - Complete e-commerce platform with all features
+- [Data Transformations](/examples/data-transformations) - ETL and data processing patterns
+- [Repository Patterns](/examples/repository-patterns) - Data access with relationships
 
 ### 🚀 Advanced Topics
 
@@ -785,4 +929,4 @@ Now that you understand Kairo's Three-Pillar Architecture, explore more advanced
 - [Migration Guide](/guide/migration) - Migrating from other frameworks
 - [Custom Storage Adapters](/guide/custom-storage) - Building custom data storage solutions
 
-**Ready to build your declarative application?** Start with the pillar that matches your immediate needs, then expand to leverage the full three-pillar architecture!
+**Ready to build your declarative application?** Start with the core three-pillar architecture, then add advanced features as your application grows!

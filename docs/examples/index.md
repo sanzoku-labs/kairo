@@ -36,6 +36,26 @@ Type-safe data access with relationships and lifecycle hooks.
 
 ## Advanced Examples
 
+### [Event-Driven Architecture](/examples/event-driven-architecture)
+
+Building reactive applications with events, sagas, and event sourcing.
+
+### [Transaction Management](/examples/transaction-management)
+
+ACID transactions with automatic rollback and compensation patterns.
+
+### [Advanced Caching](/examples/advanced-caching)
+
+Multi-level caching with analytics and intelligent invalidation strategies.
+
+### [Plugin Development](/examples/plugin-development)
+
+Creating extensible plugins that integrate with all three pillars.
+
+### [Enterprise Integration](/examples/enterprise-integration)
+
+Complete enterprise architecture with all advanced features combined.
+
 Kairo's Three-Pillar Architecture enables sophisticated application development with declarative patterns across data, interfaces, and processes.
 
 ## Framework Integration

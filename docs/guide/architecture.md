@@ -668,179 +668,466 @@ const getActiveUsersWithRecentOrders = async () => {
 }
 ```
 
-## Cross-Pillar Integration Patterns
+## Advanced Features Integration
 
-### Complete Application Architecture
+Kairo's advanced features work seamlessly with the three-pillar architecture to provide enterprise-grade capabilities.
+
+### Event-Driven Architecture Integration
 
 ```typescript
-import { nativeSchema, resource, pipeline, repository, transform, rules, rule } from 'kairo'
+import {
+  createEventBus,
+  createEvent,
+  saga,
+  sagaStep,
+  eventPipeline,
+  eventRepository,
+} from 'kairo/events'
 
-// DATA: Domain models
+// Create event bus
+const eventBus = createEventBus({
+  maxRetries: 3,
+  deadLetterEnabled: true,
+})
+
+// Event-driven pipelines automatically emit events
+const userProcessingPipeline = eventPipeline('user-processing', { eventBus })
+  .map('validate', validateUserData)
+  .emit('user.validated')
+  .map('enrich', enrichUserData)
+  .emit('user.enriched')
+  .map('persist', persistUser)
+  .emit('user.persisted')
+
+// Event-driven repositories emit lifecycle events
+const userRepo = eventRepository({
+  name: 'users',
+  schema: UserSchema,
+  eventBus,
+  emitEvents: true,
+})
+
+// Saga patterns for complex workflows
+const userOnboardingSaga = saga(
+  'user-onboarding',
+  [
+    sagaStep('create-user', async input => {
+      const user = await userService.create(input.userData)
+      return Result.Ok(user)
+    }),
+    sagaStep('send-welcome', async user => {
+      await emailService.sendWelcome(user.email)
+      return Result.Ok(undefined)
+    }),
+    sagaStep('setup-profile', async user => {
+      const profile = await profileService.create(user.id)
+      return Result.Ok(profile)
+    }),
+  ],
+  {
+    rollbackOnFailure: true,
+    eventBus: eventBus,
+  }
+)
+
+// Cross-pillar event integration
+eventBus.subscribe({
+  eventType: 'user.created',
+  handler: async event => {
+    // Trigger welcome workflow
+    await userOnboardingSaga.execute({ userData: event.payload })
+    return Result.Ok(undefined)
+  },
+})
+```
+
+### Transaction Management Integration
+
+```typescript
+import {
+  transaction,
+  transactionStep,
+  createTransactionManager,
+  transactionalPipeline,
+  transactionalRepository,
+} from 'kairo/transactions'
+
+const transactionManager = createTransactionManager()
+
+// Transactional pipelines with automatic rollback
+const txPipeline = transactionalPipeline('order-processing', transactionManager)
+  .map('validate', validateOrder)
+  .step('reserve-inventory', async (order, context) => {
+    return await inventoryRepo.executeInTransaction(async () => {
+      return await inventoryRepo.reserve(order.items)
+    }, context)
+  })
+  .step('process-payment', async (order, context) => {
+    return await paymentService.processInTransaction(order.payment, context)
+  })
+  .step('fulfill-order', async (order, context) => {
+    return await fulfillmentService.fulfill(order, context)
+  })
+
+// ACID transactions across multiple operations
+const complexOrderTransaction = transaction(
+  'complex-order',
+  [
+    transactionStep('validate-inventory', async orderData => {
+      const availability = await inventoryService.checkAvailability(orderData.items)
+      if (!availability.allAvailable) {
+        throw new InventoryError('Items not available')
+      }
+      return orderData
+    }),
+
+    transactionStep('reserve-inventory', async orderData => {
+      return await inventoryService.reserve(orderData.items)
+    }),
+
+    transactionStep('charge-payment', async orderData => {
+      return await paymentService.charge(orderData.payment)
+    }),
+
+    transactionStep('create-order', async orderData => {
+      return await orderRepository.create(orderData)
+    }),
+  ],
+  {
+    isolation: 'serializable',
+    timeout: 30000,
+    onRollback: async (context, error) => {
+      // Custom cleanup logic
+      await auditService.logFailedTransaction(context.transactionId, error)
+    },
+  }
+)
+```
+
+### Advanced Caching Integration
+
+```typescript
+import { CacheManager, MemoryStorage, RedisStorage } from 'kairo/cache'
+
+// Multi-level cache setup
+const cacheManager = new CacheManager({
+  layers: [
+    {
+      name: 'memory-l1',
+      priority: 100,
+      storage: new MemoryStorage({ maxSize: 1000 }),
+      ttl: 300000, // 5 minutes
+    },
+    {
+      name: 'redis-l2',
+      priority: 50,
+      storage: new RedisStorage({
+        host: 'localhost',
+        port: 6379,
+        cluster: true,
+      }),
+      ttl: 3600000, // 1 hour
+    },
+  ],
+  analytics: { enabled: true },
+})
+
+// Cached resources with invalidation
+const UserAPI = resource('users', {
+  get: {
+    path: '/users/:id',
+    response: UserSchema,
+    cache: {
+      manager: cacheManager,
+      ttl: 3600000,
+      key: params => `user:${params.id}`,
+      tags: ['user'],
+      invalidateOn: ['user.updated', 'user.deleted'],
+    },
+  },
+})
+
+// Cached pipelines
+const cachedPipeline = pipeline('user-processing')
+  .input(UserSchema)
+  .cache({
+    manager: cacheManager,
+    key: user => `processed:user:${user.id}`,
+    ttl: 3600000,
+    tags: ['user', 'processing'],
+  })
+  .map(processUserData)
+  .cache({
+    key: user => `enriched:user:${user.id}`,
+    ttl: 1800000,
+  })
+  .map(enrichUserData)
+
+// Event-driven cache invalidation
+eventBus.subscribe({
+  eventType: 'user.updated',
+  handler: async event => {
+    await cacheManager.invalidateByTag(`user:${event.payload.userId}`)
+    return Result.Ok(undefined)
+  },
+})
+```
+
+### Plugin System Integration
+
+```typescript
+import { createPlugin, registerPlugin, loadAndEnablePlugin } from 'kairo/plugins'
+
+// Comprehensive auth plugin
+const authPlugin = createPlugin('auth', {
+  metadata: {
+    version: '1.0.0',
+    description: 'Complete authentication plugin',
+  },
+
+  // INTERFACE pillar integration
+  resourceHooks: {
+    beforeRequest: async (request, context) => {
+      const token = await getAuthToken()
+      request.headers.Authorization = `Bearer ${token}`
+      return request
+    },
+    onError: async (error, context) => {
+      if (error.status === 401) {
+        await refreshAuthToken()
+        return { retry: true }
+      }
+      return { error }
+    },
+  },
+
+  // PROCESS pillar integration
+  pipelineHooks: {
+    beforeExecute: async (input, context) => {
+      const user = await getCurrentUser()
+      return { ...input, user }
+    },
+  },
+
+  pipelineSteps: {
+    authorize: (permission: string) => async (data, context) => {
+      const hasPermission = await authService.hasPermission(context.user, permission)
+      if (!hasPermission) {
+        throw new AuthorizationError(`Missing permission: ${permission}`)
+      }
+      return data
+    },
+  },
+
+  // DATA pillar integration
+  repositoryHooks: {
+    beforeCreate: async (data, context) => {
+      const user = await getCurrentUser()
+      return {
+        ...data,
+        createdBy: user?.id,
+        createdAt: new Date().toISOString(),
+      }
+    },
+  },
+
+  schemaExtensions: {
+    '*': {
+      createdBy: { type: 'string', format: 'uuid', optional: true },
+      updatedBy: { type: 'string', format: 'uuid', optional: true },
+    },
+  },
+
+  // Event integration
+  eventHooks: {
+    beforePublish: async (event, context) => {
+      const user = await getCurrentUser()
+      return {
+        ...event,
+        metadata: {
+          ...event.metadata,
+          userId: user?.id,
+        },
+      }
+    },
+  },
+
+  // Transaction integration
+  transactionHooks: {
+    beforeExecute: async (transaction, context) => {
+      const user = await getCurrentUser()
+      context.user = user
+      return transaction
+    },
+  },
+
+  // Cache integration
+  cacheHooks: {
+    beforeSet: async (key, value, options, context) => {
+      // Add user context to cache keys
+      const user = await getCurrentUser()
+      if (user) {
+        key = `user:${user.id}:${key}`
+      }
+      return { key, value, options }
+    },
+  },
+})
+
+// Register and activate
+registerPlugin(authPlugin)
+await loadAndEnablePlugin('auth')
+
+// All Kairo operations now include authentication
+const secureUserPipeline = pipeline('secure-user-processing')
+  .input(UserSchema)
+  .step('authorize', step => step.authorize('user:process'))
+  .pipeline(UserAPI.create) // Auth headers added automatically
+  .step('audit', step => step.auditLog('user-processed'))
+```
+
+### Complete Enterprise Architecture
+
+```typescript
+import {
+  nativeSchema,
+  resource,
+  pipeline,
+  repository,
+  transform,
+  rules,
+  rule,
+  createEventBus,
+  createTransactionManager,
+  CacheManager,
+  createPlugin,
+} from 'kairo'
+
+// Foundation setup
+const eventBus = createEventBus()
+const transactionManager = createTransactionManager()
+const cacheManager = new CacheManager()
+
+// DATA: Domain models with validation
 const UserSchema = nativeSchema.object({
   id: nativeSchema.string().uuid(),
-  name: nativeSchema.string(),
+  name: nativeSchema.string().min(2).max(100),
   email: nativeSchema.string().email(),
+  role: nativeSchema.enum(['user', 'admin', 'moderator'] as const),
   active: nativeSchema.boolean().default(true),
+  createdAt: nativeSchema.string().datetime(),
+  updatedAt: nativeSchema.string().datetime().optional(),
 })
 
-const OrderSchema = nativeSchema.object({
-  id: nativeSchema.string().uuid(),
-  userId: nativeSchema.string().uuid(),
-  total: nativeSchema.number().positive(),
-  status: nativeSchema.enum(['pending', 'processing', 'completed'] as const),
-})
-
-// INTERFACE: External systems
-const PaymentAPI = resource('payments', {
-  process: {
+// INTERFACE: API with caching and events
+const UserAPI = resource('users', {
+  get: {
+    path: '/users/:id',
+    response: UserSchema,
+    cache: { manager: cacheManager, ttl: 3600000 },
+  },
+  create: {
+    path: '/users',
     method: 'POST',
-    path: '/payments/process',
-    body: nativeSchema.object({
-      amount: nativeSchema.number().positive(),
-      currency: nativeSchema.string().length(3),
-      paymentMethod: nativeSchema.string(),
-    }),
-    response: nativeSchema.object({
-      transactionId: nativeSchema.string(),
-      status: nativeSchema.enum(['success', 'failed'] as const),
-    }),
+    body: UserSchema.omit(['id', 'createdAt', 'updatedAt']),
+    response: UserSchema,
   },
 })
 
-const EmailAPI = resource('email', {
-  sendOrderConfirmation: {
-    method: 'POST',
-    path: '/email/order-confirmation',
-    body: nativeSchema.object({
-      userId: nativeSchema.string().uuid(),
-      orderId: nativeSchema.string().uuid(),
-    }),
-    response: nativeSchema.object({ sent: nativeSchema.boolean() }),
-  },
-})
-
-// DATA: Repositories
-const userRepository = repository('users', {
+// DATA: Repository with events and transactions
+const userRepository = eventRepository({
+  name: 'users',
   schema: UserSchema,
   storage: 'database',
+  eventBus,
+  transactionManager,
+  cache: cacheManager,
 })
 
-const orderRepository = repository('orders', {
-  schema: OrderSchema,
-  storage: 'database',
-  relationships: {
-    user: belongsTo('users', 'userId', UserSchema),
+// PROCESS: Business rules with compliance
+const userRules = rules('user-validation', {
+  emailUniqueness: rule()
+    .async(user => userRepository.findOne({ where: { email: user.email } }))
+    .require(result => result.tag === 'Err')
+    .message('Email already exists'),
+
+  rolePermission: rule()
+    .when(user => user.role === 'admin')
+    .async(user => authService.hasAdminPermission(user.createdBy))
+    .require(hasPermission => hasPermission)
+    .message('Only admins can create admin users'),
+})
+
+// PROCESS: Complete workflow with all features
+const createUserWorkflow = pipeline('create-user-workflow')
+  .input(UserSchema.omit(['id', 'createdAt', 'updatedAt']))
+  .validateAll(userRules)
+  .step('authorize', step => step.authorize('user:create'))
+  .map(user => ({
+    ...user,
+    id: generateId(),
+    createdAt: new Date().toISOString(),
+  }))
+  .transaction(async (user, context) => {
+    // Transactional operations
+    const createdUser = await userRepository.create(user)
+    await profileRepository.create({
+      userId: user.id,
+      displayName: user.name,
+    })
+    return createdUser
+  })
+  .emit('user.created')
+  .step('audit', step => step.auditLog('user-created'))
+  .cache({
+    key: user => `user:${user.id}`,
+    ttl: 3600000,
+    tags: ['user'],
+  })
+  .trace('user-workflow-completed')
+
+// Event-driven reactions
+eventBus.subscribe({
+  eventType: 'user.created',
+  handler: async event => {
+    // Send welcome email
+    await EmailAPI.sendWelcome.run({ userId: event.payload.id })
+
+    // Update analytics
+    await AnalyticsAPI.trackUserCreation.run(event.payload)
+
+    return Result.Ok(undefined)
   },
 })
 
-// PROCESS: Business rules
-const orderRules = rules('order-validation', {
-  userExists: rule()
-    .async(order => userRepository.exists(order.userId))
-    .require(exists => exists)
-    .message('User not found'),
-
-  minimumAmount: rule()
-    .require(order => order.total >= 10)
-    .message('Minimum order amount is $10'),
+// Usage - Enterprise-grade with full observability
+const result = await createUserWorkflow.run({
+  name: 'John Doe',
+  email: 'john@example.com',
+  role: 'user',
 })
 
-// PROCESS: Complete business workflow
-const processOrder = pipeline('process-order')
-  .input(OrderSchema.omit(['id', 'status']))
-  .validateAll(orderRules)
-  .map(order => ({
-    ...order,
-    id: generateId(),
-    status: 'pending' as const,
-  }))
-  .run(async order => {
-    // Store order
-    const orderResult = await orderRepository.create(order)
-    return orderResult.match({
-      Ok: savedOrder => savedOrder,
-      Err: error => {
-        throw error
-      },
-    })
-  })
-  .parallel([
-    // Process payment
-    pipeline('payment')
-      .map(order => ({
-        amount: order.total,
-        currency: 'USD',
-        paymentMethod: 'card',
-      }))
-      .pipeline(PaymentAPI.process),
-
-    // Send confirmation email
-    pipeline('notification')
-      .map(order => ({
-        userId: order.userId,
-        orderId: order.id,
-      }))
-      .pipeline(EmailAPI.sendOrderConfirmation),
-  ])
-  .map(([order, [paymentResult, emailResult]]) => ({
-    order,
-    payment: paymentResult,
-    emailSent: emailResult.sent,
-  }))
-  .run(async ({ order, payment }) => {
-    // Update order status based on payment
-    const status = payment.status === 'success' ? 'completed' : 'failed'
-    return orderRepository.update(order.id, { status })
-  })
-  .trace('order-processed')
-
-// Usage - Simple and powerful
-const processOrderForUser = async (userId: string, orderData: any) => {
-  const result = await processOrder.run({
-    userId,
-    total: orderData.total,
-  })
-
-  result.match({
-    Ok: order => {
-      console.log(`Order ${order.id} processed successfully`)
-      return order
-    },
-    Err: error => {
-      console.error(`Order processing failed: ${error.message}`)
-      // Error is structured and includes full context
-      if (error.code === 'VALIDATION_ERROR') {
-        console.log(`Validation failed on field: ${error.field}`)
-      }
-      return null
-    },
-  })
-}
+result.match({
+  Ok: user => {
+    console.log(`User ${user.name} created successfully`)
+    // Automatic: events emitted, cache populated, audit logged, transactions committed
+  },
+  Err: error => {
+    console.error(`User creation failed: ${error.message}`)
+    // Automatic: transactions rolled back, errors logged, cache invalidated
+  },
+})
 ```
 
-### Event-Driven Architecture
+This enterprise architecture provides:
 
-```typescript
-// Event-driven patterns across pillars
-const orderEventPipeline = pipeline('order-events')
-  .input(OrderEventSchema)
-  .branch({
-    condition: event => event.type === 'order.created',
-    then: pipeline('order-created')
-      .pipeline(InventoryAPI.reserve)
-      .pipeline(EmailAPI.sendOrderConfirmation)
-      .pipeline(AnalyticsAPI.trackOrderCreated),
-
-    else: pipeline('order-updated').branch({
-      condition: event => event.data.status === 'completed',
-      then: pipeline('order-completed')
-        .pipeline(EmailAPI.sendOrderComplete)
-        .pipeline(LoyaltyAPI.awardPoints)
-        .pipeline(AnalyticsAPI.trackOrderCompleted),
-    }),
-  })
-  .trace('order-event-processed')
-```
+- **Event-driven workflows** with automatic event emission and handling
+- **ACID transactions** with automatic rollback and compensation
+- **Multi-level caching** with intelligent invalidation
+- **Plugin extensibility** with three-pillar integration
+- **Complete observability** with tracing, metrics, and audit logging
+- **Type safety** throughout the entire stack
+- **Declarative patterns** that eliminate infrastructure boilerplate
 
 ## Performance and Optimization
 

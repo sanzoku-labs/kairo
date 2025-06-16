@@ -108,7 +108,104 @@ Type-safe error handling without exceptions
 
 ---
 
-## 🧪 Testing APIs
+## 🔄 Event-Driven Architecture
+
+### [Event Bus API](/api/events)
+
+Type-safe publish/subscribe event system
+
+- Event publishing and subscription
+- Event filtering and retry logic
+- Dead letter queues and replay capabilities
+- Cross-pillar event integration
+
+### [Event Store API](/api/event-store)
+
+Persistent event storage with replay capabilities
+
+- Event stream management
+- Event replay and rebuilding state
+- Concurrency control and optimistic locking
+- Event sourcing patterns
+
+### [Saga API](/api/saga)
+
+Complex workflow orchestration with compensation
+
+- Multi-step workflow management
+- Automatic rollback and compensation
+- Distributed transaction patterns
+- Error handling and recovery
+
+---
+
+## 💾 Transaction Management
+
+### [Transaction API](/api/transactions)
+
+ACID-compliant transaction management
+
+- Transaction definition and execution
+- Isolation levels and lock management
+- Automatic rollback and compensation
+- Cross-pillar transaction support
+
+### [Lock Manager API](/api/lock-manager)
+
+Distributed locking with deadlock detection
+
+- Shared and exclusive locks
+- Deadlock detection and resolution
+- Automatic lock release
+- Performance monitoring
+
+---
+
+## ⚡ Advanced Caching
+
+### [Cache Manager API](/api/cache)
+
+Multi-level caching with analytics
+
+- Cache layer management
+- Invalidation strategies (tag-based, pattern-based)
+- Real-time analytics and monitoring
+- Distributed cache support
+
+### [Cache Analytics API](/api/cache-analytics)
+
+Real-time cache performance monitoring
+
+- Hit/miss ratio tracking
+- Memory usage monitoring
+- Performance metrics and alerting
+- Trend analysis and optimization
+
+---
+
+## 🔌 Plugin System
+
+### [Plugin API](/api/plugins)
+
+Extensible plugin architecture
+
+- Plugin definition and registration
+- Lifecycle management (load, enable, disable)
+- Three-pillar integration hooks
+- Dependency management and validation
+
+### [Plugin Registry API](/api/plugin-registry)
+
+Centralized plugin management
+
+- Plugin discovery and loading
+- Health monitoring and status tracking
+- Dependency resolution
+- Plugin testing framework
+
+---
+
+## 🧪 Enhanced Testing APIs
 
 ### Pipeline Testing
 
@@ -117,6 +214,7 @@ Fluent assertions for pipeline execution
 - Success/failure validation
 - Performance testing and benchmarking
 - Step-by-step execution validation
+- Event-driven pipeline testing
 
 ### Resource Testing
 
@@ -125,6 +223,7 @@ Mock scenarios and contract verification
 - HTTP response mocking
 - Scenario-based testing
 - Contract validation utilities
+- Caching behavior testing
 
 ### Schema Testing
 
@@ -133,6 +232,7 @@ Property-based testing with automatic generation
 - Random data generation
 - Edge case validation
 - Performance benchmarking
+- Schema composition testing
 
 ### Transform Testing
 
@@ -141,6 +241,16 @@ Field mapping validation and batch processing
 - Mapping correctness verification
 - Batch processing validation
 - Error handling testing
+- Pipeline integration testing
+
+### Repository Testing
+
+Data access layer testing utilities
+
+- CRUD operation testing
+- Relationship testing
+- Hook validation
+- Storage adapter testing
 
 ### Integration Testing
 
@@ -149,6 +259,16 @@ End-to-end testing across all pillars
 - Cross-pillar workflow testing
 - Complete application flow validation
 - Mock coordination and scenarios
+- Event-driven architecture testing
+
+### Performance Testing
+
+Load testing and benchmarking utilities
+
+- Sustained throughput testing
+- Memory leak detection
+- Performance regression testing
+- Real-time monitoring
 
 ---
 

@@ -19,22 +19,28 @@ hero:
 features:
   - icon: 🔗
     title: INTERFACE Pillar
-    details: Zero-boilerplate APIs with contract testing and intelligent mocking
+    details: Zero-boilerplate APIs with contract testing, caching, and intelligent mocking
   - icon: ⚡
     title: PROCESS Pillar
-    details: Functional pipelines, business rules, and workflow orchestration
+    details: Functional pipelines, business rules, workflows, and event-driven architecture
   - icon: 🛡️
     title: DATA Pillar
-    details: Native schema validation (3x faster than Zod) with zero dependencies
+    details: Native schemas, transformations, repositories with relationships (3x faster than Zod)
+  - icon: 🔄
+    title: Event-Driven Architecture
+    details: Event bus, sagas, event sourcing, and distributed workflows
+  - icon: 💾
+    title: Transaction Management
+    details: ACID transactions with automatic rollback and compensation patterns
+  - icon: ⚡
+    title: Advanced Caching
+    details: Multi-level cache with analytics, invalidation strategies, and distributed support
+  - icon: 🔌
+    title: Plugin System
+    details: Extensible plugin architecture with three-pillar integration
   - icon: 🚀
-    title: High Performance
-    details: Native implementations optimized for speed with minimal bundle size
-  - icon: 🔧
-    title: Framework Agnostic
-    details: Works seamlessly across React, Vue, Node, Bun, and any TypeScript environment
-  - icon: 🎯
-    title: Developer Experience
-    details: Full TypeScript inference with Result pattern for predictable error handling
+    title: Enterprise-Ready
+    details: Production-grade performance, testing framework, and zero technical debt
 ---
 
 ## Quick Start
@@ -60,20 +66,28 @@ const UserSchema = nativeSchema.object({
   age: nativeSchema.number().min(0).max(150),
 })
 
-// Declarative API definition
-const UserAPI = resource('users', {
-  get: {
-    path: '/users/:id',
-    params: nativeSchema.object({ id: nativeSchema.string().uuid() }),
-    response: UserSchema,
+// Declarative API definition with caching and retry
+const UserAPI = resource(
+  'users',
+  {
+    get: {
+      path: '/users/:id',
+      params: nativeSchema.object({ id: nativeSchema.string().uuid() }),
+      response: UserSchema,
+    },
+    create: {
+      path: '/users',
+      method: 'POST',
+      body: UserSchema.omit(['id']),
+      response: UserSchema,
+    },
   },
-  create: {
-    path: '/users',
-    method: 'POST',
-    body: UserSchema.omit(['id']),
-    response: UserSchema,
-  },
-})
+  {
+    cache: { ttl: 60000 },
+    retry: { times: 3, delay: 1000 },
+    timeout: 5000,
+  }
+)
 
 // Type-safe usage with Result pattern
 const result = await UserAPI.get.run({ id: '123' })
@@ -92,7 +106,7 @@ const mocked = UserAPI.mock({
 ## PROCESS Pillar - Declarative Business Logic
 
 ```typescript
-import { pipeline, rules, rule } from 'kairo'
+import { pipeline, rules, rule, workflow } from 'kairo'
 
 // Define business rules declaratively
 const orderRules = rules('order-validation', {
@@ -116,18 +130,33 @@ const processOrder = pipeline('process-order')
   .map(transformOrderResult)
   .trace('order-processing')
 
+// Complex workflow orchestration
+const orderWorkflow = workflow('order-workflow', {
+  steps: {
+    validate: pipeline('validate').validateAll(orderRules),
+    process: processOrder,
+    notify: pipeline('notify').pipeline(EmailAPI.sendConfirmation),
+  },
+  flow: ['validate', 'process', 'notify'],
+  onError: {
+    process: async (error, context) => {
+      await InventoryAPI.release.run({ orderId: context.orderId })
+    },
+  },
+})
+
 // Execute with automatic error handling
-const result = await processOrder.run(orderData)
+const result = await orderWorkflow.run(orderData)
 result.match({
   Ok: processedOrder => handleSuccess(processedOrder),
   Err: error => handleBusinessError(error),
 })
 ```
 
-## DATA Pillar - Native Schema Validation
+## DATA Pillar - Complete Data Management
 
 ```typescript
-import { nativeSchema } from 'kairo'
+import { nativeSchema, transform, repository } from 'kairo'
 
 // Native schemas with full type safety (3x faster than Zod!)
 const ProductSchema = nativeSchema.object({
@@ -139,12 +168,29 @@ const ProductSchema = nativeSchema.object({
   metadata: nativeSchema.record(nativeSchema.string()).optional(),
 })
 
-// Schema composition and transformation
-const CreateProductSchema = ProductSchema.omit(['id']).extend({
-  createRequest: nativeSchema.boolean().default(true),
-})
+// Data transformations
+const productTransform = transform('normalize-product', ExternalProductSchema)
+  .to(ProductSchema)
+  .map('external_id', 'id')
+  .map('product_name', 'name')
+  .map('unit_price', 'price')
+  .compute('slug', source => slugify(source.product_name))
+  .filter(product => product.price > 0)
+  .validate()
 
-const UpdateProductSchema = ProductSchema.partial().required(['id'])
+// Repository with relationships
+const productRepository = repository('products', {
+  schema: ProductSchema,
+  storage: 'database',
+  relationships: {
+    category: belongsTo('categories', 'categoryId', CategorySchema),
+    reviews: hasMany('reviews', 'productId', ReviewSchema),
+  },
+  hooks: {
+    beforeCreate: data => ({ ...data, slug: slugify(data.name) }),
+    afterCreate: product => console.log(`Product ${product.name} created`),
+  },
+})
 
 // Validation with Result pattern
 const result = ProductSchema.parse(productData)
@@ -159,15 +205,147 @@ result.match({
   },
 })
 
-// Transform data declaratively
-const processedProduct = ProductSchema.transform(product => ({
-  ...product,
-  slug: slugify(product.name),
-})).parse(rawData)
+// Repository operations
+const product = await productRepository.create(productData)
+const productsWithReviews = await productRepository.with('reviews').findMany()
 
 // Performance: 1000+ validations in <100ms
 // Zero dependencies: Pure TypeScript implementation
-// Full compatibility: Drop-in Zod replacement
+// Complete data access layer
+```
+
+## Advanced Features
+
+### Event-Driven Architecture
+
+```typescript
+import { createEventBus, createEvent, saga } from 'kairo/events'
+
+const eventBus = createEventBus()
+
+// Type-safe event publishing
+const userCreatedEvent = createEvent('user.created', {
+  userId: '123',
+  name: 'John Doe',
+  email: 'john@example.com',
+})
+
+await eventBus.publish(userCreatedEvent)
+
+// Event subscriptions with filtering
+eventBus.subscribe({
+  eventType: 'user.created',
+  handler: async event => {
+    await sendWelcomeEmail(event.payload)
+    return Result.Ok(undefined)
+  },
+})
+
+// Saga patterns for complex workflows
+const userOnboardingSaga = saga(
+  'user-onboarding',
+  [
+    sagaStep('create-user', async input => {
+      const user = await userService.create(input.userData)
+      return Result.Ok(user)
+    }),
+    sagaStep('send-welcome', async user => {
+      await emailService.sendWelcome(user.email)
+      return Result.Ok(undefined)
+    }),
+  ],
+  { rollbackOnFailure: true }
+)
+```
+
+### Transaction Management
+
+```typescript
+import { transaction, transactionStep, createTransactionManager } from 'kairo/transactions'
+
+const transactionManager = createTransactionManager()
+
+// ACID transactions with automatic rollback
+const transferFunds = transaction(
+  'transfer-funds',
+  [
+    transactionStep('validate-accounts', async input => {
+      return await validateAccounts(input.fromAccount, input.toAccount)
+    }),
+    transactionStep('debit-source', async input => {
+      return await accountService.debit(input.fromAccount, input.amount)
+    }),
+    transactionStep('credit-target', async input => {
+      return await accountService.credit(input.toAccount, input.amount)
+    }),
+  ],
+  {
+    isolation: 'serializable',
+    timeout: 30000,
+  }
+)
+
+const result = await transactionManager.execute(transferFunds, transferData)
+```
+
+### Advanced Caching
+
+```typescript
+import { cache, CacheManager } from 'kairo/cache'
+
+// Multi-level cache with analytics
+const cacheManager = new CacheManager({
+  layers: [
+    { name: 'memory', storage: 'memory', ttl: 300000 },
+    { name: 'redis', storage: 'redis', ttl: 3600000 },
+  ],
+  analytics: { enabled: true },
+})
+
+// Cache with invalidation strategies
+await cacheManager.set('user:123', userData, {
+  tags: ['user', 'profile'],
+  ttl: 1800000,
+})
+
+// Tag-based invalidation
+await cacheManager.invalidateByTag('user')
+
+// Real-time analytics
+const analytics = cacheManager.getAnalytics()
+console.log(`Hit rate: ${analytics.hitRate}%`)
+```
+
+### Plugin System
+
+```typescript
+import { createPlugin, registerPlugin, loadAndEnablePlugin } from 'kairo/plugins'
+
+// Create extensible plugins
+const authPlugin = createPlugin('auth', {
+  resourceHooks: {
+    beforeRequest: async (request, context) => {
+      const token = await getAuthToken()
+      request.headers.Authorization = `Bearer ${token}`
+      return request
+    },
+  },
+  pipelineSteps: {
+    auditLog: (action: string) => async (data, context) => {
+      await auditService.log({ action, data, user: context.user })
+      return data
+    },
+  },
+})
+
+// Register and activate
+registerPlugin(authPlugin)
+await loadAndEnablePlugin('auth')
+
+// All operations automatically enhanced
+const userPipeline = pipeline('process-user')
+  .step('audit', step => step.auditLog('user-processing'))
+  .pipeline(UserAPI.create) // Auth headers added automatically
 ```
 
 ## Why Kairo?
