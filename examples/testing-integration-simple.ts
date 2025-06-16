@@ -1,7 +1,7 @@
 // Simplified example demonstrating the Enhanced Testing Integration capabilities
 import {
   pipeline,
-  nativeSchema,
+  schema,
 
   // Testing utilities
   pipelineTesting,
@@ -28,11 +28,11 @@ async function testPipeline() {
 }
 
 // Example 2: Native Schema Testing
-const UserSchema = nativeSchema.object({
-  id: nativeSchema.string().uuid(),
-  name: nativeSchema.string().min(2).max(50),
-  email: nativeSchema.string().email(),
-  age: nativeSchema.number().min(0).max(150),
+const UserSchema = schema.object({
+  id: schema.string().uuid(),
+  name: schema.string().min(2).max(50),
+  email: schema.string().email(),
+  age: schema.number().min(0).max(150),
 })
 
 function testSchema() {

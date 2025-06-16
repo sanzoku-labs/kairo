@@ -1,7 +1,7 @@
-import type { z } from 'zod'
 import { Result } from './result'
 import type { KairoError } from './errors'
 import type { ResourceConfig, ResourceMethod } from './resource'
+import type { Schema } from './native-schema'
 
 export interface VerifyOptions {
   timeout?: number
@@ -44,7 +44,7 @@ export interface TestCase {
   params?: Record<string, unknown>
   body?: unknown
   expectedStatus?: number
-  expectedSchema?: z.ZodSchema
+  expectedSchema?: Schema<unknown>
 }
 
 export interface TestSuite {
@@ -269,7 +269,7 @@ export class ContractVerifier<T extends ResourceConfig> implements ResourceContr
           name: `${this.resourceName}.${methodName}`,
           method: this.inferHttpMethod(method),
           endpoint: method.path,
-          expectedSchema: method.response?.zod,
+          expectedSchema: method.response,
         })
       }
     }

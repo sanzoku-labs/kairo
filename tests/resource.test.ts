@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { Result } from '../src/core/result'
-import { schema } from '../src/core/schema'
+import { schema } from '../src'
 import { resource, resourceUtils, type ResourceMethod } from '../src/core/resource'
-import { z } from 'zod'
 
 // Test error type interfaces
 interface TestHttpError {
@@ -16,40 +15,30 @@ interface TestValidationError {
 }
 
 // Test schemas
-const UserSchema = schema.from(
-  z.object({
-    id: z.number(),
-    name: z.string(),
-    email: z.string().email(),
-  })
-)
+const UserSchema = schema.object({
+  id: schema.number(),
+  name: schema.string(),
+  email: schema.string().email(),
+})
 
-const CreateUserSchema = schema.from(
-  z.object({
-    name: z.string(),
-    email: z.string().email(),
-  })
-)
+const CreateUserSchema = schema.object({
+  name: schema.string(),
+  email: schema.string().email(),
+})
 
-const UpdateUserSchema = schema.from(
-  z.object({
-    name: z.string().optional(),
-    email: z.string().email().optional(),
-  })
-)
+const UpdateUserSchema = schema.object({
+  name: schema.string().optional(),
+  email: schema.string().email().optional(),
+})
 
-const UserParamsSchema = schema.from(
-  z.object({
-    id: z.string(),
-  })
-)
+const UserParamsSchema = schema.object({
+  id: schema.string(),
+})
 
-const DeleteResponseSchema = schema.from(
-  z.object({
-    success: z.boolean(),
-    message: z.string(),
-  })
-)
+const DeleteResponseSchema = schema.object({
+  success: schema.boolean(),
+  message: schema.string(),
+})
 
 // Mock HTTP client
 const mockHttpClient = {
@@ -67,14 +56,12 @@ describe('Resource', () => {
         list: {
           method: 'GET',
           path: '/api/users',
-          response: schema.from(
-            z.array(
-              z.object({
-                id: z.number(),
-                name: z.string(),
-                email: z.string().email(),
-              })
-            )
+          response: schema.array(
+            schema.object({
+              id: schema.number(),
+              name: schema.string(),
+              email: schema.string().email(),
+            })
           ),
         },
         get: {
@@ -755,19 +742,15 @@ describe('Resource', () => {
           getByUserAndId: {
             method: 'GET',
             path: '/api/users/:userId/posts/:postId',
-            params: schema.from(
-              z.object({
-                userId: z.string(),
-                postId: z.string(),
-              })
-            ),
-            response: schema.from(
-              z.object({
-                id: z.number(),
-                title: z.string(),
-                content: z.string(),
-              })
-            ),
+            params: schema.object({
+              userId: schema.string(),
+              postId: schema.string(),
+            }),
+            response: schema.object({
+              id: schema.number(),
+              title: schema.string(),
+              content: schema.string(),
+            }),
           },
         },
         {
@@ -796,8 +779,8 @@ describe('Resource', () => {
         {
           get: resourceUtils.get(
             '/api/items/:id',
-            schema.from(z.object({ id: z.string() })),
-            schema.from(z.object({ id: z.number(), name: z.string() })),
+            schema.object({ id: schema.string() }),
+            schema.object({ id: schema.number(), name: schema.string() }),
             {
               cache: { ttl: 60000 },
               retry: { times: 3, delay: 1000 },
@@ -806,8 +789,8 @@ describe('Resource', () => {
           ),
           create: resourceUtils.post(
             '/api/items',
-            schema.from(z.object({ name: z.string() })),
-            schema.from(z.object({ id: z.number(), name: z.string() }))
+            schema.object({ name: schema.string() }),
+            schema.object({ id: schema.number(), name: schema.string() })
           ),
         },
         {

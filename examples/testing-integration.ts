@@ -1,10 +1,8 @@
 // Example demonstrating the Enhanced Testing Integration capabilities
-import { z } from 'zod'
 import {
   pipeline,
   resource,
   schema,
-  nativeSchema,
   transform,
   repository,
   MemoryStorageAdapter,
@@ -52,8 +50,8 @@ const mockFactory = {
 const userPipeline = pipeline('user-processing')
   .input(
     schema.object({
-      name: z.string(),
-      email: z.string().email(),
+      name: schema.string(),
+      email: schema.string().email(),
     })
   )
   .map(user => ({ ...user, id: Date.now() }))
@@ -92,24 +90,24 @@ const userApi = resource('users', {
   get: {
     method: 'GET',
     path: '/users/:id',
-    params: schema.object({ id: z.string() }),
+    params: schema.object({ id: schema.string() }),
     response: schema.object({
-      id: z.string(),
-      name: z.string(),
-      email: z.string(),
+      id: schema.string(),
+      name: schema.string(),
+      email: schema.string(),
     }),
   },
   create: {
     method: 'POST',
     path: '/users',
     body: schema.object({
-      name: z.string(),
-      email: z.string(),
+      name: schema.string(),
+      email: schema.string(),
     }),
     response: schema.object({
-      id: z.string(),
-      name: z.string(),
-      email: z.string(),
+      id: schema.string(),
+      name: schema.string(),
+      email: schema.string(),
     }),
   },
 })
@@ -154,11 +152,11 @@ function testResource() {
 }
 
 // Example 3: Schema Testing
-const UserSchema = nativeSchema.object({
-  id: nativeSchema.string().uuid(),
-  name: nativeSchema.string().min(2).max(50),
-  email: nativeSchema.string().email(),
-  age: nativeSchema.number().min(0).max(150),
+const UserSchema = schema.object({
+  id: schema.string().uuid(),
+  name: schema.string().min(2).max(50),
+  email: schema.string().email(),
+  age: schema.number().min(0).max(150),
 })
 
 function testSchema() {
@@ -222,10 +220,10 @@ function testSchema() {
 // Example 4: Transform Testing
 const userTransform = transform(
   'user-normalization',
-  nativeSchema.object({
-    user_name: nativeSchema.string(),
-    user_email: nativeSchema.string(),
-    user_age: nativeSchema.number(),
+  schema.object({
+    user_name: schema.string(),
+    user_email: schema.string(),
+    user_age: schema.number(),
   })
 )
   .to(UserSchema.omit(['id']))

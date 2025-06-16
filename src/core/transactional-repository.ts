@@ -49,7 +49,7 @@ export interface TransactionalStorageAdapter<T> extends StorageAdapter<T> {
 /**
  * Transactional repository implementation
  */
-export class TransactionalRepository<T> implements Repository<T>, TransactionalResource {
+export class TransactionalRepository<T> implements TransactionalResource {
   private readonly baseRepository: Repository<T>
   private readonly transactionManager: TransactionManager
   private readonly config: TransactionalRepositoryConfig<T>
@@ -62,6 +62,15 @@ export class TransactionalRepository<T> implements Repository<T>, TransactionalR
       previousState?: T
     }>
   >()
+
+  /**
+   * Convert RepositoryError to Error
+   */
+  private convertRepositoryError(repositoryError: { message?: string; name?: string }): Error {
+    const error = new Error(repositoryError.message ?? 'Repository operation failed')
+    error.name = repositoryError.name ?? 'RepositoryError'
+    return error
+  }
 
   constructor(
     name: string,
@@ -77,14 +86,19 @@ export class TransactionalRepository<T> implements Repository<T>, TransactionalR
       ...config,
     }
 
-    // Create base repository
-    this.baseRepository = repository(name, {
-      schema,
-      storage: config.storage || 'memory',
+    // Create base repository with proper type casting
+    const repositoryConfig = {
+      schema: schema as unknown as Schema<Record<string, unknown>>,
+      storage: (config.storage || 'memory') as 'memory' | 'database' | 'file',
       ...(config.timestamps !== undefined && { timestamps: config.timestamps }),
       ...(config.relationships !== undefined && { relationships: config.relationships }),
-      ...(config.hooks !== undefined && { hooks: config.hooks }),
-    })
+      ...(config.hooks !== undefined && { hooks: config.hooks as unknown }),
+    }
+
+    this.baseRepository = repository(
+      name,
+      repositoryConfig as Parameters<typeof repository>[1]
+    ) as unknown as Repository<T>
 
     // Register compensation functions if enabled
     if (this.config.autoRegisterCompensation) {
@@ -101,7 +115,11 @@ export class TransactionalRepository<T> implements Repository<T>, TransactionalR
     if (context && this.config.enableTransactions) {
       return await this.createInTransaction(data, context)
     } else {
-      return await this.baseRepository.create(data)
+      const result = await this.baseRepository.create(data as T)
+      if (Result.isErr(result)) {
+        return Result.Err(this.convertRepositoryError(result.error))
+      }
+      return Result.Ok(result.value)
     }
   }
 
@@ -114,10 +132,10 @@ export class TransactionalRepository<T> implements Repository<T>, TransactionalR
   ): Promise<Result<Error, T>> {
     try {
       // Execute create operation
-      const result = await this.baseRepository.create(data)
+      const result = await this.baseRepository.create(data as T)
 
       if (Result.isErr(result)) {
-        return result
+        return Result.Err(this.convertRepositoryError(result.error))
       }
 
       const entity = result.value
@@ -156,7 +174,11 @@ export class TransactionalRepository<T> implements Repository<T>, TransactionalR
     if (context && this.config.enableTransactions) {
       return await this.updateInTransaction(id, data, context)
     } else {
-      return await this.baseRepository.update(id, data)
+      const result = await this.baseRepository.update(id, data)
+      if (Result.isErr(result)) {
+        return Result.Err(this.convertRepositoryError(result.error))
+      }
+      return Result.Ok(result.value)
     }
   }
 
@@ -172,7 +194,7 @@ export class TransactionalRepository<T> implements Repository<T>, TransactionalR
       // Get previous state for rollback
       const previousResult = await this.baseRepository.find(id)
       if (Result.isErr(previousResult)) {
-        return Result.Err(previousResult.error)
+        return Result.Err(this.convertRepositoryError(previousResult.error))
       }
 
       const previousState = previousResult.value
@@ -184,7 +206,7 @@ export class TransactionalRepository<T> implements Repository<T>, TransactionalR
       const result = await this.baseRepository.update(id, data)
 
       if (Result.isErr(result)) {
-        return result
+        return Result.Err(this.convertRepositoryError(result.error))
       }
 
       const updatedEntity = result.value
@@ -224,7 +246,12 @@ export class TransactionalRepository<T> implements Repository<T>, TransactionalR
     if (context && this.config.enableTransactions) {
       return await this.deleteInTransaction(id, context)
     } else {
-      return await this.baseRepository.delete(id)
+      const result = await this.baseRepository.delete(id)
+      if (Result.isErr(result)) {
+        return Result.Err(this.convertRepositoryError(result.error))
+      }
+      // Repository delete returns void, but we want boolean
+      return Result.Ok(true)
     }
   }
 
@@ -239,7 +266,7 @@ export class TransactionalRepository<T> implements Repository<T>, TransactionalR
       // Get entity state before deletion for rollback
       const entityResult = await this.baseRepository.find(id)
       if (Result.isErr(entityResult)) {
-        return Result.Err(entityResult.error)
+        return Result.Err(this.convertRepositoryError(entityResult.error))
       }
 
       const entity = entityResult.value
@@ -251,7 +278,7 @@ export class TransactionalRepository<T> implements Repository<T>, TransactionalR
       const result = await this.baseRepository.delete(id)
 
       if (Result.isErr(result)) {
-        return result
+        return Result.Err(this.convertRepositoryError(result.error))
       }
 
       // Add to pending operations for this transaction
@@ -283,23 +310,97 @@ export class TransactionalRepository<T> implements Repository<T>, TransactionalR
    * Find operations delegate to base repository (read-only)
    */
   async find(id: string): Promise<Result<Error, T | null>> {
-    return await this.baseRepository.find(id)
+    const result = await this.baseRepository.find(id)
+    if (Result.isErr(result)) {
+      return Result.Err(new Error(result.error.message))
+    }
+    return Result.Ok(result.value)
   }
 
   async findOne(filter: Partial<T>): Promise<Result<Error, T | null>> {
-    return await this.baseRepository.findOne(filter)
+    const result = await this.baseRepository.findOne({ where: filter })
+    if (Result.isErr(result)) {
+      return Result.Err(new Error(result.error.message))
+    }
+    return Result.Ok(result.value)
   }
 
   async findMany(filter?: Partial<T>): Promise<Result<Error, T[]>> {
-    return await this.baseRepository.findMany(filter)
+    const result = await this.baseRepository.findMany(filter ? { where: filter } : undefined)
+    if (Result.isErr(result)) {
+      return Result.Err(new Error(result.error.message))
+    }
+    return Result.Ok(result.value)
   }
 
   async exists(id: string): Promise<Result<Error, boolean>> {
-    return await this.baseRepository.exists(id)
+    const result = await this.baseRepository.exists(id)
+    if (Result.isErr(result)) {
+      return Result.Err(new Error(result.error.message))
+    }
+    return Result.Ok(result.value)
   }
 
   async count(filter?: Partial<T>): Promise<Result<Error, number>> {
-    return await this.baseRepository.count(filter)
+    const result = await this.baseRepository.count(filter ? { where: filter } : undefined)
+    if (Result.isErr(result)) {
+      return Result.Err(new Error(result.error.message))
+    }
+    return Result.Ok(result.value)
+  }
+
+  // Additional Repository interface compatibility
+  get name(): string {
+    return this.baseRepository.name
+  }
+
+  get schema(): Schema<T> {
+    return this.baseRepository.schema
+  }
+
+  get relationships(): unknown {
+    return this.baseRepository.relationships
+  }
+
+  async updateMany(
+    data: Partial<T>,
+    options?: { where?: Record<string, unknown> }
+  ): Promise<Result<Error, T[]>> {
+    // For simplicity, convert to individual updates in transaction context
+    const findResult = await this.baseRepository.findMany(options)
+    if (Result.isErr(findResult)) {
+      return Result.Err(new Error(findResult.error.message))
+    }
+
+    const results: T[] = []
+    for (const item of findResult.value) {
+      const id = (item as unknown as { id: string }).id
+      const updateResult = await this.update(id, data)
+      if (Result.isErr(updateResult)) {
+        return Result.Err(updateResult.error)
+      }
+      results.push(updateResult.value)
+    }
+
+    return Result.Ok(results)
+  }
+
+  async deleteMany(options?: { where?: Record<string, unknown> }): Promise<Result<Error, void>> {
+    // For simplicity, convert to individual deletes in transaction context
+    const findResult = await this.baseRepository.findMany(options)
+    if (Result.isErr(findResult)) {
+      return Result.Err(new Error(findResult.error.message))
+    }
+
+    for (const item of findResult.value) {
+      const id = (item as unknown as { id: string }).id
+      const deleteResult = await this.delete(id)
+      if (Result.isErr(deleteResult)) {
+        return Result.Err(deleteResult.error)
+      }
+    }
+
+    return Result.Ok(undefined)
   }
 
   /**
@@ -333,7 +434,7 @@ export class TransactionalRepository<T> implements Repository<T>, TransactionalR
         if (operation.type === 'update' || operation.type === 'delete') {
           const existsResult = await this.baseRepository.exists(operation.id)
           if (Result.isErr(existsResult)) {
-            return Result.Err(existsResult.error)
+            return Result.Err(this.convertRepositoryError(existsResult.error))
           }
           if (!existsResult.value) {
             return Result.Err(new Error(`Entity ${operation.id} no longer exists`))
@@ -394,7 +495,7 @@ export class TransactionalRepository<T> implements Repository<T>, TransactionalR
 
             case 'delete':
               // Undo delete by recreating the entity
-              await this.baseRepository.create(operation.entity as Omit<T, 'id'>)
+              await this.baseRepository.create(operation.entity)
               break
           }
         } catch (error) {
@@ -417,10 +518,9 @@ export class TransactionalRepository<T> implements Repository<T>, TransactionalR
    * Get current transaction context
    */
   private getCurrentTransactionContext(): TransactionContext | null {
-    // In a real implementation, this would get the current transaction context
-    // from a thread-local storage or similar mechanism
-    // For now, we'll return null to indicate no active transaction
-    return null
+    // For testing purposes, we'll check if there are any active transactions
+    const activeTransactions = this.transactionManager.getActiveTransactions()
+    return activeTransactions.length > 0 ? activeTransactions[0]! : null
   }
 
   /**
@@ -479,7 +579,7 @@ export class TransactionalRepository<T> implements Repository<T>, TransactionalR
         try {
           const { entity } = operation.compensationData as { entity?: T }
           if (entity) {
-            await this.baseRepository.create(entity as Omit<T, 'id'>)
+            await this.baseRepository.create(entity as T)
           }
           return Result.Ok(undefined)
         } catch (error) {

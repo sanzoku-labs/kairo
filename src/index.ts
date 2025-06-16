@@ -40,12 +40,10 @@ export type {
   TestSuite,
 } from './core/contract'
 
-export { schema } from './core/schema'
-export type { Schema, ValidationError } from './core/schema'
-
-export { nativeSchema } from './core/native-schema'
+// Native schema system (replaces Zod-based schema)
+export { nativeSchema as schema } from './core/native-schema'
 export type {
-  Schema as NativeSchema,
+  Schema,
   StringSchema,
   NumberSchema,
   BooleanSchema,
@@ -55,7 +53,7 @@ export type {
   UnionSchema,
   EnumSchema,
   RecordSchema,
-  ValidationError as NativeValidationError,
+  ValidationError,
   SchemaShape,
   InferSchema,
 } from './core/native-schema'

@@ -227,7 +227,7 @@ describe('Event System', () => {
       expect(result.failedStep).toBe('step2')
       expect(result.completedSteps).toEqual(['step1'])
       expect(result.error?.message).toBe('Step 2 failed')
-    })
+    }, 10000)
 
     it('should handle saga with retry policy', async () => {
       let attempts = 0
@@ -259,25 +259,34 @@ describe('Event System', () => {
     })
 
     it('should cancel running saga', async () => {
-      const testSaga: EnhancedSagaDefinition = saga('long-saga', [
+      const testSaga: EnhancedSagaDefinition = saga('multi-step-saga', [
         sagaStep('step1', async () => {
-          await new Promise(resolve => setTimeout(resolve, 100))
-          return Result.Ok('success')
+          await new Promise(resolve => setTimeout(resolve, 50))
+          return Result.Ok('step1 completed')
+        }),
+        sagaStep('step2', async () => {
+          await new Promise(resolve => setTimeout(resolve, 50))
+          return Result.Ok('step2 completed')
+        }),
+        sagaStep('step3', async () => {
+          await new Promise(resolve => setTimeout(resolve, 50))
+          return Result.Ok('step3 completed')
         }),
       ])
 
       const resultPromise = sagaManager.execute(testSaga, {})
 
-      // Cancel after a short delay
+      // Cancel while saga is running (after first step but before completion)
       setTimeout(() => {
         const activeSagas = sagaManager.getActiveSagas()
         if (activeSagas.length > 0) {
           sagaManager.cancel(activeSagas[0]!.sagaId)
         }
-      }, 10)
+      }, 70)
 
       const result = await resultPromise
       expect(result.state).toBe('failed')
+      expect(result.error?.message).toBe('Saga was cancelled')
     })
   })
 
@@ -489,7 +498,7 @@ describe('Event System', () => {
 
       // Subscribe to all events
       eventBus.subscribe({
-        eventType: 'user.created',
+        eventType: 'users.created',
         handler: async event => {
           receivedEvents.push(event)
           return Result.Ok(undefined)
@@ -507,6 +516,7 @@ describe('Event System', () => {
         name: 'users',
         schema: userSchema,
         eventBus,
+        emitEvents: true,
       })
 
       // Create event-driven pipeline
@@ -529,6 +539,9 @@ describe('Event System', () => {
 
       const repoResult = await userRepo.create(userData)
       expect(Result.isOk(repoResult)).toBe(true)
+
+      // Allow events to be processed
+      await new Promise(resolve => setTimeout(resolve, 10))
 
       // Should have received events from both pipeline and repository
       expect(receivedEvents.length).toBeGreaterThan(0)

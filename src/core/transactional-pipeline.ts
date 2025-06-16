@@ -322,7 +322,7 @@ export function makeTransactional<TInput, TOutput>(
 
   // Add a single step that executes the regular pipeline
   return txPipeline.step('execute-pipeline', async (input, _context) => {
-    const result = await regularPipeline.run(input)
+    const result = await regularPipeline.run(input as unknown as TInput)
     if (Result.isErr(result)) {
       return Result.Err(
         result.error instanceof Error ? result.error : new Error(String(result.error))

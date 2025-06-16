@@ -4,7 +4,7 @@ import {
   transform,
   createTransform,
   commonTransforms,
-  nativeSchema,
+  schema,
   Result,
   type TransformContext,
 } from '../src'
@@ -55,48 +55,48 @@ interface FlatTarget {
 }
 
 // Schemas
-const APIUserSchema = nativeSchema.object({
-  user_id: nativeSchema.string().uuid(),
-  user_name: nativeSchema.string().min(1),
-  user_email: nativeSchema.string().email(),
-  created_at: nativeSchema.string(),
-  is_active: nativeSchema.boolean(),
-  metadata: nativeSchema.record(nativeSchema.unknown()).optional(),
+const APIUserSchema = schema.object({
+  user_id: schema.string().uuid(),
+  user_name: schema.string().min(1),
+  user_email: schema.string().email(),
+  created_at: schema.string(),
+  is_active: schema.boolean(),
+  metadata: schema.record(schema.unknown()).optional(),
 })
 
-const InternalUserSchema = nativeSchema.object({
-  id: nativeSchema.string().uuid(),
-  name: nativeSchema.string().min(1),
-  email: nativeSchema.string().email(),
-  createdAt: nativeSchema.unknown(), // Date object
-  active: nativeSchema.boolean(),
-  displayName: nativeSchema.string(),
-  metadata: nativeSchema.record(nativeSchema.unknown()).optional(),
+const InternalUserSchema = schema.object({
+  id: schema.string().uuid(),
+  name: schema.string().min(1),
+  email: schema.string().email(),
+  createdAt: schema.unknown(), // Date object
+  active: schema.boolean(),
+  displayName: schema.string(),
+  metadata: schema.record(schema.unknown()).optional(),
 })
 
-const NestedSourceSchema = nativeSchema.object({
-  profile: nativeSchema.object({
-    firstName: nativeSchema.string(),
-    lastName: nativeSchema.string(),
-    contact: nativeSchema.object({
-      email: nativeSchema.string().email(),
-      phone: nativeSchema.string(),
+const NestedSourceSchema = schema.object({
+  profile: schema.object({
+    firstName: schema.string(),
+    lastName: schema.string(),
+    contact: schema.object({
+      email: schema.string().email(),
+      phone: schema.string(),
     }),
   }),
-  settings: nativeSchema.object({
-    theme: nativeSchema.string(),
-    notifications: nativeSchema.boolean(),
+  settings: schema.object({
+    theme: schema.string(),
+    notifications: schema.boolean(),
   }),
 })
 
-const FlatTargetSchema = nativeSchema.object({
-  firstName: nativeSchema.string(),
-  lastName: nativeSchema.string(),
-  email: nativeSchema.string().email(),
-  phone: nativeSchema.string(),
-  theme: nativeSchema.string(),
-  notifications: nativeSchema.boolean(),
-  fullName: nativeSchema.string(),
+const FlatTargetSchema = schema.object({
+  firstName: schema.string(),
+  lastName: schema.string(),
+  email: schema.string().email(),
+  phone: schema.string(),
+  theme: schema.string(),
+  notifications: schema.boolean(),
+  fullName: schema.string(),
 })
 
 describe('Data Transformation Layer', () => {
@@ -291,11 +291,11 @@ describe('Data Transformation Layer', () => {
   describe('Common Transform Utilities', () => {
     it('should apply string transformations', () => {
       const source = { text: '  Hello World  ' }
-      const SourceSchema = nativeSchema.object({ text: nativeSchema.string() })
-      const TargetSchema = nativeSchema.object({
-        lower: nativeSchema.string(),
-        upper: nativeSchema.string(),
-        trimmed: nativeSchema.string(),
+      const SourceSchema = schema.object({ text: schema.string() })
+      const TargetSchema = schema.object({
+        lower: schema.string(),
+        upper: schema.string(),
+        trimmed: schema.string(),
       })
 
       const stringTransform = transform('string-transforms', SourceSchema)
@@ -316,13 +316,13 @@ describe('Data Transformation Layer', () => {
 
     it('should apply date transformations', () => {
       const source = { dateString: '2023-01-01T12:00:00Z', dateObject: new Date('2023-01-01') }
-      const SourceSchema = nativeSchema.object({
-        dateString: nativeSchema.string(),
-        dateObject: nativeSchema.unknown(),
+      const SourceSchema = schema.object({
+        dateString: schema.string(),
+        dateObject: schema.unknown(),
       })
-      const TargetSchema = nativeSchema.object({
-        isoString: nativeSchema.string(),
-        dateFromString: nativeSchema.unknown(),
+      const TargetSchema = schema.object({
+        isoString: schema.string(),
+        dateFromString: schema.unknown(),
       })
 
       const dateTransform = transform('date-transforms', SourceSchema)
@@ -343,13 +343,13 @@ describe('Data Transformation Layer', () => {
 
     it('should apply number transformations', () => {
       const source = { numberString: '42.5', number: 100 }
-      const SourceSchema = nativeSchema.object({
-        numberString: nativeSchema.string(),
-        number: nativeSchema.number(),
+      const SourceSchema = schema.object({
+        numberString: schema.string(),
+        number: schema.number(),
       })
-      const TargetSchema = nativeSchema.object({
-        fromString: nativeSchema.number(),
-        toString: nativeSchema.string(),
+      const TargetSchema = schema.object({
+        fromString: schema.number(),
+        toString: schema.string(),
       })
 
       const numberTransform = transform('number-transforms', SourceSchema)
@@ -374,13 +374,13 @@ describe('Data Transformation Layer', () => {
         ],
         duplicates: [1, 2, 2, 3, 3, 3],
       }
-      const SourceSchema = nativeSchema.object({
-        nested: nativeSchema.array(nativeSchema.array(nativeSchema.number())),
-        duplicates: nativeSchema.array(nativeSchema.number()),
+      const SourceSchema = schema.object({
+        nested: schema.array(schema.array(schema.number())),
+        duplicates: schema.array(schema.number()),
       })
-      const TargetSchema = nativeSchema.object({
-        flat: nativeSchema.array(nativeSchema.number()),
-        unique: nativeSchema.array(nativeSchema.number()),
+      const TargetSchema = schema.object({
+        flat: schema.array(schema.number()),
+        unique: schema.array(schema.number()),
       })
 
       const arrayTransform = transform('array-transforms', SourceSchema)
@@ -401,12 +401,12 @@ describe('Data Transformation Layer', () => {
       const source = {
         obj: { a: 1, b: 2, c: 3, d: 4 },
       }
-      const SourceSchema = nativeSchema.object({
-        obj: nativeSchema.record(nativeSchema.number()),
+      const SourceSchema = schema.object({
+        obj: schema.record(schema.number()),
       })
-      const TargetSchema = nativeSchema.object({
-        picked: nativeSchema.record(nativeSchema.number()),
-        omitted: nativeSchema.record(nativeSchema.number()),
+      const TargetSchema = schema.object({
+        picked: schema.record(schema.number()),
+        omitted: schema.record(schema.number()),
       })
 
       const objectTransform = transform('object-transforms', SourceSchema)
@@ -425,13 +425,13 @@ describe('Data Transformation Layer', () => {
 
     it('should handle default values', () => {
       const source = { value: null, other: 'test' }
-      const SourceSchema = nativeSchema.object({
-        value: nativeSchema.unknown().nullable(),
-        other: nativeSchema.string(),
+      const SourceSchema = schema.object({
+        value: schema.unknown().nullable(),
+        other: schema.string(),
       })
-      const TargetSchema = nativeSchema.object({
-        withDefault: nativeSchema.string(),
-        normal: nativeSchema.string(),
+      const TargetSchema = schema.object({
+        withDefault: schema.string(),
+        normal: schema.string(),
       })
 
       const defaultTransform = transform('default-values', SourceSchema)
@@ -449,9 +449,9 @@ describe('Data Transformation Layer', () => {
     })
 
     it('should apply conditional transformations', () => {
-      const SourceSchema = nativeSchema.object({ value: nativeSchema.number() })
-      const TargetSchema = nativeSchema.object({
-        result: nativeSchema.number(),
+      const SourceSchema = schema.object({ value: schema.number() })
+      const TargetSchema = schema.object({
+        result: schema.number(),
       })
 
       const conditionalTransform = transform('conditional', SourceSchema)
@@ -581,9 +581,9 @@ describe('Data Transformation Layer', () => {
         .compute('createdAt', () => new Date())
 
       // Second transform: internal to display format
-      const DisplayUserSchema = nativeSchema.object({
-        displayText: nativeSchema.string(),
-        status: nativeSchema.string(),
+      const DisplayUserSchema = schema.object({
+        displayText: schema.string(),
+        status: schema.string(),
       })
 
       const internalToDisplay = transform('internal-to-display', InternalUserSchema)

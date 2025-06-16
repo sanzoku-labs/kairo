@@ -1,5 +1,5 @@
 import { Result } from './result'
-import type { Resource, ResourceOperation, ResourceConfig } from './resource'
+import type { Resource, ResourceMethod } from './resource'
 import { resource } from './resource'
 import type {
   TransactionContext,
@@ -11,11 +11,14 @@ import type {
 /**
  * Transactional resource configuration
  */
-export interface TransactionalResourceConfig extends Omit<ResourceConfig, 'idempotencyKey'> {
+export interface TransactionalResourceConfig {
   readonly enableTransactions?: boolean | undefined
   readonly autoRegisterCompensation?: boolean | undefined
   readonly idempotencyKey?: ((operation: string, data: unknown) => string) | undefined
   readonly rollbackStrategies?: Record<string, CompensationFunction> | undefined
+  readonly baseUrl?: string | undefined
+  readonly timeout?: number | undefined
+  readonly retry?: { times: number; delay?: number } | undefined
 }
 
 /**
@@ -31,9 +34,16 @@ export interface CompensatableOperation {
 }
 
 /**
+ * Resource with internal operations access
+ */
+interface ResourceWithOperations {
+  readonly _operations: Record<string, { method?: string; path?: string }>
+}
+
+/**
  * Transaction-aware resource implementation
  */
-export class TransactionalResourceImpl<T extends Record<string, ResourceOperation>>
+export class TransactionalResourceImpl<T extends Record<string, ResourceMethod>>
   implements TransactionalResource
 {
   private readonly baseResource: Resource<T>
@@ -50,7 +60,7 @@ export class TransactionalResourceImpl<T extends Record<string, ResourceOperatio
   >()
 
   constructor(
-    name: string,
+    private readonly resourceName: string,
     operations: T,
     transactionManager: TransactionManager,
     config: TransactionalResourceConfig = {}
@@ -63,11 +73,16 @@ export class TransactionalResourceImpl<T extends Record<string, ResourceOperatio
     }
 
     // Create base resource
-    this.baseResource = resource(name, operations, config)
+    const resourceConfig = {
+      ...(config.baseUrl && { baseUrl: config.baseUrl }),
+      ...(config.timeout && { timeout: config.timeout }),
+      ...(config.retry && { retry: config.retry }),
+    }
+    this.baseResource = resource(this.resourceName, operations, resourceConfig)
 
     // Register compensation functions if enabled
     if (this.config.autoRegisterCompensation) {
-      this.registerCompensationFunctions(name, operations)
+      this.registerCompensationFunctions(this.resourceName, operations)
     }
 
     // Create transactional operation proxies
@@ -84,9 +99,12 @@ export class TransactionalResourceImpl<T extends Record<string, ResourceOperatio
           const context = this.getCurrentTransactionContext()
 
           if (context && this.config.enableTransactions) {
-            return await this.executeInTransaction(operationName, input, context)
+            return await this.executeResourceInTransaction(operationName, input, context)
           } else {
-            return await this.baseResource[operationName].run(input)
+            const resourceOperation = this.baseResource[operationName as keyof T] as {
+              run: (input: unknown) => Promise<unknown>
+            }
+            return await resourceOperation.run(input)
           }
         },
 
@@ -100,7 +118,7 @@ export class TransactionalResourceImpl<T extends Record<string, ResourceOperatio
   /**
    * Execute operation within transaction context
    */
-  async executeOperationInTransaction<TResult>(
+  async executeInTransaction<TResult>(
     operation: (context: TransactionContext) => Promise<Result<Error, TResult>>,
     context: TransactionContext
   ): Promise<Result<Error, TResult>> {
@@ -114,7 +132,7 @@ export class TransactionalResourceImpl<T extends Record<string, ResourceOperatio
   /**
    * Execute resource operation within transaction
    */
-  private async executeInTransaction(
+  private async executeResourceInTransaction(
     operationName: string,
     input: unknown,
     context: TransactionContext
@@ -138,7 +156,10 @@ export class TransactionalResourceImpl<T extends Record<string, ResourceOperatio
       }
 
       // Execute the operation
-      const result = await this.baseResource[operationName as keyof T].run(input)
+      const operation = this.baseResource[operationName as keyof T] as {
+        run: (input: unknown) => Promise<Result<Error, unknown>>
+      }
+      const result = await operation.run(input)
 
       if (Result.isErr(result)) {
         return Result.Err(
@@ -191,11 +212,9 @@ export class TransactionalResourceImpl<T extends Record<string, ResourceOperatio
     }
 
     // Default compensation strategies based on HTTP methods
-    const operation = (
-      this.baseResource as unknown as {
-        _operations: Record<string, { method?: string; path?: string }>
-      }
-    )._operations[operationName]
+    const operation = (this.baseResource as unknown as ResourceWithOperations)._operations[
+      operationName
+    ]
     if (!operation) return null
 
     const method = operation.method?.toUpperCase()
@@ -364,11 +383,9 @@ export class TransactionalResourceImpl<T extends Record<string, ResourceOperatio
    * Check if operation is idempotent
    */
   private isIdempotentOperation(operationName: string): boolean {
-    const operation = (
-      this.baseResource as unknown as {
-        _operations: Record<string, { method?: string; path?: string }>
-      }
-    )._operations[operationName]
+    const operation = (this.baseResource as unknown as ResourceWithOperations)._operations[
+      operationName
+    ]
     if (!operation) return false
 
     const method = operation.method?.toUpperCase()
@@ -389,8 +406,7 @@ export class TransactionalResourceImpl<T extends Record<string, ResourceOperatio
    * Get resource name for transaction operations
    */
   private getResourceName(): string {
-    const name = typeof this.config.name === 'string' ? this.config.name : 'unknown'
-    return `resource:${name}`
+    return `resource:${this.resourceName}`
   }
 
   /**
@@ -436,7 +452,7 @@ export class TransactionalResourceImpl<T extends Record<string, ResourceOperatio
 /**
  * Convert regular resource to transactional resource
  */
-export function makeResourceTransactional<T extends Record<string, ResourceOperation>>(
+export function makeResourceTransactional<T extends Record<string, ResourceMethod>>(
   baseResource: Resource<T>,
   transactionManager: TransactionManager,
   config?: Partial<TransactionalResourceConfig>
@@ -452,7 +468,7 @@ export function makeResourceTransactional<T extends Record<string, ResourceOpera
       ) {
         // This is a resource operation
         return {
-          ...originalProperty,
+          ...(originalProperty as object),
           run: async function (input: unknown) {
             const context = getCurrentTransactionContext()
 
@@ -518,7 +534,7 @@ async function executeResourceInTransaction(
 /**
  * Create a transactional resource
  */
-export function transactionalResource<T extends Record<string, ResourceOperation>>(
+export function transactionalResource<T extends Record<string, ResourceMethod>>(
   name: string,
   operations: T,
   transactionManager: TransactionManager,

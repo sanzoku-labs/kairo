@@ -80,6 +80,7 @@ export interface EnhancedSagaDefinition<T = unknown> extends Omit<SagaDefinition
 export class InMemorySagaManager implements SagaManager {
   private activeSagas = new Map<string, SagaResult>()
   private sagaContexts = new Map<string, SagaContext>()
+  private cancelledSagas = new Set<string>()
 
   /**
    * Execute a saga with automatic compensation on failure
@@ -223,6 +224,11 @@ export class InMemorySagaManager implements SagaManager {
     // Execute steps sequentially
     for (const step of saga.steps) {
       try {
+        // Check if saga was cancelled
+        if (this.cancelledSagas.has(sagaResult.sagaId)) {
+          throw new Error('Saga was cancelled')
+        }
+
         // Check timeout
         if (step.timeout && Date.now() - sagaResult.startedAt > step.timeout) {
           throw new Error(`Step ${step.name} timed out after ${step.timeout}ms`)
@@ -408,6 +414,9 @@ export class InMemorySagaManager implements SagaManager {
       if (sagaResult.state !== 'running') {
         return Result.Err(new Error(`Cannot cancel saga in state: ${sagaResult.state}`))
       }
+
+      // Mark as cancelled
+      this.cancelledSagas.add(sagaId)
 
       // Mark as failed and compensate
       const cancelledResult = {

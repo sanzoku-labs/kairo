@@ -1,6 +1,6 @@
 import { Result } from './result'
 import { type KairoError, createError } from './errors'
-import { type Schema } from './schema'
+import { type Schema } from './native-schema'
 import { type Pipeline, pipeline, cache } from './pipeline'
 import {
   ContractVerifier,

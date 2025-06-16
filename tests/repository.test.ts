@@ -7,31 +7,31 @@ import {
   MemoryStorageAdapter,
   createRepositoryError,
 } from '../src/core/repository'
-import { nativeSchema } from '../src/core/native-schema'
+import { schema } from '../src'
 import { Result } from '../src/core/result'
 
 // Test schemas
-const UserSchema = nativeSchema.object({
-  id: nativeSchema.number(),
-  name: nativeSchema.string().min(1),
-  email: nativeSchema.string().email(),
-  age: nativeSchema.number().min(0),
-  isActive: nativeSchema.boolean().default(true),
+const UserSchema = schema.object({
+  id: schema.number(),
+  name: schema.string().min(1),
+  email: schema.string().email(),
+  age: schema.number().min(0),
+  isActive: schema.boolean().default(true),
 })
 
-const PostSchema = nativeSchema.object({
-  id: nativeSchema.number(),
-  title: nativeSchema.string().min(1),
-  content: nativeSchema.string(),
-  userId: nativeSchema.number(),
-  publishedAt: nativeSchema.string().optional(),
+const PostSchema = schema.object({
+  id: schema.number(),
+  title: schema.string().min(1),
+  content: schema.string(),
+  userId: schema.number(),
+  publishedAt: schema.string().optional(),
 })
 
-const ProfileSchema = nativeSchema.object({
-  id: nativeSchema.number(),
-  userId: nativeSchema.number(),
-  bio: nativeSchema.string().optional(),
-  avatar: nativeSchema.string().optional(),
+const ProfileSchema = schema.object({
+  id: schema.number(),
+  userId: schema.number(),
+  bio: schema.string().optional(),
+  avatar: schema.string().optional(),
 })
 
 type User = {
@@ -411,7 +411,7 @@ describe('Repository System', () => {
         schema: UserSchema,
         storage: 'memory',
         hooks: {
-          beforeCreate: data => {
+          beforeCreate: (data: { name: string; email: string; age: number; isActive: boolean }) => {
             beforeCreateCalled = true
             return { ...data, name: data.name.toUpperCase() }
           },

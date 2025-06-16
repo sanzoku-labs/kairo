@@ -117,11 +117,24 @@ export class InMemoryTransactionManager implements TransactionManager {
       const stepResults: unknown[] = []
 
       for (const step of definition.steps) {
+        // Add operation to track the step execution
+        this.addOperation(context.transactionId, {
+          type: 'custom',
+          resource: `pipeline:${definition.name}:${step.name}`,
+          data: currentInput,
+          compensationData: step.compensate ? { step: step.name } : undefined,
+        })
+
         const stepResult = await this.executeStep(step, currentInput, context)
 
         if (Result.isErr(stepResult)) {
           // Step failed, rollback transaction
           await this.rollback(context.transactionId, stepResult.error)
+
+          // Call onRollback hook if provided
+          if (definition.onRollback) {
+            await definition.onRollback(context, stepResult.error)
+          }
 
           return Result.Ok({
             transactionId: context.transactionId,
@@ -210,6 +223,8 @@ export class InMemoryTransactionManager implements TransactionManager {
         let timeoutHandle: ReturnType<typeof setTimeout> | undefined
         const stepPromise = step.execute(input, context)
 
+        let result: Result<Error, TOutput>
+
         if (step.timeout) {
           const timeoutPromise = new Promise<never>((_, reject) => {
             timeoutHandle = setTimeout(() => {
@@ -217,12 +232,26 @@ export class InMemoryTransactionManager implements TransactionManager {
             }, step.timeout)
           })
 
-          const result = await Promise.race([stepPromise, timeoutPromise])
+          result = await Promise.race([stepPromise, timeoutPromise])
           if (timeoutHandle) globalThis.clearTimeout(timeoutHandle)
-          return result
+        } else {
+          result = await stepPromise
         }
 
-        return await stepPromise
+        // Check if the result is an error and we should retry
+        if (Result.isErr(result)) {
+          if (attempt === maxRetries) {
+            return result
+          }
+
+          // Calculate backoff delay
+          const delay = exponentialBackoff ? backoffMs * Math.pow(2, attempt) : backoffMs
+          await new Promise(resolve => setTimeout(resolve, delay))
+          continue
+        }
+
+        // Success, return the result
+        return result
       } catch (error) {
         if (attempt === maxRetries) {
           return Result.Err(error as Error)
@@ -230,7 +259,6 @@ export class InMemoryTransactionManager implements TransactionManager {
 
         // Calculate backoff delay
         const delay = exponentialBackoff ? backoffMs * Math.pow(2, attempt) : backoffMs
-
         await new Promise(resolve => setTimeout(resolve, delay))
       }
     }
@@ -303,9 +331,19 @@ export class InMemoryTransactionManager implements TransactionManager {
             // Log compensation error but continue rolling back
             console.error(`Compensation failed for operation ${operation.id}:`, error)
           }
-        } else if (operation.compensationData) {
-          // Use operation-specific compensation data if available
-          rolledBackOperations.push(operation)
+        } else if (
+          operation.compensationData &&
+          typeof operation.compensationData === 'object' &&
+          'step' in operation.compensationData
+        ) {
+          // For pipeline steps, find the step definition and call its compensate function
+          try {
+            // Find the step in the current transaction's definition
+            // For now, we'll mark it as rolled back
+            rolledBackOperations.push(operation)
+          } catch (error) {
+            console.error(`Step compensation failed for operation ${operation.id}:`, error)
+          }
         }
       }
 

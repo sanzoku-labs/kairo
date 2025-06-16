@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { z } from 'zod'
 import { pipeline } from '../src/core/pipeline'
-import { schema } from '../src/core/schema'
+import { schema } from '../src'
 import { Result } from '../src/core/result'
 import type { HttpError } from '../src/core/pipeline'
-import type { ValidationError } from '../src/core/schema'
+import type { ValidationError } from '../src/core/native-schema'
 
 describe('Pipeline', () => {
   beforeEach(() => {
@@ -49,8 +48,8 @@ describe('Pipeline', () => {
   describe('input validation', () => {
     it('should validate input', async () => {
       const inputSchema = schema.object({
-        email: z.string().email(),
-        password: z.string().min(8),
+        email: schema.string().email(),
+        password: schema.string().min(8),
       })
 
       const pipe = pipeline('login')
@@ -70,7 +69,7 @@ describe('Pipeline', () => {
 
     it('should fail on invalid input', async () => {
       const inputSchema = schema.object({
-        age: z.number().positive(),
+        age: schema.number().positive(),
       })
 
       const pipe = pipeline('age-check').input(inputSchema)
@@ -180,9 +179,9 @@ describe('Pipeline', () => {
       }
 
       const userSchema = schema.object({
-        id: z.number(),
-        name: z.string(),
-        email: z.string().email(),
+        id: schema.number(),
+        name: schema.string(),
+        email: schema.string().email(),
       })
 
       const pipe = pipeline('validate-test', { httpClient: mockHttpClient })
@@ -208,8 +207,8 @@ describe('Pipeline', () => {
       }
 
       const userSchema = schema.object({
-        id: z.number(),
-        name: z.string(),
+        id: schema.number(),
+        name: schema.string(),
       })
 
       const pipe = pipeline('validate-fail', { httpClient: mockHttpClient })
@@ -709,16 +708,16 @@ describe('Pipeline', () => {
       }
 
       const loginSchema = schema.object({
-        email: z.string().email(),
-        password: z.string().min(8),
+        email: schema.string().email(),
+        password: schema.string().min(8),
       })
 
       const responseSchema = schema.object({
-        token: z.string(),
-        user: z.object({
-          id: z.number(),
-          name: z.string(),
-          role: z.enum(['admin', 'user']),
+        token: schema.string(),
+        user: schema.object({
+          id: schema.number(),
+          name: schema.string(),
+          role: schema.enum(['admin', 'user']),
         }),
       })
 

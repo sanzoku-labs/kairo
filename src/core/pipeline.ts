@@ -1,5 +1,5 @@
 import { Result } from './result'
-import { type Schema, type ValidationError } from './schema'
+import { type Schema, type ValidationError } from './native-schema'
 import { isNil, isEmpty, cond, resolve, conditionalEffect, tryCatch, retry } from '../utils/fp'
 import { type KairoError, createError } from './errors'
 import type { Rule, Rules, BusinessRuleError, RuleValidationContext } from './rules'

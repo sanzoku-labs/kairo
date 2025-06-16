@@ -1,5 +1,4 @@
 import { pipeline, schema, Result } from '../src'
-import { z } from 'zod'
 
 // Example 1: Simple data transformation pipeline
 const calculateDiscount = pipeline<number>('calculate-discount')
@@ -9,16 +8,16 @@ const calculateDiscount = pipeline<number>('calculate-discount')
 
 // Example 2: Login flow with validation and API call
 const loginSchema = schema.object({
-  email: z.string().email(),
-  password: z.string().min(8),
+  email: schema.string().email(),
+  password: schema.string().min(8),
 })
 
 const userResponseSchema = schema.object({
-  id: z.number(),
-  name: z.string(),
-  email: z.string().email(),
-  role: z.enum(['admin', 'user']),
-  token: z.string(),
+  id: schema.number(),
+  name: schema.string(),
+  email: schema.string().email(),
+  role: schema.enum(['admin', 'user']),
+  token: schema.string(),
 })
 
 export const login = pipeline('user-login')
@@ -43,10 +42,10 @@ export const processUserData = pipeline<{ userId: number }>('process-user')
   .fetch(input => `/api/users/${input.userId}`)
   .validate(
     schema.object({
-      id: z.number(),
-      name: z.string(),
-      email: z.string().email(),
-      age: z.number().positive(),
+      id: schema.number(),
+      name: schema.string(),
+      email: schema.string().email(),
+      age: schema.number().positive(),
     })
   )
   .map(user => ({
@@ -82,13 +81,13 @@ const message = Result.match(calculation, {
 
 // Example 5: Complex pipeline with multiple steps
 const createUserSchema = schema.object({
-  name: z.string().min(2),
-  email: z.string().email(),
-  age: z.number().positive(),
-  preferences: z
+  name: schema.string().min(2),
+  email: schema.string().email(),
+  age: schema.number().positive(),
+  preferences: schema
     .object({
-      newsletter: z.boolean(),
-      theme: z.enum(['light', 'dark']),
+      newsletter: schema.boolean(),
+      theme: schema.enum(['light', 'dark']),
     })
     .optional(),
 })
@@ -103,10 +102,10 @@ export const createUser = pipeline('create-user')
   .fetch('/api/users', { method: 'POST' })
   .validate(
     schema.object({
-      id: z.number(),
-      name: z.string(),
-      email: z.string(),
-      createdAt: z.string(),
+      id: schema.number(),
+      name: schema.string(),
+      email: schema.string(),
+      createdAt: schema.string(),
     })
   )
   .map(user => ({
