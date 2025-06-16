@@ -10,84 +10,312 @@ import {
   type CacheConfig as AdvancedCacheConfig,
 } from '../extensions/caching/cache'
 
+/**
+ * Error type for HTTP-related failures in the PROCESS pillar.
+ * Contains detailed information about HTTP request failures.
+ *
+ * @interface HttpError
+ * @extends {KairoError}
+ * @example
+ * ```typescript
+ * const httpError: HttpError = {
+ *   code: 'HTTP_ERROR',
+ *   status: 404,
+ *   statusText: 'Not Found',
+ *   url: 'https://api.example.com/users/123',
+ *   message: 'User not found'
+ * }
+ * ```
+ */
 export interface HttpError extends KairoError {
+  /** Always 'HTTP_ERROR' for HTTP-specific errors */
   code: 'HTTP_ERROR'
+  /** HTTP status code (e.g., 404, 500) */
   status: number
+  /** HTTP status text (e.g., 'Not Found', 'Internal Server Error') */
   statusText: string
+  /** The URL that caused the error */
   url: string
 }
 
+/**
+ * Error type for network-related failures with retry context.
+ * Provides detailed information about failed network operations.
+ *
+ * @interface NetworkError
+ * @extends {KairoError}
+ * @example
+ * ```typescript
+ * const networkError: NetworkError = {
+ *   code: 'NETWORK_ERROR',
+ *   url: 'https://api.example.com/users',
+ *   method: 'GET',
+ *   attempt: 3,
+ *   maxAttempts: 3,
+ *   retryDelay: 1000,
+ *   message: 'Connection timeout after 3 attempts'
+ * }
+ * ```
+ */
 export interface NetworkError extends KairoError {
+  /** Always 'NETWORK_ERROR' for network-specific errors */
   code: 'NETWORK_ERROR'
+  /** The URL that failed */
   url: string
+  /** HTTP method used (GET, POST, etc.) */
   method: string
+  /** Current attempt number (1-based) */
   attempt: number
+  /** Maximum number of retry attempts */
   maxAttempts: number
+  /** Delay before next retry in milliseconds */
   retryDelay?: number | undefined
 }
 
+/**
+ * Error type for operations that exceed their timeout duration.
+ * Includes timing information for debugging performance issues.
+ *
+ * @interface TimeoutError
+ * @extends {KairoError}
+ * @example
+ * ```typescript
+ * const timeoutError: TimeoutError = {
+ *   code: 'TIMEOUT_ERROR',
+ *   duration: 6000,
+ *   timeout: 5000,
+ *   operation: 'fetch-user-data',
+ *   message: 'Operation timed out after 5000ms (took 6000ms)'
+ * }
+ * ```
+ */
 export interface TimeoutError extends KairoError {
+  /** Always 'TIMEOUT_ERROR' for timeout-specific errors */
   code: 'TIMEOUT_ERROR'
+  /** Actual duration the operation took in milliseconds */
   duration: number
+  /** Configured timeout limit in milliseconds */
   timeout: number
+  /** Name of the operation that timed out */
   operation: string
 }
 
+/**
+ * Represents a single execution trace entry in the pipeline system.
+ * Used for observability, debugging, and performance monitoring.
+ *
+ * @interface TraceEntry
+ * @example
+ * ```typescript
+ * const traceEntry: TraceEntry = {
+ *   id: 'trace-123',
+ *   timestamp: Date.now(),
+ *   pipelineName: 'user-processing',
+ *   stepName: 'validate-input',
+ *   duration: 45,
+ *   success: true,
+ *   input: { name: 'John', email: 'john@example.com' },
+ *   output: { name: 'John', email: 'john@example.com', validated: true },
+ *   metadata: { version: '1.0', environment: 'production' }
+ * }
+ * ```
+ */
 export interface TraceEntry {
+  /** Unique identifier for this trace entry */
   id: string
+  /** Unix timestamp when the operation started */
   timestamp: number
+  /** Name of the pipeline being executed */
   pipelineName: string
+  /** Name of the current step in the pipeline */
   stepName: string
+  /** Duration of the operation in milliseconds */
   duration: number
+  /** Whether the operation completed successfully */
   success: boolean
+  /** Input data for the operation (optional for privacy) */
   input?: unknown
+  /** Output data from the operation (optional for privacy) */
   output?: unknown
+  /** Error information if the operation failed */
   error?: KairoError
+  /** Additional context and metadata */
   metadata: Record<string, unknown>
 }
 
+/**
+ * Filter criteria for querying trace entries.
+ * Enables precise filtering of pipeline execution traces for analysis.
+ *
+ * @interface TraceFilter
+ * @example
+ * ```typescript
+ * // Filter for slow operations
+ * const slowOpsFilter: TraceFilter = {
+ *   minDuration: 1000, // Operations taking more than 1 second
+ *   success: false // Only failed operations
+ * }
+ *
+ * // Filter by time range
+ * const recentErrorsFilter: TraceFilter = {
+ *   startTime: Date.now() - 3600000, // Last hour
+ *   success: false,
+ *   errorCode: 'HTTP_ERROR'
+ * }
+ * ```
+ */
 export interface TraceFilter {
+  /** Filter by pipeline name */
   pipelineName?: string
+  /** Filter by step name */
   stepName?: string
+  /** Filter by success/failure status */
   success?: boolean
+  /** Minimum duration in milliseconds */
   minDuration?: number
+  /** Maximum duration in milliseconds */
   maxDuration?: number
+  /** Start time for time range filtering (Unix timestamp) */
   startTime?: number
+  /** End time for time range filtering (Unix timestamp) */
   endTime?: number
+  /** Filter by specific error code */
   errorCode?: string
 }
 
+/**
+ * Aggregated trace data with summary statistics.
+ * Provides both raw entries and computed metrics for analysis.
+ *
+ * @interface TraceData
+ * @example
+ * ```typescript
+ * const traceData = collector.export()
+ *
+ * console.log(`Total operations: ${traceData.summary.totalEntries}`)
+ * console.log(`Success rate: ${(traceData.summary.successCount / traceData.summary.totalEntries * 100).toFixed(2)}%`)
+ * console.log(`Average duration: ${traceData.summary.avgDuration}ms`)
+ *
+ * // Find bottlenecks
+ * const slowestEntries = traceData.entries
+ *   .filter(entry => entry.duration > traceData.summary.avgDuration * 2)
+ *   .sort((a, b) => b.duration - a.duration)
+ * ```
+ */
 export interface TraceData {
+  /** Array of trace entries */
   entries: TraceEntry[]
+  /** Computed summary statistics */
   summary: {
+    /** Total number of trace entries */
     totalEntries: number
+    /** Number of successful operations */
     successCount: number
+    /** Number of failed operations */
     errorCount: number
+    /** Average operation duration in milliseconds */
     avgDuration: number
+    /** Minimum operation duration in milliseconds */
     minDuration: number
+    /** Maximum operation duration in milliseconds */
     maxDuration: number
   }
 }
 
+/**
+ * Interface for collecting and querying pipeline execution traces.
+ * Enables observability and performance monitoring across the PROCESS pillar.
+ *
+ * @interface TraceCollector
+ * @example
+ * ```typescript
+ * const collector: TraceCollector = new MemoryTraceCollector()
+ *
+ * // Collect trace data
+ * collector.collect({
+ *   id: 'trace-1',
+ *   timestamp: Date.now(),
+ *   pipelineName: 'user-processing',
+ *   stepName: 'validation',
+ *   duration: 45,
+ *   success: true,
+ *   metadata: {}
+ * })
+ *
+ * // Query traces
+ * const slowOps = collector.query({ minDuration: 100 })
+ * const errorOps = collector.query({ success: false })
+ *
+ * // Export for analysis
+ * const data = collector.export()
+ * console.log(`Success rate: ${data.summary.successCount / data.summary.totalEntries}`)
+ * ```
+ */
 export interface TraceCollector {
+  /** Add a new trace entry to the collection */
   collect(entry: TraceEntry): void
+  /** Query trace entries with optional filtering */
   query(filter?: TraceFilter): TraceEntry[]
+  /** Export all trace data with summary statistics */
   export(): TraceData
+  /** Clear all collected trace data */
   clear(): void
 }
 
+/**
+ * Internal interface for pipeline steps.
+ * Defines the contract for individual operations within a pipeline.
+ *
+ * @template TError - Type of errors this step can produce
+ * @template TOutput - Type of output this step produces
+ * @internal
+ */
 interface Step<TError = unknown, TOutput = unknown> {
+  /** Identifier for the step type */
   type: string
+  /** Execute the step with given input and context */
   execute(input: unknown, context: PipelineContext): Promise<Result<TError, TOutput>>
 }
 
+/**
+ * Internal context passed through pipeline execution.
+ * Contains shared state and utilities for all pipeline steps.
+ *
+ * @interface PipelineContext
+ * @internal
+ */
 interface PipelineContext {
+  /** Name of the current pipeline */
   name: string
+  /** Collected trace entries for this execution */
   traces: TraceEntry[]
+  /** Optional custom HTTP client */
   httpClient?: HttpClient
 }
 
+/**
+ * Interface for HTTP client abstraction.
+ * Allows customization of HTTP behavior in pipelines.
+ *
+ * @interface HttpClient
+ * @example
+ * ```typescript
+ * const customClient: HttpClient = {
+ *   fetch: async (url, options) => {
+ *     // Add custom headers, authentication, etc.
+ *     return fetch(url, {
+ *       ...options,
+ *       headers: {
+ *         ...options?.headers,
+ *         'Authorization': 'Bearer ' + token
+ *       }
+ *     })
+ *   }
+ * }
+ * ```
+ */
 interface HttpClient {
+  /** Fetch implementation compatible with Web Fetch API */
   fetch(url: string, options?: RequestInit): Promise<Response>
 }
 
@@ -603,6 +831,44 @@ class GlobalTraceCollector implements TraceCollector {
   }
 }
 
+/**
+ * Core Pipeline class representing the PROCESS pillar of Kairo.
+ *
+ * Enables composable, type-safe data transformation and business logic execution.
+ * Supports caching, retry, timeout, validation, HTTP operations, and observability.
+ * Pipelines are immutable - each method returns a new pipeline instance.
+ *
+ * @template Input - Type of input data the pipeline accepts
+ * @template Output - Type of output data the pipeline produces
+ *
+ * @example
+ * ```typescript
+ * // Basic pipeline with validation and transformation
+ * const userPipeline = pipeline('process-user')
+ *   .input(CreateUserSchema)
+ *   .map(user => ({ ...user, id: generateId() }))
+ *   .validate(UserSchema)
+ *   .cache(60000) // Cache for 1 minute
+ *   .retry(3, 1000) // Retry 3 times with 1s delay
+ *
+ * const result = await userPipeline.run({ name: 'John', email: 'john@example.com' })
+ *
+ * // HTTP pipeline with error handling
+ * const apiPipeline = pipeline('fetch-user')
+ *   .input(schema.object({ id: schema.string() }))
+ *   .fetch(input => `/api/users/${input.id}`)
+ *   .validate(UserSchema)
+ *   .timeout(5000)
+ *
+ * // Complex composition with business rules
+ * const businessPipeline = pipeline('user-onboarding')
+ *   .input(CreateUserSchema)
+ *   .validateRule(userValidationRules)
+ *   .transform(userTransform)
+ *   .pipeline(UserAPI.create)
+ *   .map(user => ({ ...user, onboarded: true }))
+ * ```
+ */
 export class Pipeline<Input, Output> {
   constructor(
     private readonly steps: Step[],
@@ -613,6 +879,26 @@ export class Pipeline<Input, Output> {
     private readonly cacheConfig?: CacheConfig
   ) {}
 
+  /**
+   * Adds input validation to the pipeline using a schema.
+   * This is typically the first step in a pipeline to ensure type safety.
+   *
+   * @template I - Type of the input data
+   * @param schema - Schema to validate input against
+   * @returns New pipeline with input validation
+   *
+   * @example
+   * ```typescript
+   * const pipeline = pipeline('user-input')
+   *   .input(schema.object({
+   *     name: schema.string().min(2),
+   *     email: schema.string().email()
+   *   }))
+   *
+   * // Input will be validated against schema
+   * const result = await pipeline.run({ name: 'John', email: 'john@example.com' })
+   * ```
+   */
   input<I>(schema: Schema<I>): Pipeline<I, I> {
     return new Pipeline<I, I>(
       [...this.steps, new InputStep(schema)],
@@ -624,6 +910,32 @@ export class Pipeline<Input, Output> {
     )
   }
 
+  /**
+   * Adds HTTP fetch operation to the pipeline.
+   * Supports both static URLs and dynamic URL generation from input.
+   *
+   * @param url - Static URL string or function that generates URL from input
+   * @param options - Static RequestInit options or function that generates options from input
+   * @returns New pipeline with fetch operation
+   *
+   * @example
+   * ```typescript
+   * // Static URL
+   * const staticPipeline = pipeline('static-fetch')
+   *   .fetch('https://api.example.com/users')
+   *
+   * // Dynamic URL with input
+   * const dynamicPipeline = pipeline('dynamic-fetch')
+   *   .input(schema.object({ id: schema.string() }))
+   *   .fetch(input => `https://api.example.com/users/${input.id}`)
+   *
+   * // With custom options
+   * const authPipeline = pipeline('auth-fetch')
+   *   .fetch('/api/protected', {
+   *     headers: { 'Authorization': 'Bearer ' + token }
+   *   })
+   * ```
+   */
   fetch(
     url: string | ((input: Input) => string),
     options?: RequestInit | ((input: Input) => RequestInit)
@@ -638,6 +950,28 @@ export class Pipeline<Input, Output> {
     )
   }
 
+  /**
+   * Adds data validation to the pipeline using a schema.
+   * Validates the current pipeline output and transforms the type.
+   *
+   * @template O - Type of the validated output
+   * @param schema - Schema to validate data against
+   * @returns New pipeline with validation step
+   *
+   * @example
+   * ```typescript
+   * const pipeline = pipeline('api-response')
+   *   .fetch('/api/users/1')
+   *   .validate(schema.object({
+   *     id: schema.number(),
+   *     name: schema.string(),
+   *     email: schema.string().email()
+   *   }))
+   *
+   * // Response will be validated and typed as User
+   * const result = await pipeline.run({})
+   * ```
+   */
   validate<O>(schema: Schema<O>): Pipeline<Input, O> {
     return new Pipeline<Input, O>(
       [...this.steps, new ValidateStep(schema)],
@@ -686,6 +1020,29 @@ export class Pipeline<Input, Output> {
     )
   }
 
+  /**
+   * Transforms pipeline output using a mapping function.
+   * This is the core data transformation method for business logic.
+   *
+   * @template U - Type of the transformed output
+   * @param fn - Pure function to transform the data
+   * @returns New pipeline with transformation step
+   *
+   * @example
+   * ```typescript
+   * const pipeline = pipeline('user-processing')
+   *   .input(UserSchema)
+   *   .map(user => ({
+   *     ...user,
+   *     fullName: `${user.firstName} ${user.lastName}`,
+   *     createdAt: new Date().toISOString()
+   *   }))
+   *   .map(user => ({ ...user, slug: slugify(user.fullName) }))
+   *
+   * // Multiple transformations can be chained
+   * const result = await pipeline.run(userData)
+   * ```
+   */
   map<U>(fn: (value: Output) => U): Pipeline<Input, U> {
     return new Pipeline<Input, U>(
       [...this.steps, new MapStep(fn)],
@@ -697,6 +1054,30 @@ export class Pipeline<Input, Output> {
     )
   }
 
+  /**
+   * Applies a declarative data transformation to the pipeline.
+   * Integrates with the DATA pillar's transformation system.
+   *
+   * @template T - Type of the transformed output
+   * @param transform - Transform definition with field mappings and computations
+   * @param context - Optional transformation context
+   * @returns New pipeline with transformation step
+   *
+   * @example
+   * ```typescript
+   * const userTransform = transform('normalize-user', RawUserSchema)
+   *   .to(UserSchema)
+   *   .map('user_name', 'name')
+   *   .map('user_email', 'email')
+   *   .compute('displayName', source => `${source.user_name} <${source.user_email}>`)
+   *
+   * const pipeline = pipeline('user-normalization')
+   *   .input(RawUserSchema)
+   *   .transform(userTransform)
+   *
+   * const result = await pipeline.run(rawUserData)
+   * ```
+   */
   transform<T>(transform: Transform<Output, T>, context?: TransformContext): Pipeline<Input, T> {
     return new Pipeline<Input, T>(
       [...this.steps, new TransformStep(transform, context)],
@@ -1068,6 +1449,52 @@ export class Pipeline<Input, Output> {
   }
 }
 
+/**
+ * Creates a new Pipeline instance for the PROCESS pillar.
+ *
+ * This is the main entry point for building composable data processing workflows.
+ * Pipelines are immutable and type-safe, supporting caching, retry, timeout,
+ * validation, HTTP operations, and comprehensive observability.
+ *
+ * @template T - Initial input/output type for the pipeline
+ * @param name - Unique identifier for the pipeline (used in tracing and caching)
+ * @param deps - Optional dependencies like custom HTTP client
+ * @returns New empty pipeline ready for composition
+ *
+ * @example
+ * ```typescript
+ * // Basic data processing pipeline
+ * const userPipeline = pipeline('process-user')
+ *   .input(CreateUserSchema)
+ *   .map(user => ({ ...user, id: generateId() }))
+ *   .validate(UserSchema)
+ *
+ * // HTTP API pipeline with caching and retry
+ * const apiPipeline = pipeline('fetch-user')
+ *   .input(schema.object({ id: schema.string() }))
+ *   .fetch(input => `/api/users/${input.id}`)
+ *   .validate(UserSchema)
+ *   .cache(60000) // 1 minute cache
+ *   .retry(3, 1000) // 3 retries with 1s delay
+ *   .timeout(5000) // 5 second timeout
+ *
+ * // Business logic pipeline with rules and transforms
+ * const businessPipeline = pipeline('user-onboarding')
+ *   .input(RawUserSchema)
+ *   .validateAllRules(userValidationRules)
+ *   .transform(userNormalizationTransform)
+ *   .pipeline(UserAPI.create)
+ *   .map(user => ({ ...user, onboarded: true }))
+ *
+ * // Execute pipeline
+ * const result = await userPipeline.run(userData)
+ * if (Result.isOk(result)) {
+ *   console.log('User processed:', result.value)
+ * } else {
+ *   console.error('Processing failed:', result.error)
+ * }
+ * ```
+ */
 export function pipeline<T = unknown>(
   name: string,
   deps?: { httpClient?: HttpClient }
@@ -1080,10 +1507,47 @@ pipeline.parallel = <I, T>(pipelines: Pipeline<I, T>[]): Pipeline<I, T[]> => {
   return Pipeline.parallel(pipelines)
 }
 
+/**
+ * Tracing utilities for pipeline observability and debugging.
+ *
+ * Provides access to execution traces, performance metrics, and debugging tools.
+ * All pipeline executions are automatically traced when tracing is enabled.
+ *
+ * @namespace tracing
+ * @example
+ * ```typescript
+ * // Enable tracing
+ * process.env.KAIRO_TRACE = 'true'
+ *
+ * // Run some pipelines
+ * await userPipeline.run(userData)
+ * await apiPipeline.run({ id: '123' })
+ *
+ * // View tracing summary
+ * tracing.printSummary()
+ * // 📊 Kairo Tracing Summary
+ * // ========================
+ * // Total Entries: 5
+ * // Success Rate: 100.0%
+ * // Average Duration: 45.23ms
+ *
+ * // Query specific traces
+ * const slowOps = tracing.query({ minDuration: 100 })
+ * const errors = tracing.query({ success: false })
+ *
+ * // Export data for analysis
+ * const traceData = tracing.export()
+ * console.log('Bottlenecks:', traceData.entries.filter(e => e.duration > 200))
+ * ```
+ */
 export const tracing = {
+  /** Get the global trace collector instance */
   getCollector: () => GlobalTraceCollector.getInstance(),
+  /** Query trace entries with optional filtering */
   query: (filter?: TraceFilter) => GlobalTraceCollector.getInstance().query(filter),
+  /** Export all trace data with summary statistics */
   export: () => GlobalTraceCollector.getInstance().export(),
+  /** Clear all collected trace data */
   clear: () => GlobalTraceCollector.getInstance().clear(),
 
   // Visualization helpers

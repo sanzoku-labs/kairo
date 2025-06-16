@@ -827,16 +827,8 @@ describe('Resource', () => {
     describe('validateMethods', () => {
       it('should validate all methods successfully', () => {
         const methods = {
-          get: resourceUtils.get(
-            '/api/users/:id',
-            UserParamsSchema,
-            UserSchema
-          ),
-          create: resourceUtils.post(
-            '/api/users',
-            CreateUserSchema,
-            UserSchema
-          ),
+          get: resourceUtils.get('/api/users/:id', UserParamsSchema, UserSchema),
+          create: resourceUtils.post('/api/users', CreateUserSchema, UserSchema),
         }
 
         const result = resourceUtils.validateMethods(methods)
@@ -845,11 +837,7 @@ describe('Resource', () => {
 
       it('should fail when one method is invalid', () => {
         const methods = {
-          get: resourceUtils.get(
-            '/api/users/:id',
-            UserParamsSchema,
-            UserSchema
-          ),
+          get: resourceUtils.get('/api/users/:id', UserParamsSchema, UserSchema),
           invalid: {
             method: 'GET' as const,
             path: 'invalid-path', // Missing leading slash
@@ -868,11 +856,7 @@ describe('Resource', () => {
     describe('createValidated', () => {
       it('should create resource when validation passes', () => {
         const methods = {
-          get: resourceUtils.get(
-            '/api/users/:id',
-            UserParamsSchema,
-            UserSchema
-          ),
+          get: resourceUtils.get('/api/users/:id', UserParamsSchema, UserSchema),
         }
 
         const result = resourceUtils.createValidated('test', methods)
@@ -929,14 +913,14 @@ describe('Resource', () => {
             get: resourceUtils.get('/api/primary/:id', UserParamsSchema, UserSchema),
           },
         }
-        
+
         const fallbackConfig = {
           name: 'fallback',
           methods: {
             get: resourceUtils.get('/api/fallback/:id', UserParamsSchema, UserSchema),
           },
         }
-        
+
         const configs = [primaryConfig, fallbackConfig]
 
         const result = resourceUtils.createWithFallback(configs)

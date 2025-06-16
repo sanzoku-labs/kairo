@@ -31,26 +31,26 @@ export const curry4 =
 /**
  * Partial application - apply some arguments now, rest later.
  */
- 
+
 export const partial =
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   <R>(fn: (...args: any[]) => R, ...partialArgs: any[]) =>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (...remainingArgs: any[]): R =>
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    fn(...partialArgs, ...remainingArgs)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (...remainingArgs: any[]): R =>
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      fn(...partialArgs, ...remainingArgs)
 
 /**
  * Partial application from the right side.
  */
- 
+
 export const partialRight =
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   <R>(fn: (...args: any[]) => R, ...partialArgs: any[]) =>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (...remainingArgs: any[]): R =>
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    fn(...remainingArgs, ...partialArgs)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (...remainingArgs: any[]): R =>
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      fn(...remainingArgs, ...partialArgs)
 
 /**
  * Flips the order of the first two arguments of a function.

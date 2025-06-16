@@ -105,7 +105,7 @@ export {
   lte,
 } from './curry'
 
-// Note: partial, partialRight, reverse, and lens utilities are available 
+// Note: partial, partialRight, reverse, and lens utilities are available
 // but temporarily excluded from main export due to complex TypeScript constraints.
 // They can be imported directly from their respective modules if needed.
 

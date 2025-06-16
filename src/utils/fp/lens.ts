@@ -60,7 +60,7 @@ export const compose = <S, A, B>(outer: Lens<S, A>, inner: Lens<A, B>): Lens<S, 
 /**
  * Creates a lens for a nested property path.
  */
- 
+
 export const path = <T, P extends string>(pathStr: P): Lens<T, any> => {
   const keys = pathStr.split('.')
 

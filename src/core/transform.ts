@@ -14,6 +14,11 @@ import { BatchProcessor } from '../extensions/performance/performance'
 // Core Types
 // ============================================================================
 
+/**
+ * Error type for data transformation operations in the DATA pillar.
+ * @interface TransformError
+ * @extends {KairoError}
+ */
 export interface TransformError extends KairoError {
   code: 'TRANSFORM_ERROR'
   field?: string | undefined
@@ -41,6 +46,14 @@ export interface ComputeMapping<TSource, TTarget> {
   compute: ComputeFunction<TSource>
 }
 
+/**
+ * Core Transform interface for declarative data transformation.
+ * Part of the DATA pillar's transformation system.
+ *
+ * @template TSource - Source data type
+ * @template TTarget - Target data type
+ * @interface Transform
+ */
 export interface Transform<TSource, TTarget> {
   readonly name: string
   readonly sourceSchema: Schema<TSource>

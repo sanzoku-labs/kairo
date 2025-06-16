@@ -256,9 +256,13 @@ export class MemoryStorage extends CacheStorage {
 
     switch (policy) {
       case 'lru':
-        return sortAndSlice(([a], [b]) => (this.accessOrder.get(a) || 0) - (this.accessOrder.get(b) || 0))
+        return sortAndSlice(
+          ([a], [b]) => (this.accessOrder.get(a) || 0) - (this.accessOrder.get(b) || 0)
+        )
       case 'lfu':
-        return sortAndSlice(([a], [b]) => (this.accessCount.get(a) || 0) - (this.accessCount.get(b) || 0))
+        return sortAndSlice(
+          ([a], [b]) => (this.accessCount.get(a) || 0) - (this.accessCount.get(b) || 0)
+        )
       case 'fifo':
         return this.insertionOrder.slice(0, count)
       case 'ttl':
