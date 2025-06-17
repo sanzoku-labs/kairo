@@ -137,8 +137,7 @@ export * from './utils/fp'
 // LEGACY SCHEMA (deprecated, use `schema` instead)
 // =============================================================================
 
-// Legacy Zod-based schema (deprecated)
-export { schema as legacySchema } from './core/schema'
+// Legacy Zod-based schema removed - now using native schema exclusively
 
 // =============================================================================
 // EXTENSIONS

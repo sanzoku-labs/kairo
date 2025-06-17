@@ -1,4 +1,5 @@
 # Kairo Enhancement Roadmap
+
 ## Master Specification & Implementation Guide
 
 **Version**: 1.0  
@@ -10,11 +11,13 @@
 ## 🎯 Vision & Goals
 
 ### Primary Goal
+
 Transform Kairo to serve ALL developers - from simple apps to complex platforms - with clear migration paths and intelligent tooling.
 
 ### Target Outcomes
+
 - **Simple apps**: Built in minutes with minimal concepts
-- **Complex apps**: Full power available when needed  
+- **Complex apps**: Full power available when needed
 - **Growth path**: Clear evolution from simple → complex
 - **Migration path**: Incremental adoption from any existing codebase
 - **Smart tooling**: IDE assistance for seamless integration
@@ -26,12 +29,14 @@ Transform Kairo to serve ALL developers - from simple apps to complex platforms 
 **⚠️ CRITICAL**: All enhancement work requires completing the refactoring process first.
 
 ### Why Refactoring is Required
+
 - **Performance**: Native schemas provide 2-3x speed improvement
 - **Bundle Size**: Removing Zod reduces size by 50%+
 - **Code Quality**: FP utils create consistent patterns for enhancements
 - **Type Safety**: Better TypeScript inference for tooling
 
 ### Refactoring Phases
+
 1. **Zod Migration** (Week 1-2) - Remove all Zod dependencies
 2. **FP Enhancement** (Week 3-4) - Integrate functional programming patterns
 
@@ -42,75 +47,83 @@ Transform Kairo to serve ALL developers - from simple apps to complex platforms 
 ## 📋 Implementation Roadmap
 
 ### Phase 0: Foundation (PREREQUISITE)
+
 **Timeline**: 4 weeks  
 **Status**: Must complete first
 
-| Component | Specification | Status |
-|-----------|--------------|--------|
+| Component       | Specification                                                                      | Status                |
+| --------------- | ---------------------------------------------------------------------------------- | --------------------- |
 | **Refactoring** | [`refactoring/KAIRO_REFACTORING_PLAN.md`](./refactoring/KAIRO_REFACTORING_PLAN.md) | ⚠️ **Required First** |
 
 ### Phase 1: Migration Tools
+
 **Timeline**: 4 weeks  
 **Goal**: Enable incremental adoption from existing codebases
 
-| Component | Specification | Status |
-|-----------|--------------|--------|
-| **Migration Strategy** | [`migration/MIGRATION_STRATEGY.md`](./migration/MIGRATION_STRATEGY.md) | ✅ Ready |
-| **Migration Tools** | [`migration/MIGRATION_TOOLS_SPEC.md`](./migration/MIGRATION_TOOLS_SPEC.md) | 📋 Planned |
+| Component              | Specification                                                                    | Status     |
+| ---------------------- | -------------------------------------------------------------------------------- | ---------- |
+| **Migration Strategy** | [`migration/MIGRATION_STRATEGY.md`](./migration/MIGRATION_STRATEGY.md)           | ✅ Ready   |
+| **Migration Tools**    | [`migration/MIGRATION_TOOLS_SPEC.md`](./migration/MIGRATION_TOOLS_SPEC.md)       | 📋 Planned |
 | **Framework Adapters** | [`migration/FRAMEWORK_ADAPTERS_SPEC.md`](./migration/FRAMEWORK_ADAPTERS_SPEC.md) | 📋 Planned |
 
 ### Phase 2: Simple Mode
+
 **Timeline**: 3 weeks  
 **Goal**: Ultra-simple entry point for basic use cases
 
-| Component | Specification | Status |
-|-----------|--------------|--------|
-| **Simple Mode API** | [`simple-mode/SIMPLE_MODE_SPEC.md`](./simple-mode/SIMPLE_MODE_SPEC.md) | ✅ Ready |
+| Component                   | Specification                                                                                  | Status     |
+| --------------------------- | ---------------------------------------------------------------------------------------------- | ---------- |
+| **Simple Mode API**         | [`simple-mode/SIMPLE_MODE_SPEC.md`](./simple-mode/SIMPLE_MODE_SPEC.md)                         | ✅ Ready   |
 | **Progressive Enhancement** | [`simple-mode/PROGRESSIVE_ENHANCEMENT_SPEC.md`](./simple-mode/PROGRESSIVE_ENHANCEMENT_SPEC.md) | 📋 Planned |
-| **Simple API Reference** | [`simple-mode/SIMPLE_API_REFERENCE.md`](./simple-mode/SIMPLE_API_REFERENCE.md) | 📋 Planned |
+| **Simple API Reference**    | [`simple-mode/SIMPLE_API_REFERENCE.md`](./simple-mode/SIMPLE_API_REFERENCE.md)                 | 📋 Planned |
 
 ### Phase 3: Integration Patterns
+
 **Timeline**: 2 weeks  
 **Goal**: Clear guidance for component composition
 
-| Component | Specification | Status |
-|-----------|--------------|--------|
-| **Integration Patterns** | [`integration/INTEGRATION_PATTERNS_SPEC.md`](./integration/INTEGRATION_PATTERNS_SPEC.md) | ✅ Ready |
-| **Recipe Library** | [`integration/RECIPE_LIBRARY_SPEC.md`](./integration/RECIPE_LIBRARY_SPEC.md) | 📋 Planned |
-| **Troubleshooting Guide** | [`integration/TROUBLESHOOTING_SPEC.md`](./integration/TROUBLESHOOTING_SPEC.md) | 📋 Planned |
+| Component                 | Specification                                                                            | Status     |
+| ------------------------- | ---------------------------------------------------------------------------------------- | ---------- |
+| **Integration Patterns**  | [`integration/INTEGRATION_PATTERNS_SPEC.md`](./integration/INTEGRATION_PATTERNS_SPEC.md) | ✅ Ready   |
+| **Recipe Library**        | [`integration/RECIPE_LIBRARY_SPEC.md`](./integration/RECIPE_LIBRARY_SPEC.md)             | 📋 Planned |
+| **Troubleshooting Guide** | [`integration/TROUBLESHOOTING_SPEC.md`](./integration/TROUBLESHOOTING_SPEC.md)           | 📋 Planned |
 
 ### Phase 4: DX Tooling
+
 **Timeline**: 6 weeks  
 **Goal**: Intelligent development assistance
 
-| Component | Specification | Status |
-|-----------|--------------|--------|
-| **TypeScript Plugin** | [`dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md`](./dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md) | ✅ Ready |
-| **CLI Tools** | [`dx-tooling/CLI_TOOLS_SPEC.md`](./dx-tooling/CLI_TOOLS_SPEC.md) | 📋 Planned |
-| **Visual Inspector** | [`dx-tooling/VISUAL_INSPECTOR_SPEC.md`](./dx-tooling/VISUAL_INSPECTOR_SPEC.md) | 📋 Planned |
-| **Dev Warnings** | [`dx-tooling/DEV_WARNINGS_SPEC.md`](./dx-tooling/DEV_WARNINGS_SPEC.md) | 📋 Planned |
+| Component             | Specification                                                                    | Status     |
+| --------------------- | -------------------------------------------------------------------------------- | ---------- |
+| **TypeScript Plugin** | [`dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md`](./dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md) | ✅ Ready   |
+| **CLI Tools**         | [`dx-tooling/CLI_TOOLS_SPEC.md`](./dx-tooling/CLI_TOOLS_SPEC.md)                 | 📋 Planned |
+| **Visual Inspector**  | [`dx-tooling/VISUAL_INSPECTOR_SPEC.md`](./dx-tooling/VISUAL_INSPECTOR_SPEC.md)   | 📋 Planned |
+| **Dev Warnings**      | [`dx-tooling/DEV_WARNINGS_SPEC.md`](./dx-tooling/DEV_WARNINGS_SPEC.md)           | 📋 Planned |
 
 ### Phase 5: Implementation Standards
+
 **Timeline**: Ongoing  
 **Goal**: Quality assurance and release management
 
-| Component | Specification | Status |
-|-----------|--------------|--------|
-| **Development Standards** | [`implementation/DEVELOPMENT_STANDARDS.md`](./implementation/DEVELOPMENT_STANDARDS.md) | ✅ Ready |
-| **Release Strategy** | [`implementation/RELEASE_STRATEGY.md`](./implementation/RELEASE_STRATEGY.md) | 📋 Planned |
-| **Success Metrics** | [`implementation/SUCCESS_METRICS.md`](./implementation/SUCCESS_METRICS.md) | 📋 Planned |
+| Component                 | Specification                                                                          | Status     |
+| ------------------------- | -------------------------------------------------------------------------------------- | ---------- |
+| **Development Standards** | [`implementation/DEVELOPMENT_STANDARDS.md`](./implementation/DEVELOPMENT_STANDARDS.md) | ✅ Ready   |
+| **Release Strategy**      | [`implementation/RELEASE_STRATEGY.md`](./implementation/RELEASE_STRATEGY.md)           | 📋 Planned |
+| **Success Metrics**       | [`implementation/SUCCESS_METRICS.md`](./implementation/SUCCESS_METRICS.md)             | 📋 Planned |
 
 ---
 
 ## 🎯 Progressive Complexity Strategy
 
 ### Level 0: Ultra-Simple
+
 ```typescript
 const todos = simpleResource('https://api.example.com/todos')
 const allTodos = await todos.list()
 ```
 
-### Level 1: Basic Patterns  
+### Level 1: Basic Patterns
+
 ```typescript
 const createTodo = simplePipeline()
   .validate(todo => todo.title.length > 0)
@@ -119,6 +132,7 @@ const createTodo = simplePipeline()
 ```
 
 ### Level 2: Standard Patterns
+
 ```typescript
 const createTodo = pipeline('create-todo')
   .input(TodoSchema)
@@ -127,10 +141,11 @@ const createTodo = pipeline('create-todo')
 ```
 
 ### Level 3: Advanced Patterns
+
 ```typescript
 const createTodo = pipeline('create-todo')
   .input(TodoSchema)
-  .transaction(async (ctx) => {
+  .transaction(async ctx => {
     const todo = await ctx.repository(todoRepo).create(todoData)
     return todo
   })
@@ -143,12 +158,14 @@ const createTodo = pipeline('create-todo')
 ## 📊 Success Metrics
 
 ### Developer Experience
+
 - **Time to First Success**: Simple app < 5 minutes
-- **Migration Success**: 90% completion rate  
+- **Migration Success**: 90% completion rate
 - **Error Reduction**: 80% fewer integration errors with tooling
 - **Learning Curve**: Simple mode understood in < 10 minutes
 
 ### Technical Quality
+
 - **Performance**: Equal or better performance after migration
 - **Compatibility**: 100% backwards compatibility maintained
 - **Bundle Size**: 50%+ reduction with native schemas
@@ -178,9 +195,11 @@ const createTodo = pipeline('create-todo')
 ## 📁 Quick Reference
 
 ### 🚨 Must Complete First
+
 - [`refactoring/KAIRO_REFACTORING_PLAN.md`](./refactoring/KAIRO_REFACTORING_PLAN.md)
 
 ### 📋 Ready to Implement
+
 - [`migration/MIGRATION_STRATEGY.md`](./migration/MIGRATION_STRATEGY.md)
 - [`simple-mode/SIMPLE_MODE_SPEC.md`](./simple-mode/SIMPLE_MODE_SPEC.md)
 - [`integration/INTEGRATION_PATTERNS_SPEC.md`](./integration/INTEGRATION_PATTERNS_SPEC.md)
@@ -188,6 +207,7 @@ const createTodo = pipeline('create-todo')
 - [`implementation/DEVELOPMENT_STANDARDS.md`](./implementation/DEVELOPMENT_STANDARDS.md)
 
 ### 📝 In Planning
+
 - All other specifications marked as "📋 Planned" in roadmap above
 
 ---

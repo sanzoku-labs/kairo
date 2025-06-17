@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { z } from 'zod'
 import { rule, rules, commonRules, pipeline, schema, Result } from '../index'
 import type { Rules } from '../index'
 
@@ -316,14 +315,12 @@ describe('Business Rules Engine', () => {
   })
 
   describe('Pipeline Integration', () => {
-    const UserSchema = schema.from(
-      z.object({
-        id: z.string(),
-        name: z.string(),
-        email: z.string().email(),
-        age: z.number(),
-      })
-    )
+    const UserSchema = schema.object({
+      id: schema.string(),
+      name: schema.string(),
+      email: schema.string().email(),
+      age: schema.number(),
+    })
 
     const userRules = rules('user-validation', {
       ageCheck: commonRules.range<User>('age', 18, 65),
@@ -400,13 +397,11 @@ describe('Business Rules Engine', () => {
   })
 
   describe('Resource Integration', () => {
-    const CreateUserSchema = schema.from(
-      z.object({
-        name: z.string(),
-        email: z.string().email(),
-        age: z.number(),
-      })
-    )
+    const CreateUserSchema = schema.object({
+      name: schema.string(),
+      email: schema.string().email(),
+      age: schema.number(),
+    })
 
     const userValidationRules = rules('create-user-validation', {
       nameRequired: commonRules.required<CreateUserRequest>('name'),

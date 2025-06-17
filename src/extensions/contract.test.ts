@@ -1,31 +1,26 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { z } from 'zod'
 import { resource, schema, createError } from '../index'
 import type { NetworkError, ValidationError } from '../index'
 
 describe('Contract Testing', () => {
-  const UserSchema = schema.from(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      email: z.string().email(),
-      age: z.number().min(0),
-    })
-  )
+  const UserSchema = schema.object({
+    id: schema.string(),
+    name: schema.string(),
+    email: schema.string().email(),
+    age: schema.number().min(0),
+  })
 
-  const CreateUserSchema = schema.from(
-    z.object({
-      name: z.string(),
-      email: z.string().email(),
-      age: z.number().min(0),
-    })
-  )
+  const CreateUserSchema = schema.object({
+    name: schema.string(),
+    email: schema.string().email(),
+    age: schema.number().min(0),
+  })
 
   const UserAPI = resource('users', {
     get: {
       method: 'GET',
       path: '/users/:id',
-      params: schema.from(z.object({ id: z.string() })),
+      params: schema.object({ id: schema.string() }),
       response: UserSchema,
     },
     create: {

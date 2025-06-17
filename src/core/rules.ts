@@ -339,64 +339,64 @@ class RuleImpl<T> implements Rule<T> {
 
   async validate(data: T, context?: RuleValidationContext): Promise<Result<BusinessRuleError, T>> {
     try {
-      // Check condition first (if present)
+      // Check if rule condition applies - if condition exists and returns false, skip validation
       if (this.condition && !this.condition(data, context)) {
-        // Condition not met, rule doesn't apply - this is considered a pass
         return Result.Ok(data)
       }
 
-      // Handle async validation
-      if (this.asyncValidation) {
-        try {
-          const asyncResult = await this.asyncValidation(data, context)
-          // If async validation returns a Result, handle it
-          if (asyncResult && typeof asyncResult === 'object' && 'tag' in asyncResult) {
-            const result = asyncResult as Result<unknown, unknown>
-            if (result.tag === 'Err') {
-              return Result.Err(
-                createBusinessRuleError(this.name, this.errorMessage, {
-                  code: this.errorCode,
-                  field: this.fieldName,
-                  userMessage: this.errorMessage,
-                  context: { ...this.ruleContext, asyncError: result.error },
-                })
-              )
-            }
-          }
-          // If async validation completed without error, continue to sync validation
-        } catch (error) {
-          return Result.Err(
-            createBusinessRuleError(this.name, this.errorMessage, {
-              code: this.errorCode,
-              field: this.fieldName,
-              userMessage: this.errorMessage,
-              context: { ...this.ruleContext, asyncError: error },
-            })
-          )
-        }
-      }
+      return await this.executeValidations(data, context)
+    } catch (error) {
+      return Result.Err(
+        createBusinessRuleError(this.name, 'Rule validation failed unexpectedly', {
+          code: 'RULE_EXECUTION_ERROR',
+          field: this.fieldName,
+          userMessage: 'An unexpected error occurred during validation',
+          context: { ...this.ruleContext, unexpectedError: error },
+        })
+      )
+    }
+  }
 
-      // Handle synchronous validation
-      if (this.validation) {
-        try {
-          const isValid = await Promise.resolve(this.validation(data, context))
-          if (!isValid) {
-            return Result.Err(
-              createBusinessRuleError(this.name, this.errorMessage, {
-                code: this.errorCode,
-                field: this.fieldName,
-                userMessage: this.errorMessage,
-                context: this.ruleContext,
-              })
-            )
-          }
-        } catch (error) {
+  private async executeValidations(
+    data: T,
+    context?: RuleValidationContext
+  ): Promise<Result<BusinessRuleError, T>> {
+    // Execute async validation first if present
+    if (this.asyncValidation) {
+      const asyncResult = await this.executeAsyncValidation(data, context)
+      if (Result.isErr(asyncResult)) {
+        return asyncResult
+      }
+    }
+
+    // Then execute sync validation if present
+    if (this.validation) {
+      const syncResult = await this.executeSyncValidation(data, context)
+      if (Result.isErr(syncResult)) {
+        return syncResult
+      }
+    }
+
+    return Result.Ok(data)
+  }
+
+  private async executeAsyncValidation(
+    data: T,
+    context?: RuleValidationContext
+  ): Promise<Result<BusinessRuleError, T>> {
+    try {
+      const asyncResult = await this.asyncValidation!(data, context)
+
+      // Handle Result-returning async validations
+      if (asyncResult && typeof asyncResult === 'object' && 'tag' in asyncResult) {
+        const result = asyncResult as Result<unknown, unknown>
+        if (result.tag === 'Err') {
           return Result.Err(
             createBusinessRuleError(this.name, this.errorMessage, {
               code: this.errorCode,
               field: this.fieldName,
               userMessage: this.errorMessage,
-              context: { ...this.ruleContext, validationError: error },
+              context: { ...this.ruleContext, asyncError: result.error },
             })
           )
         }
@@ -405,11 +405,40 @@ class RuleImpl<T> implements Rule<T> {
       return Result.Ok(data)
     } catch (error) {
       return Result.Err(
-        createBusinessRuleError(this.name, 'Rule validation failed unexpectedly', {
-          code: 'RULE_EXECUTION_ERROR',
+        createBusinessRuleError(this.name, this.errorMessage, {
+          code: this.errorCode,
           field: this.fieldName,
-          userMessage: 'An unexpected error occurred during validation',
-          context: { ...this.ruleContext, unexpectedError: error },
+          userMessage: this.errorMessage,
+          context: { ...this.ruleContext, asyncError: error },
+        })
+      )
+    }
+  }
+
+  private async executeSyncValidation(
+    data: T,
+    context?: RuleValidationContext
+  ): Promise<Result<BusinessRuleError, T>> {
+    try {
+      const isValid = await Promise.resolve(this.validation!(data, context))
+
+      return isValid
+        ? Result.Ok(data)
+        : Result.Err(
+            createBusinessRuleError(this.name, this.errorMessage, {
+              code: this.errorCode,
+              field: this.fieldName,
+              userMessage: this.errorMessage,
+              context: this.ruleContext,
+            })
+          )
+    } catch (error) {
+      return Result.Err(
+        createBusinessRuleError(this.name, this.errorMessage, {
+          code: this.errorCode,
+          field: this.fieldName,
+          userMessage: this.errorMessage,
+          context: { ...this.ruleContext, validationError: error },
         })
       )
     }

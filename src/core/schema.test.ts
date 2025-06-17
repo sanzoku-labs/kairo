@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { z } from 'zod'
-import { schema } from './schema'
+import { nativeSchema as schema } from './native-schema'
 import { Result } from './result'
 
 describe('Schema', () => {
@@ -44,9 +43,9 @@ describe('Schema', () => {
   describe('object schema', () => {
     it('should parse valid object', () => {
       const userSchema = schema.object({
-        name: z.string(),
-        age: z.number(),
-        email: z.string().email(),
+        name: schema.string(),
+        age: schema.number(),
+        email: schema.string().email(),
       })
 
       const result = userSchema.parse({
@@ -64,8 +63,8 @@ describe('Schema', () => {
 
     it('should fail on invalid object', () => {
       const userSchema = schema.object({
-        name: z.string(),
-        age: z.number(),
+        name: schema.string(),
+        age: schema.number(),
       })
 
       const result = userSchema.parse({
@@ -81,8 +80,8 @@ describe('Schema', () => {
 
     it('should provide detailed error information', () => {
       const userSchema = schema.object({
-        name: z.string().min(2),
-        age: z.number().positive(),
+        name: schema.string().min(2),
+        age: schema.number().min(1),
       })
 
       const result = userSchema.parse({
@@ -105,8 +104,8 @@ describe('Schema', () => {
       expect(result).toEqual({ tag: 'Ok', value: [1, 2, 3] })
     })
 
-    it('should work with zod schemas directly', () => {
-      const stringsSchema = schema.array(z.string())
+    it('should work with nested schemas', () => {
+      const stringsSchema = schema.array(schema.string())
       const result = stringsSchema.parse(['a', 'b', 'c'])
 
       expect(result).toEqual({ tag: 'Ok', value: ['a', 'b', 'c'] })
@@ -122,7 +121,7 @@ describe('Schema', () => {
 
   describe('optional and nullable', () => {
     it('should handle optional values', () => {
-      const optionalString = schema.optional(schema.string())
+      const optionalString = schema.string().optional()
 
       expect(Result.isOk(optionalString.parse('hello'))).toBe(true)
       expect(Result.isOk(optionalString.parse(undefined))).toBe(true)
@@ -130,7 +129,7 @@ describe('Schema', () => {
     })
 
     it('should handle nullable values', () => {
-      const nullableString = schema.nullable(schema.string())
+      const nullableString = schema.string().nullable()
 
       expect(Result.isOk(nullableString.parse('hello'))).toBe(true)
       expect(Result.isOk(nullableString.parse(null))).toBe(true)
@@ -157,7 +156,7 @@ describe('Schema', () => {
 
   describe('union types', () => {
     it('should validate union of types', () => {
-      const numberOrString = schema.union([z.number(), z.string()])
+      const numberOrString = schema.union([schema.number(), schema.string()])
 
       expect(Result.isOk(numberOrString.parse(42))).toBe(true)
       expect(Result.isOk(numberOrString.parse('hello'))).toBe(true)
@@ -178,10 +177,9 @@ describe('Schema', () => {
     })
   })
 
-  describe('from existing zod schema', () => {
-    it('should wrap existing zod schemas', () => {
-      const zodEmail = z.string().email().min(5)
-      const emailSchema = schema.from(zodEmail)
+  describe('email validation', () => {
+    it('should validate email formats with native schema', () => {
+      const emailSchema = schema.string().email().min(5)
 
       expect(Result.isOk(emailSchema.parse('test@example.com'))).toBe(true)
       expect(Result.isErr(emailSchema.parse('bad'))).toBe(true)

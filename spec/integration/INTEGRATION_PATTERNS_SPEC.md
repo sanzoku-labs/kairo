@@ -12,6 +12,7 @@
 Create comprehensive documentation that bridges the gap between API reference and practical usage, showing exactly how Kairo's three pillars connect in real applications.
 
 ### Success Criteria
+
 - **Discovery Time**: < 30 seconds to find relevant integration pattern
 - **Implementation Time**: < 5 minutes to implement common patterns
 - **Error Reduction**: 80% reduction in integration mistakes
@@ -23,21 +24,27 @@ Create comprehensive documentation that bridges the gap between API reference an
 ## 📋 Documentation Structure
 
 ### **Core Integration Guide**
+
 `docs/guide/integration-patterns.md`
 
 #### **1. Three-Pillar Connection Patterns**
+
 Complete flows showing DATA → PROCESS → INTERFACE integration
 
 #### **2. Component Integration Matrix**
+
 Which components can connect to which others, with examples
 
 #### **3. Type Flow Documentation**
+
 How TypeScript types flow through component connections
 
 #### **4. Error Handling Patterns**
+
 How Result types propagate across component boundaries
 
 #### **5. Performance Patterns**
+
 Optimal integration strategies for different scenarios
 
 ---
@@ -46,10 +53,11 @@ Optimal integration strategies for different scenarios
 
 ### **Integration Patterns Guide Structure**
 
-```markdown
+````markdown
 # Integration Patterns Guide
 
 ## Quick Navigation
+
 - [Basic Patterns](#basic-patterns) - Start here
 - [Three-Pillar Flows](#three-pillar-flows) - Complete workflows
 - [Component Connections](#component-connections) - Specific integrations
@@ -60,31 +68,34 @@ Optimal integration strategies for different scenarios
 ## Basic Patterns
 
 ### Pattern: Resource in Pipeline
+
 **Use Case**: Call an API within a data processing pipeline
 **Complexity**: ⭐ Basic
 
 ```typescript
 const userPipeline = pipeline('user-processing')
   .input(CreateUserSchema)
-  .pipeline(UserAPI.create.run)  // ← Resource call in pipeline
+  .pipeline(UserAPI.create.run) // ← Resource call in pipeline
   .map(user => ({ ...user, processed: true }))
 
 // Type flow: CreateUserSchema → User → ProcessedUser
 // Result flow: Result<ValidationError, ProcessedUser>
 ```
+````
 
 **When to use**: You need to call an external API as part of a data processing flow
 **Type safety**: Full inference from schema to final result
 **Error handling**: HTTP errors become Result.Err automatically
 
 ### Pattern: Schema Validation in Pipeline
+
 **Use Case**: Validate data before processing
 **Complexity**: ⭐ Basic
 
 ```typescript
 const validateAndProcess = pipeline('validate-process')
-  .input(UserSchema)                    // ← Schema validation
-  .validateAllRules(userRules)         // ← Business rules
+  .input(UserSchema) // ← Schema validation
+  .validateAllRules(userRules) // ← Business rules
   .map(user => processUser(user))
 
 // Type flow: unknown → User → ValidatedUser → ProcessedUser
@@ -94,6 +105,7 @@ const validateAndProcess = pipeline('validate-process')
 ## Three-Pillar Flows
 
 ### Complete User Onboarding Flow
+
 **Pillars**: DATA → PROCESS → INTERFACE
 **Complexity**: ⭐⭐ Intermediate
 
@@ -101,28 +113,31 @@ const validateAndProcess = pipeline('validate-process')
 // DATA: Define schemas and validation
 const CreateUserSchema = schema.object({
   name: schema.string().min(2),
-  email: schema.string().email()
+  email: schema.string().email(),
 })
 
 const userRules = rules('user-validation', {
   emailUnique: rule()
     .async(user => UserAPI.checkEmail.run({ email: user.email }))
-    .require(result => result.match({
-      Ok: available => available,
-      Err: () => false
-    }))
-    .message('Email already exists')
+    .require(result =>
+      result.match({
+        Ok: available => available,
+        Err: () => false,
+      })
+    )
+    .message('Email already exists'),
 })
 
 // PROCESS: Define business logic pipeline
 const userOnboarding = pipeline('user-onboarding')
-  .input(CreateUserSchema)              // DATA pillar
-  .validateAllRules(userRules)         // PROCESS pillar
-  .pipeline(UserAPI.create.run)        // INTERFACE pillar
-  .pipeline(EmailAPI.sendWelcome.run)  // INTERFACE pillar
-  .map(user => ({                      // PROCESS pillar
+  .input(CreateUserSchema) // DATA pillar
+  .validateAllRules(userRules) // PROCESS pillar
+  .pipeline(UserAPI.create.run) // INTERFACE pillar
+  .pipeline(EmailAPI.sendWelcome.run) // INTERFACE pillar
+  .map(user => ({
+    // PROCESS pillar
     ...user,
-    onboardingComplete: true
+    onboardingComplete: true,
   }))
 
 // Usage with complete error handling
@@ -135,16 +150,17 @@ result.match({
     } else if (error.code === 'HTTP_ERROR') {
       console.log('API call failed:', error.message)
     }
-  }
+  },
 })
 ```
 
 **Type Flow Diagram**:
+
 ```
 userData (unknown)
     ↓ [CreateUserSchema validation]
 User { name: string, email: string }
-    ↓ [userRules validation]  
+    ↓ [userRules validation]
 ValidatedUser
     ↓ [UserAPI.create]
 CreatedUser { id: string, ...User }
@@ -157,59 +173,57 @@ OnboardedUser { onboardingComplete: true, ...CreatedUser }
 ## Component Connections
 
 ### Resource → Pipeline Integration
+
 **Pattern**: Using resource methods within pipelines
 
 ```typescript
 // ✅ VALID: Resource method in pipeline
 pipeline('example')
   .input(UserSchema)
-  .pipeline(UserAPI.get.run)           // Resource method
+  .pipeline(UserAPI.get.run) // Resource method
   .map(user => user.profile)
 
 // ✅ VALID: Multiple resource calls
 pipeline('complex')
   .input(UserIdSchema)
-  .pipeline(UserAPI.get.run)           // Get user
-  .pipeline(ProfileAPI.get.run)        // Get profile
+  .pipeline(UserAPI.get.run) // Get user
+  .pipeline(ProfileAPI.get.run) // Get profile
   .map(mergeUserProfile)
 
 // ❌ INVALID: Direct resource call (missing .run)
-pipeline('wrong')
-  .pipeline(UserAPI.get)               // Missing .run()
+pipeline('wrong').pipeline(UserAPI.get) // Missing .run()
 
 // ❌ INVALID: Sync function in async pipeline
-pipeline('wrong')
-  .pipeline(UserAPI.get.run)
-  .map(synchronousFunction)            // Should be .map()
+pipeline('wrong').pipeline(UserAPI.get.run).map(synchronousFunction) // Should be .map()
 ```
 
 ### Schema → Validation Flow
+
 **Pattern**: How schemas connect to validation
 
 ```typescript
 // Schema definition (DATA pillar)
 const UserSchema = schema.object({
   name: schema.string(),
-  email: schema.string().email()
+  email: schema.string().email(),
 })
 
 // ✅ VALID: Schema in pipeline input
 pipeline('validate')
-  .input(UserSchema)                   // Auto-validation
-  .map(user => user.name)              // user is typed as User
+  .input(UserSchema) // Auto-validation
+  .map(user => user.name) // user is typed as User
 
 // ✅ VALID: Manual schema validation
 pipeline('manual')
   .map(data => UserSchema.parse(data)) // Returns Result<ParseError, User>
-  .map(result => result.unwrap())      // Extract User or throw
+  .map(result => result.unwrap()) // Extract User or throw
 
 // ✅ VALID: Schema with business rules
-pipeline('business')
-  .input(UserSchema)
-  .validateAllRules(userRules)         // Additional business validation
+pipeline('business').input(UserSchema).validateAllRules(userRules) // Additional business validation
 ```
 
 ### Transform → Repository Integration
+
 **Pattern**: Data transformation before storage
 
 ```typescript
@@ -222,28 +236,29 @@ const userTransform = transform('user-transform', RawUserSchema)
 
 const userRepo = repository('users', {
   schema: UserSchema,
-  storage: 'memory'
+  storage: 'memory',
 })
 
 // ✅ VALID: Transform → Repository
 pipeline('store-user')
   .input(RawUserSchema)
-  .transform(userTransform)            // Transform data
-  .map(userRepo.create)                // Store in repository
+  .transform(userTransform) // Transform data
+  .map(userRepo.create) // Store in repository
 ```
 
 ## Error Handling Patterns
 
 ### Result Type Propagation
+
 **How errors flow through component chains**
 
 ```typescript
 // Each component returns Result<Error, Value>
 const processUser = pipeline('process-user')
-  .input(UserSchema)                   // Result<ParseError, User>
-  .validateAllRules(userRules)         // Result<RuleError, User>
-  .pipeline(UserAPI.create.run)        // Result<HttpError, CreatedUser>
-  .map(user => ({ ...user, processed: true }))  // Result<never, ProcessedUser>
+  .input(UserSchema) // Result<ParseError, User>
+  .validateAllRules(userRules) // Result<RuleError, User>
+  .pipeline(UserAPI.create.run) // Result<HttpError, CreatedUser>
+  .map(user => ({ ...user, processed: true })) // Result<never, ProcessedUser>
 
 // Final result type: Result<ParseError | RuleError | HttpError, ProcessedUser>
 
@@ -260,11 +275,12 @@ result.match({
     } else if (error instanceof HttpError) {
       handleAPIError(error)
     }
-  }
+  },
 })
 ```
 
 ### Error Recovery Patterns
+
 **How to handle and recover from errors**
 
 ```typescript
@@ -273,9 +289,9 @@ const withFallback = pipeline('user-with-fallback')
   .pipeline(UserAPI.get.run)
   .recover(error => {
     if (error.status === 404) {
-      return DefaultUser  // Fallback value
+      return DefaultUser // Fallback value
     }
-    throw error  // Re-throw other errors
+    throw error // Re-throw other errors
   })
 
 // Pattern: Retry on failure
@@ -292,6 +308,7 @@ const withBetterErrors = pipeline('user-better-errors')
 ## Performance Patterns
 
 ### Caching Integration
+
 **When and how to add caching**
 
 ```typescript
@@ -299,8 +316,8 @@ const withBetterErrors = pipeline('user-better-errors')
 const UserAPI = resource('users', {
   get: {
     path: '/users/:id',
-    cache: { ttl: 300000, tags: ['users'] }  // 5 minutes
-  }
+    cache: { ttl: 300000, tags: ['users'] }, // 5 minutes
+  },
 })
 
 // Pipeline-level caching
@@ -312,11 +329,12 @@ const expensiveProcess = pipeline('expensive')
 // Repository-level caching
 const userRepo = repository('users', {
   schema: UserSchema,
-  cache: { ttl: 300000 }
+  cache: { ttl: 300000 },
 })
 ```
 
 ### Parallel Processing
+
 **Optimizing with concurrent operations**
 
 ```typescript
@@ -327,15 +345,14 @@ const sequential = pipeline('slow')
   .pipeline(SettingsAPI.get.run)
 
 // Parallel (fast)
-const parallel = pipeline('fast')
-  .map(async input => {
-    const [user, profile, settings] = await Promise.all([
-      UserAPI.get.run(input),
-      ProfileAPI.get.run(input),
-      SettingsAPI.get.run(input)
-    ])
-    return { user, profile, settings }
-  })
+const parallel = pipeline('fast').map(async input => {
+  const [user, profile, settings] = await Promise.all([
+    UserAPI.get.run(input),
+    ProfileAPI.get.run(input),
+    SettingsAPI.get.run(input),
+  ])
+  return { user, profile, settings }
+})
 ```
 
 ## Troubleshooting
@@ -343,14 +360,15 @@ const parallel = pipeline('fast')
 ### Common Integration Issues
 
 #### "Type 'X' is not assignable to type 'Y'"
+
 **Cause**: Schema mismatch between components
 **Solution**: Check type flow and add transforms
 
 ```typescript
 // ❌ Problem: Schema mismatch
 pipeline('broken')
-  .input(UserSchema)        // Outputs User
-  .pipeline(TodoAPI.create.run)  // Expects CreateTodoInput
+  .input(UserSchema) // Outputs User
+  .pipeline(TodoAPI.create.run) // Expects CreateTodoInput
 
 // ✅ Solution: Add transform
 pipeline('fixed')
@@ -360,36 +378,37 @@ pipeline('fixed')
 ```
 
 #### "Cannot read property 'run' of undefined"
+
 **Cause**: Trying to call resource method incorrectly
 **Solution**: Use .run() for resource methods
 
 ```typescript
 // ❌ Problem: Missing .run()
-pipeline('broken')
-  .pipeline(UserAPI.get)
+pipeline('broken').pipeline(UserAPI.get)
 
 // ✅ Solution: Add .run()
-pipeline('fixed')
-  .pipeline(UserAPI.get.run)
+pipeline('fixed').pipeline(UserAPI.get.run)
 ```
 
 #### "Result is not a function"
+
 **Cause**: Not handling Result type properly
 **Solution**: Use .match() or .unwrap()
 
 ```typescript
 // ❌ Problem: Treating Result as value
 const user = UserAPI.get.run({ id: '123' })
-console.log(user.name)  // Error: user is Promise<Result<...>>
+console.log(user.name) // Error: user is Promise<Result<...>>
 
 // ✅ Solution: Handle Result properly
 const result = await UserAPI.get.run({ id: '123' })
 result.match({
   Ok: user => console.log(user.name),
-  Err: error => console.log('Error:', error)
+  Err: error => console.log('Error:', error),
 })
 ```
-```
+
+````
 
 ---
 
@@ -442,22 +461,26 @@ const solution = pipeline('example')
   .validateAllRules(rules)
   .pipeline(API.method.run)
   .map(transform)
-```
+````
 
 ### Explanation
+
 - Step-by-step breakdown
 - Type flow explanation
 - Error handling notes
 - Performance considerations
 
 ### When to Use
+
 - Specific scenarios where this pattern applies
 - Alternatives to consider
 - Scale considerations
 
 ### Related Patterns
+
 - Links to similar or complementary patterns
 - Next steps for more complex scenarios
+
 ```
 
 ---
@@ -510,3 +533,4 @@ const solution = pipeline('example')
 ---
 
 **Next Document**: [Recipe Library Specification](./RECIPE_LIBRARY_SPEC.md)
+```

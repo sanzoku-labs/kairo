@@ -15,6 +15,7 @@
 import { Result } from './result'
 import { type KairoError, createError } from './errors'
 import { type Schema } from './native-schema'
+import { cond } from '../utils/fp'
 
 // ============================================================================
 // Core Types
@@ -930,7 +931,7 @@ export class BaseRepository<T extends Record<string, unknown>, R extends Relatio
 
   async create(data: T): Promise<Result<RepositoryError, T>> {
     try {
-      // Run validation
+      // Validate using FP pipeline
       const validationResult = this.validate(data)
       if (!Result.isOk(validationResult)) {
         return Result.Err(
@@ -942,33 +943,13 @@ export class BaseRepository<T extends Record<string, unknown>, R extends Relatio
         )
       }
 
-      // Apply beforeCreate hook
-      let processedData = data
-      if (this.config.hooks?.beforeCreate) {
-        processedData = await this.config.hooks.beforeCreate(data)
-      }
-
-      // Add timestamps if enabled
-      if (this.config.timestamps) {
-        const now = new Date().toISOString()
-        if (typeof this.config.timestamps === 'object') {
-          processedData = {
-            ...processedData,
-            [this.config.timestamps.createdAt]: now,
-            [this.config.timestamps.updatedAt]: now,
-          }
-        } else {
-          processedData = {
-            ...processedData,
-            createdAt: now,
-            updatedAt: now,
-          }
-        }
-      }
+      // Process data through FP composition
+      const processedData = await this.processDataForCreate(data)
 
       // Create record
       const result = await this.storage.create(processedData)
 
+      // Apply afterCreate hook using FP conditional effect
       if (Result.isOk(result) && this.config.hooks?.afterCreate) {
         await this.config.hooks.afterCreate(result.value)
       }
@@ -985,6 +966,47 @@ export class BaseRepository<T extends Record<string, unknown>, R extends Relatio
         )
       )
     }
+  }
+
+  private async processDataForCreate(data: T): Promise<T> {
+    // Apply beforeCreate hook if present
+    const withHook = this.config.hooks?.beforeCreate
+      ? await this.config.hooks.beforeCreate(data)
+      : data
+
+    // Add timestamps using FP composition
+    return this.addTimestamps(withHook)
+  }
+
+  private addTimestamps(data: T): T {
+    const timestampProcessor = cond<T, T>([
+      [() => !this.config.timestamps, data => data],
+      [
+        () => typeof this.config.timestamps === 'object',
+        data => {
+          const now = new Date().toISOString()
+          const timestampConfig = this.config.timestamps as { createdAt: string; updatedAt: string }
+          return {
+            ...data,
+            [timestampConfig.createdAt]: now,
+            [timestampConfig.updatedAt]: now,
+          } as T
+        },
+      ],
+      [
+        () => true, // default case
+        data => {
+          const now = new Date().toISOString()
+          return {
+            ...data,
+            createdAt: now,
+            updatedAt: now,
+          } as T
+        },
+      ],
+    ])
+
+    return timestampProcessor(data) ?? data
   }
 
   async find(id: string | number): Promise<Result<RepositoryError, T | null>> {

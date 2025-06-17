@@ -14,33 +14,38 @@ This refactoring plan addresses two critical improvements to the Kairo codebase 
 ### Current Zod Usage Analysis
 
 **Files with Zod Dependencies:**
+
 - `src/core/schema.ts` - Legacy Zod wrapper system (DEPRECATED)
 - `src/core/schema.test.ts` - Tests for legacy schema
-- `src/core/rules.test.ts` - Test cases using Zod schemas  
+- `src/core/rules.test.ts` - Test cases using Zod schemas
 - `src/extensions/contract.test.ts` - Contract tests with Zod
 - `package.json` - Zod as runtime dependency (must be removed)
 
 ### Migration Strategy
 
 #### 1.1 Core Schema System Replacement
+
 - [ ] **Replace all `schema.` imports** with `nativeSchema.` throughout codebase
 - [ ] **Update API calls** from legacy schema to native schema equivalents
 - [ ] **Maintain 100% API compatibility** to prevent breaking changes
 - [ ] **Verify type inference** works correctly with native schema
 
 #### 1.2 Test Suite Migration
+
 - [ ] **`src/core/rules.test.ts`**: Convert all Zod schema definitions to native schema
 - [ ] **`src/extensions/contract.test.ts`**: Replace Zod usage with native schema patterns
 - [ ] **`src/core/schema.test.ts`**: Migrate to native schema tests or remove if redundant
 - [ ] **Run full test suite** after each migration step
 
 #### 1.3 Legacy Code Removal
+
 - [ ] **Delete `src/core/schema.ts`** completely
 - [ ] **Update `src/index.ts`** exports to only include native schema
 - [ ] **Remove Zod from `package.json`** dependencies
 - [ ] **Clean up any remaining Zod type imports**
 
 #### 1.4 Validation & Testing
+
 - [ ] **Performance benchmarks**: Verify 2-3x speed improvement
 - [ ] **Bundle size verification**: Confirm 50%+ reduction
 - [ ] **API compatibility tests**: Ensure no breaking changes
@@ -53,12 +58,14 @@ This refactoring plan addresses two critical improvements to the Kairo codebase 
 ### Current FP Utils Analysis
 
 **Existing FP Usage (Limited):**
+
 - `src/core/schema.ts` - Basic usage (isNil, isEmpty, path)
 - `src/core/pipeline.ts` - Minimal FP integration
 - `src/extensions/events/event-bus.ts` - Limited patterns
 - `src/extensions/caching/cache.ts` - Basic FP usage
 
 **Available FP Utils (Comprehensive Library):**
+
 ```typescript
 // From src/utils/fp/index.ts
 - Basics: identity, constant, pipe, compose, noop
@@ -79,6 +86,7 @@ This refactoring plan addresses two critical improvements to the Kairo codebase 
 #### 2.1 Core Module FP Enhancement
 
 **Resource Module (`src/core/resource.ts`):**
+
 - [ ] Replace manual error handling with `Result` combinators (`mapResult`, `chainResult`)
 - [ ] Use `pipe` for request/response transformation chains
 - [ ] Implement `retry` and `withTimeout` for network operations
@@ -86,6 +94,7 @@ This refactoring plan addresses two critical improvements to the Kairo codebase 
 - [ ] Add `tap` for logging and debugging resource calls
 
 **Pipeline Module (`src/core/pipeline.ts`):**
+
 - [ ] Enhanced `compose` and `pipe` for step composition
 - [ ] Use `sequence` and `traverse` for async step execution
 - [ ] Implement `cond` and `when` for conditional pipeline logic
@@ -93,6 +102,7 @@ This refactoring plan addresses two critical improvements to the Kairo codebase 
 - [ ] Use `asyncSequence` for parallel step processing
 
 **Repository Module (`src/core/repository.ts`):**
+
 - [ ] Use `maybeMap` and `maybeFilter` for optional data handling
 - [ ] Implement `partition` for query result separation
 - [ ] Use `groupBy` for data organization and aggregation
@@ -100,6 +110,7 @@ This refactoring plan addresses two critical improvements to the Kairo codebase 
 - [ ] Use `memoizeResolver` for query result caching
 
 **Rules Module (`src/core/rules.ts`):**
+
 - [ ] Use `all` and `first` for rule validation sequences
 - [ ] Implement `guard` for precondition checks
 - [ ] Use `cond` for complex rule branching logic
@@ -107,6 +118,7 @@ This refactoring plan addresses two critical improvements to the Kairo codebase 
 - [ ] Use `partition` to separate passed/failed validations
 
 **Transform Module (`src/core/transform.ts`):**
+
 - [ ] Enhanced `map` and `flatMap` for data transformations
 - [ ] Use `filter` and `partition` for data filtering
 - [ ] Implement `traverse` for async transformations
@@ -116,6 +128,7 @@ This refactoring plan addresses two critical improvements to the Kairo codebase 
 #### 2.2 Extension Module FP Enhancement
 
 **Caching Extension (`src/extensions/caching/`):**
+
 - [ ] Use `memoizeResolver` for intelligent cache key generation
 - [ ] Implement `withTimeout` for cache operation timeouts
 - [ ] Use `maybe` patterns for cache hit/miss handling
@@ -123,6 +136,7 @@ This refactoring plan addresses two critical improvements to the Kairo codebase 
 - [ ] Use `retry` for cache operation resilience
 
 **Events Extension (`src/extensions/events/`):**
+
 - [ ] Use `filter` and `map` for event stream processing
 - [ ] Implement `asyncSequence` for event handler execution
 - [ ] Use `partition` for event routing and categorization
@@ -130,6 +144,7 @@ This refactoring plan addresses two critical improvements to the Kairo codebase 
 - [ ] Use `traverse` for event transformation pipelines
 
 **Transactions Extension (`src/extensions/transactions/`):**
+
 - [ ] Use `sequence` for transaction step execution
 - [ ] Implement `recover` for rollback operations
 - [ ] Use `chainResult` for transaction result chaining
@@ -137,6 +152,7 @@ This refactoring plan addresses two critical improvements to the Kairo codebase 
 - [ ] Use `guard` for transaction precondition validation
 
 **Plugins Extension (`src/extensions/plugins/`):**
+
 - [ ] Use `traverse` for plugin initialization sequences
 - [ ] Implement `filter` for plugin activation logic
 - [ ] Use `groupBy` for plugin categorization
@@ -144,6 +160,7 @@ This refactoring plan addresses two critical improvements to the Kairo codebase 
 - [ ] Use `resolve` patterns for plugin dependency resolution
 
 **Workflows Extension (`src/extensions/workflows/`):**
+
 - [ ] Enhanced `pipe` usage for workflow step composition
 - [ ] Use `cond` for workflow branching and decision logic
 - [ ] Implement `retry` for failed step recovery
@@ -153,6 +170,7 @@ This refactoring plan addresses two critical improvements to the Kairo codebase 
 #### 2.3 Testing Module FP Enhancement
 
 **Testing Utilities (`src/testing/`):**
+
 - [ ] Use `asyncMap` for parallel test execution
 - [ ] Implement `partition` for test result categorization
 - [ ] Use `collect` for test metrics aggregation
@@ -164,6 +182,7 @@ This refactoring plan addresses two critical improvements to the Kairo codebase 
 ## Implementation Guidelines
 
 ### Code Quality Standards
+
 1. **Readability First**: Only use FP utils where they genuinely improve code readability
 2. **Type Safety**: Maintain full TypeScript inference throughout all transformations
 3. **Performance**: Ensure FP utilities don't degrade performance (benchmark critical paths)
@@ -173,6 +192,7 @@ This refactoring plan addresses two critical improvements to the Kairo codebase 
 ### FP Enhancement Patterns
 
 #### Before (Imperative)
+
 ```typescript
 // Manual error handling and data processing
 async function processUserData(userData: unknown) {
@@ -180,10 +200,10 @@ async function processUserData(userData: unknown) {
     if (!userData || typeof userData !== 'object') {
       throw new Error('Invalid user data')
     }
-    
+
     const user = userData as any
     const results = []
-    
+
     for (const item of user.items || []) {
       if (item.active) {
         const processed = await processItem(item)
@@ -192,7 +212,7 @@ async function processUserData(userData: unknown) {
         }
       }
     }
-    
+
     return { success: true, data: results }
   } catch (error) {
     console.error('Processing failed:', error)
@@ -202,6 +222,7 @@ async function processUserData(userData: unknown) {
 ```
 
 #### After (Functional with FP Utils)
+
 ```typescript
 // FP-enhanced processing with better readability
 const processUserData = pipe(
@@ -220,6 +241,7 @@ const processUserData = pipe(
 ### Migration Safety Checklist
 
 #### For Each Module:
+
 - [ ] **Backup current implementation** before refactoring
 - [ ] **Write comprehensive tests** for existing behavior
 - [ ] **Implement FP version** alongside existing code
@@ -232,6 +254,7 @@ const processUserData = pipe(
 ## Success Metrics
 
 ### Phase 1: Zod Migration
+
 - [ ] **Zero Zod imports** anywhere in the codebase
 - [ ] **100% test suite passing** with native schema
 - [ ] **Bundle size reduction** of 50%+ confirmed
@@ -239,6 +262,7 @@ const processUserData = pipe(
 - [ ] **API compatibility** maintained (no breaking changes)
 
 ### Phase 2: FP Enhancement
+
 - [ ] **50%+ reduction** in imperative code patterns
 - [ ] **Improved readability scores** (team review)
 - [ ] **Maintained performance** (no regressions)
@@ -250,14 +274,16 @@ const processUserData = pipe(
 ## Implementation Timeline
 
 ### Phase 1: Zod Migration (CRITICAL - FIRST PRIORITY)
+
 - **Week 1**: Core schema migration (`schema.ts` → `native-schema.ts`)
 - **Week 2**: Test suite migration and validation
 - **Week 3**: Dependency removal and cleanup
 - **Week 4**: Performance validation and documentation
 
 ### Phase 2: FP Enhancement (Post-Migration)
+
 - **Week 5-6**: Core modules FP enhancement
-- **Week 7-8**: Extension modules FP enhancement  
+- **Week 7-8**: Extension modules FP enhancement
 - **Week 9**: Testing utilities and performance validation
 - **Week 10**: Documentation and team training
 
@@ -266,12 +292,14 @@ const processUserData = pipe(
 ## Risk Mitigation
 
 ### Zod Migration Risks
+
 - **API Breaking Changes**: Maintain strict API compatibility through comprehensive testing
 - **Performance Regressions**: Comprehensive benchmarking at each step
 - **Missing Features**: Ensure native schema has complete feature parity
 - **Type Safety Loss**: Validate TypeScript inference works correctly
 
 ### FP Enhancement Risks
+
 - **Over-abstraction**: Only use FP where it genuinely improves clarity
 - **Learning Curve**: Provide clear examples and comprehensive documentation
 - **Performance Impact**: Profile all FP utility usage in critical paths
@@ -282,6 +310,7 @@ const processUserData = pipe(
 ## Testing Strategy
 
 ### Automated Testing
+
 - [ ] **Unit tests** for each refactored module
 - [ ] **Integration tests** for FP compositions
 - [ ] **Performance benchmarks** for critical paths
@@ -289,6 +318,7 @@ const processUserData = pipe(
 - [ ] **API compatibility tests** for breaking change detection
 
 ### Manual Validation
+
 - [ ] **Code review** for readability improvements
 - [ ] **Team training** on new FP patterns
 - [ ] **Documentation review** for accuracy and completeness

@@ -12,6 +12,7 @@
 Enable seamless migration from existing Node.js applications to Kairo through incremental adoption, automated tooling, and framework coexistence patterns.
 
 ### Success Criteria
+
 - **Migration Time**: < 1 day for typical Express/Fastify app
 - **Success Rate**: 90% of migrations complete successfully
 - **Zero Downtime**: Support gradual migration without service interruption
@@ -25,12 +26,14 @@ Enable seamless migration from existing Node.js applications to Kairo through in
 ### **Core Migration Principles**
 
 1. **Incremental Adoption**
+
    - Add Kairo alongside existing code
    - Migrate endpoint by endpoint
    - Maintain existing API contracts
    - Zero breaking changes during migration
 
 2. **Automated Analysis**
+
    - Detect migration patterns automatically
    - Generate migration reports
    - Estimate effort and compatibility
@@ -45,24 +48,28 @@ Enable seamless migration from existing Node.js applications to Kairo through in
 ### **Supported Migration Sources**
 
 #### **Priority 1: Express.js**
+
 - Route detection and conversion
 - Middleware → Pipeline step conversion
 - Express-specific patterns (req/res handling)
 - Common Express middleware compatibility
 
 #### **Priority 2: Fastify**
+
 - Plugin system integration
 - Schema validation migration
 - Hook → Pipeline integration
 - Performance-optimized patterns
 
 #### **Priority 3: Next.js API Routes**
+
 - API route → Resource conversion
 - Middleware integration
 - Server action patterns
 - Edge runtime support
 
 #### **Priority 4: Other Frameworks**
+
 - Koa.js basic support
 - Raw Node.js HTTP server
 - Custom framework patterns
@@ -74,6 +81,7 @@ Enable seamless migration from existing Node.js applications to Kairo through in
 ### **1. Migration Analyzer**
 
 #### **API Interface**
+
 ```typescript
 interface MigrationAnalyzer {
   analyze(projectPath: string): Promise<MigrationReport>
@@ -104,6 +112,7 @@ interface RouteInfo {
 ```
 
 #### **Implementation Details**
+
 ```typescript
 // File: src/migration/analyzer.ts
 class ExpressMigrationAnalyzer implements MigrationAnalyzer {
@@ -112,14 +121,14 @@ class ExpressMigrationAnalyzer implements MigrationAnalyzer {
     const routes = await this.extractRoutes(ast)
     const middleware = await this.extractMiddleware(ast)
     const schemas = await this.detectSchemas(ast)
-    
+
     return {
       framework: 'express',
       routes: routes.map(this.analyzeRoute),
       middleware: middleware.map(this.analyzeMiddleware),
       schemas: schemas.map(this.analyzeSchema),
       compatibility: this.calculateCompatibility(routes, middleware),
-      patterns: this.detectPatterns(routes, middleware)
+      patterns: this.detectPatterns(routes, middleware),
     }
   }
 
@@ -130,7 +139,7 @@ class ExpressMigrationAnalyzer implements MigrationAnalyzer {
       handler: this.analyzeFunctionComplexity(route.handler),
       middleware: this.extractMiddlewareUsage(route),
       complexity: this.calculateRouteComplexity(route),
-      migrationStrategy: this.suggestMigrationStrategy(route)
+      migrationStrategy: this.suggestMigrationStrategy(route),
     }
   }
 }
@@ -139,6 +148,7 @@ class ExpressMigrationAnalyzer implements MigrationAnalyzer {
 ### **2. Pattern Recognition Engine**
 
 #### **Express Pattern Recognition**
+
 ```typescript
 interface PatternRecognizer {
   recognizePattern(code: string): RecognizedPattern[]
@@ -157,13 +167,13 @@ const EXPRESS_PATTERNS = [
   {
     pattern: /app\.(get|post|put|delete|patch)\(['"`]([^'"`]+)['"`], ?(.*?)\)/,
     handler: convertExpressRoute,
-    confidence: 0.95
+    confidence: 0.95,
   },
   {
     pattern: /router\.(get|post|put|delete|patch)\(['"`]([^'"`]+)['"`], ?(.*?)\)/,
     handler: convertRouterRoute,
-    confidence: 0.90
-  }
+    confidence: 0.9,
+  },
 ]
 
 function convertExpressRoute(match: RegExpMatchArray): KairoResource {
@@ -171,7 +181,7 @@ function convertExpressRoute(match: RegExpMatchArray): KairoResource {
   return generateResourceDefinition({
     method: method.toUpperCase(),
     path,
-    handler: convertHandler(handler)
+    handler: convertHandler(handler),
   })
 }
 ```
@@ -179,6 +189,7 @@ function convertExpressRoute(match: RegExpMatchArray): KairoResource {
 ### **3. Automated Code Transformation**
 
 #### **Route Conversion**
+
 ```typescript
 // Input: Express route
 app.get('/users/:id', async (req, res) => {
@@ -198,7 +209,7 @@ const UserAPI = resource('users', {
   get: {
     path: '/users/:id',
     params: schema.object({
-      id: schema.string().uuid()
+      id: schema.string().uuid(),
     }),
     response: UserSchema,
     handler: async ({ params }) => {
@@ -207,12 +218,13 @@ const UserAPI = resource('users', {
         return Result.Err(new HttpError(404, 'User not found'))
       }
       return Result.Ok(user)
-    }
-  }
+    },
+  },
 })
 ```
 
 #### **Middleware Conversion**
+
 ```typescript
 // Input: Express middleware
 const authenticate = (req, res, next) => {
@@ -220,7 +232,7 @@ const authenticate = (req, res, next) => {
   if (!token) {
     return res.status(401).json({ error: 'No token provided' })
   }
-  
+
   jwt.verify(token, secret, (err, user) => {
     if (err) {
       return res.status(403).json({ error: 'Invalid token' })
@@ -231,20 +243,19 @@ const authenticate = (req, res, next) => {
 }
 
 // Output: Kairo pipeline step
-const authenticate = pipeline.step('authenticate')
-  .map(async (input, context) => {
-    const token = context.headers.authorization
-    if (!token) {
-      return Result.Err(new HttpError(401, 'No token provided'))
-    }
-    
-    try {
-      const user = await jwt.verify(token, secret)
-      return Result.Ok({ ...input, user })
-    } catch (error) {
-      return Result.Err(new HttpError(403, 'Invalid token'))
-    }
-  })
+const authenticate = pipeline.step('authenticate').map(async (input, context) => {
+  const token = context.headers.authorization
+  if (!token) {
+    return Result.Err(new HttpError(401, 'No token provided'))
+  }
+
+  try {
+    const user = await jwt.verify(token, secret)
+    return Result.Ok({ ...input, user })
+  } catch (error) {
+    return Result.Err(new HttpError(403, 'Invalid token'))
+  }
+})
 ```
 
 ---
@@ -254,18 +265,21 @@ const authenticate = pipeline.step('authenticate')
 ### **Phase 1: Migration Analyzer (Week 1)**
 
 #### **Day 1-2: Core Analysis Engine**
+
 1. Set up AST parsing for JavaScript/TypeScript
 2. Implement basic pattern detection
 3. Create Express route extractor
 4. Build compatibility scorer
 
 #### **Day 3-4: Migration Report Generator**
+
 1. Implement report data structures
 2. Create effort estimation algorithm
 3. Build migration plan generator
 4. Add CLI interface for analysis
 
 #### **Day 5: Testing & Documentation**
+
 1. Test with sample Express applications
 2. Validate migration reports
 3. Create analyzer documentation
@@ -274,18 +288,21 @@ const authenticate = pipeline.step('authenticate')
 ### **Phase 2: Code Transformation Engine (Week 2)**
 
 #### **Day 1-2: Pattern Recognition**
+
 1. Implement Express pattern recognizers
 2. Create code transformation utilities
 3. Build confidence scoring system
 4. Test pattern matching accuracy
 
 #### **Day 3-4: Code Generation**
+
 1. Implement Kairo code generators
 2. Create resource conversion functions
 3. Build pipeline transformation tools
 4. Add schema migration support
 
 #### **Day 5: Integration & Testing**
+
 1. Integrate analyzer with transformer
 2. Test end-to-end migration flow
 3. Validate generated Kairo code
@@ -294,12 +311,14 @@ const authenticate = pipeline.step('authenticate')
 ### **Phase 3: Framework Adapters (Week 3)**
 
 #### **Day 1-3: Express Adapter**
+
 1. Implement Express → Kairo adapter
 2. Support middleware passthrough
 3. Handle authentication integration
 4. Test with existing Express apps
 
 #### **Day 4-5: Additional Adapters**
+
 1. Basic Fastify adapter
 2. Next.js integration
 3. Documentation and examples
@@ -310,18 +329,21 @@ const authenticate = pipeline.step('authenticate')
 ## 🧪 Testing Requirements
 
 ### **Unit Tests**
+
 - Pattern recognition accuracy (>95%)
 - Code transformation correctness
 - Migration report generation
 - Error handling scenarios
 
 ### **Integration Tests**
+
 - Complete migration workflows
 - Framework adapter functionality
 - Performance comparisons
 - Coexistence scenarios
 
 ### **Validation Tests**
+
 - Real-world application migrations
 - Community project testing
 - Performance benchmarking
@@ -332,12 +354,14 @@ const authenticate = pipeline.step('authenticate')
 ## 📚 Documentation Requirements
 
 ### **User Documentation**
+
 - Migration getting started guide
 - Framework-specific migration guides
 - Troubleshooting common issues
 - Best practices for gradual migration
 
 ### **Developer Documentation**
+
 - Pattern recognition API
 - Code transformation utilities
 - Adding new framework support
@@ -348,12 +372,14 @@ const authenticate = pipeline.step('authenticate')
 ## 🔗 Dependencies
 
 ### **Prerequisites**
+
 - Core Kairo framework completed
 - TypeScript AST parsing capabilities
 - CLI framework infrastructure
 - Testing infrastructure
 
 ### **Integration Points**
+
 - Simple Mode API (for migration targets)
 - Framework adapters
 - Documentation system
@@ -364,6 +390,7 @@ const authenticate = pipeline.step('authenticate')
 ## ✅ Acceptance Criteria
 
 ### **Functional Requirements**
+
 - [ ] Analyze Express applications with 90% accuracy
 - [ ] Generate valid migration reports
 - [ ] Transform common patterns automatically
@@ -371,12 +398,14 @@ const authenticate = pipeline.step('authenticate')
 - [ ] Maintain performance parity
 
 ### **Quality Requirements**
+
 - [ ] Comprehensive test coverage (>90%)
 - [ ] Performance benchmarks established
 - [ ] Security validation completed
 - [ ] Documentation coverage complete
 
 ### **User Experience Requirements**
+
 - [ ] Migration completes in < 1 day for typical app
 - [ ] Clear migration guidance provided
 - [ ] Troubleshooting support available
@@ -387,12 +416,14 @@ const authenticate = pipeline.step('authenticate')
 ## 📊 Success Metrics
 
 ### **Technical Metrics**
+
 - Migration success rate: >90%
 - Pattern recognition accuracy: >95%
 - Performance impact: 0% degradation
 - Code generation quality: Lint-free
 
 ### **Adoption Metrics**
+
 - Migration tool usage: Track downloads
 - Community feedback: >8/10 satisfaction
 - Success stories: Document case studies

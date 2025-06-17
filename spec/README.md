@@ -1,4 +1,5 @@
 # Kairo Implementation Specifications
+
 ## Developer Guide & Navigation Hub
 
 Welcome to the Kairo enhancement specifications! This directory contains all the detailed specifications and implementation guides for transforming Kairo into a developer-friendly platform that serves everyone from simple apps to complex enterprise platforms.
@@ -8,15 +9,19 @@ Welcome to the Kairo enhancement specifications! This directory contains all the
 ## 🚀 Quick Start for Developers
 
 ### 1. **Start Here (MANDATORY FIRST STEP)**
+
 ```
 📋 spec/refactoring/KAIRO_REFACTORING_PLAN.md
 ```
+
 **⚠️ CRITICAL**: All enhancement work requires completing the refactoring process first. This is not optional.
 
 ### 2. **Choose Your Implementation Phase**
+
 After refactoring is complete, select from the roadmap below based on your goals.
 
 ### 3. **Follow the Specification**
+
 Each specification provides complete implementation details, acceptance criteria, and validation steps.
 
 ---
@@ -25,26 +30,28 @@ Each specification provides complete implementation details, acceptance criteria
 
 ### 📍 **Current Phase Status**
 
-| Phase | Status | Specification | Timeline | Priority |
-|-------|--------|--------------|----------|----------|
-| **Phase 0: Foundation** | ⚠️ **Required First** | [`refactoring/KAIRO_REFACTORING_PLAN.md`](./refactoring/KAIRO_REFACTORING_PLAN.md) | 4 weeks | **CRITICAL** |
-| **Phase 1: Migration Tools** | 📋 Ready | [`migration/MIGRATION_STRATEGY.md`](./migration/MIGRATION_STRATEGY.md) | 4 weeks | High |
-| **Phase 2: Simple Mode** | 📋 Ready | [`simple-mode/SIMPLE_MODE_SPEC.md`](./simple-mode/SIMPLE_MODE_SPEC.md) | 3 weeks | High |
-| **Phase 3: Integration Patterns** | 📋 Ready | [`integration/INTEGRATION_PATTERNS_SPEC.md`](./integration/INTEGRATION_PATTERNS_SPEC.md) | 2 weeks | Medium |
-| **Phase 4: DX Tooling** | 📋 Ready | [`dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md`](./dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md) | 6 weeks | Medium |
-| **Phase 5: Standards** | 📋 Ready | [`implementation/DEVELOPMENT_STANDARDS.md`](./implementation/DEVELOPMENT_STANDARDS.md) | Ongoing | Medium |
+| Phase                             | Status                | Specification                                                                            | Timeline | Priority     |
+| --------------------------------- | --------------------- | ---------------------------------------------------------------------------------------- | -------- | ------------ |
+| **Phase 0: Foundation**           | ⚠️ **Required First** | [`refactoring/KAIRO_REFACTORING_PLAN.md`](./refactoring/KAIRO_REFACTORING_PLAN.md)       | 4 weeks  | **CRITICAL** |
+| **Phase 1: Migration Tools**      | 📋 Ready              | [`migration/MIGRATION_STRATEGY.md`](./migration/MIGRATION_STRATEGY.md)                   | 4 weeks  | High         |
+| **Phase 2: Simple Mode**          | 📋 Ready              | [`simple-mode/SIMPLE_MODE_SPEC.md`](./simple-mode/SIMPLE_MODE_SPEC.md)                   | 3 weeks  | High         |
+| **Phase 3: Integration Patterns** | 📋 Ready              | [`integration/INTEGRATION_PATTERNS_SPEC.md`](./integration/INTEGRATION_PATTERNS_SPEC.md) | 2 weeks  | Medium       |
+| **Phase 4: DX Tooling**           | 📋 Ready              | [`dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md`](./dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md)         | 6 weeks  | Medium       |
+| **Phase 5: Standards**            | 📋 Ready              | [`implementation/DEVELOPMENT_STANDARDS.md`](./implementation/DEVELOPMENT_STANDARDS.md)   | Ongoing  | Medium       |
 
 ---
 
 ## 🚨 PREREQUISITE: Refactoring Foundation
 
 **Why Refactoring Must Come First:**
+
 - **Performance**: Native schemas provide 2-3x speed improvement
 - **Bundle Size**: Removing Zod reduces size by 50%+
 - **Code Quality**: FP utils create consistent patterns for all enhancements
 - **Type Safety**: Better TypeScript inference required for tooling
 
 **Refactoring Phases:**
+
 1. **Zod Migration** (Week 1-2) - Remove all Zod dependencies
 2. **FP Enhancement** (Week 3-4) - Integrate functional programming patterns
 
@@ -55,12 +62,14 @@ Each specification provides complete implementation details, acceptance criteria
 ## 📁 Specification Directory Structure
 
 ### 🚨 Foundation (Must Complete First)
+
 ```
 spec/refactoring/
 ├── KAIRO_REFACTORING_PLAN.md    # Complete Zod migration & FP enhancement
 ```
 
 ### 🔄 Migration & Adoption
+
 ```
 spec/migration/
 ├── MIGRATION_STRATEGY.md         # Incremental adoption strategy
@@ -69,6 +78,7 @@ spec/migration/
 ```
 
 ### 🌱 Developer Experience
+
 ```
 spec/simple-mode/
 ├── SIMPLE_MODE_SPEC.md           # Ultra-simple API design
@@ -83,6 +93,7 @@ spec/dx-tooling/
 ```
 
 ### 📚 Documentation & Patterns
+
 ```
 spec/integration/
 ├── INTEGRATION_PATTERNS_SPEC.md  # Component composition guidance
@@ -91,6 +102,7 @@ spec/integration/
 ```
 
 ### 🛠️ Implementation Support
+
 ```
 spec/implementation/
 ├── DEVELOPMENT_STANDARDS.md      # Code quality & testing
@@ -129,12 +141,14 @@ spec/implementation/
 ## 📊 Success Criteria
 
 ### Developer Experience Metrics
+
 - **Time to First Success**: Simple app < 5 minutes
 - **Migration Success**: 90% completion rate
 - **Error Reduction**: 80% fewer integration errors with tooling
 - **Learning Curve**: Simple mode understood in < 10 minutes
 
 ### Technical Quality Metrics
+
 - **Performance**: Equal or better performance after migration
 - **Compatibility**: 100% backwards compatibility maintained
 - **Bundle Size**: 50%+ reduction with native schemas
@@ -145,12 +159,14 @@ spec/implementation/
 ## 🎯 Progressive Complexity Examples
 
 ### Level 0: Ultra-Simple
+
 ```typescript
 const todos = simpleResource('https://api.example.com/todos')
 const allTodos = await todos.list()
 ```
 
 ### Level 1: Basic Patterns
+
 ```typescript
 const createTodo = simplePipeline()
   .validate(todo => todo.title.length > 0)
@@ -159,6 +175,7 @@ const createTodo = simplePipeline()
 ```
 
 ### Level 2: Standard Patterns
+
 ```typescript
 const createTodo = pipeline('create-todo')
   .input(TodoSchema)
@@ -167,10 +184,11 @@ const createTodo = pipeline('create-todo')
 ```
 
 ### Level 3: Advanced Patterns
+
 ```typescript
 const createTodo = pipeline('create-todo')
   .input(TodoSchema)
-  .transaction(async (ctx) => {
+  .transaction(async ctx => {
     const todo = await ctx.repository(todoRepo).create(todoData)
     return todo
   })
@@ -183,10 +201,12 @@ const createTodo = pipeline('create-todo')
 ## 🔗 Quick Navigation
 
 ### 🚨 Start Here
+
 - [`refactoring/KAIRO_REFACTORING_PLAN.md`](./refactoring/KAIRO_REFACTORING_PLAN.md) - **MANDATORY FIRST STEP**
 - [`IMPLEMENTATION_CHECKLIST.md`](./IMPLEMENTATION_CHECKLIST.md) - **Progress tracking & validation**
 
 ### 📋 Ready for Implementation
+
 - [`migration/MIGRATION_STRATEGY.md`](./migration/MIGRATION_STRATEGY.md) - Incremental adoption
 - [`simple-mode/SIMPLE_MODE_SPEC.md`](./simple-mode/SIMPLE_MODE_SPEC.md) - Ultra-simple API
 - [`integration/INTEGRATION_PATTERNS_SPEC.md`](./integration/INTEGRATION_PATTERNS_SPEC.md) - Component composition
@@ -194,6 +214,7 @@ const createTodo = pipeline('create-todo')
 - [`implementation/DEVELOPMENT_STANDARDS.md`](./implementation/DEVELOPMENT_STANDARDS.md) - Quality standards
 
 ### 🗺️ Master Roadmap
+
 - [`KAIRO_ENHANCEMENT_SPEC.md`](./KAIRO_ENHANCEMENT_SPEC.md) - Complete roadmap overview
 
 ---
@@ -201,12 +222,14 @@ const createTodo = pipeline('create-todo')
 ## 🆘 Need Help?
 
 ### Common Questions
+
 - **"Where do I start?"** → [`refactoring/KAIRO_REFACTORING_PLAN.md`](./refactoring/KAIRO_REFACTORING_PLAN.md)
 - **"What phase should I work on?"** → Check the roadmap table above
 - **"How do I validate my work?"** → Each spec has acceptance criteria
 - **"What's the overall vision?"** → [`KAIRO_ENHANCEMENT_SPEC.md`](./KAIRO_ENHANCEMENT_SPEC.md)
 
 ### Status Legend
+
 - ⚠️ **Required First** - Must complete before other work
 - 📋 **Ready** - Specification available for implementation
 - 📝 **Coming Soon** - Specification in development

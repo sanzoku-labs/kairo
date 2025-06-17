@@ -9,8 +9,9 @@ Kairo is a functional, composable TypeScript library implementing a three-pillar
 ## Development Commands
 
 ### Essential Commands
+
 - **Build**: `bun run build` - Build using tsup
-- **Development**: `bun run dev` - Watch mode building  
+- **Development**: `bun run dev` - Watch mode building
 - **Test**: `bun run test` - Run tests with Vitest
 - **Test (watch)**: `bun run test:watch` - Watch mode testing
 - **Test (coverage)**: `bun run test:coverage` - Generate coverage reports
@@ -19,6 +20,7 @@ Kairo is a functional, composable TypeScript library implementing a three-pillar
 - **Formatting**: `bun run format` - Format with Prettier
 
 ### Documentation Commands
+
 - **Docs (dev)**: `bun run docs:dev` - Local documentation server
 - **Docs (build)**: `bun run docs:build` - Build documentation site
 - **API docs**: `bun run docs:api` - Generate TypeDoc API documentation
@@ -26,13 +28,16 @@ Kairo is a functional, composable TypeScript library implementing a three-pillar
 ## Architecture
 
 ### Three-Pillar System
+
 The codebase is organized around three core pillars:
 
 1. **INTERFACE Pillar** (`src/core/resource.ts`) - Declarative external system integration
+
    - Type-safe API resources with zero boilerplate service classes
    - Built-in error handling and response transformation
 
 2. **PROCESS Pillar** (`src/core/pipeline.ts`, `src/core/rules.ts`) - Declarative business logic composition
+
    - Functional data transformation pipelines
    - Centralized business rules validation
    - Complex workflow orchestration (via extensions)
@@ -43,6 +48,7 @@ The codebase is organized around three core pillars:
    - Declarative data transformations
 
 ### Core Design Patterns
+
 - **Result Pattern** (`src/core/result.ts`) - Error handling without exceptions
 - **Functional Programming** (`src/utils/fp/`) - Extensive FP utilities
 - **Extension System** (`src/extensions/`) - Tree-shakable advanced features
@@ -66,24 +72,29 @@ The codebase is organized around three core pillars:
 ## Development Notes
 
 ### Schema System
+
 - Use **native schemas** (`src/core/native-schema.ts`) for new code - 3x faster than Zod with zero dependencies
 - Legacy Zod schemas (`src/core/schema.ts`) are deprecated but maintained for compatibility
 
 ### Error Handling
+
 - Always use the **Result pattern** (`src/core/result.ts`) - no exceptions
 - Import error utilities from `src/core/errors.ts`
 
 ### Extension Development
+
 - Extensions in `src/extensions/` are tree-shakable
 - Each extension should have its own entry point
 - Follow the plugin architecture pattern (`src/extensions/plugins/`)
 
 ### Testing
+
 - Use Vitest for all tests
 - Comprehensive testing utilities available in `src/testing/`
 - Run `bun run test:coverage` to ensure adequate coverage
 
 ### Performance
+
 - Core library has zero runtime dependencies (only Zod for legacy compatibility)
 - Native schema system provides significant performance improvements
 - Extensions are designed to be tree-shakable for optimal bundle sizes
