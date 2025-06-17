@@ -42,6 +42,7 @@ Kairo's richness is its strength, but without curation and progressive disclosur
 ### **1. API Tiering System**
 
 #### **Tier 1: Essential First Week (15 functions)**
+
 Core functions that enable building a functional application:
 
 ```typescript
@@ -56,6 +57,7 @@ pipe, compose, identity, isNil, isEmpty
 ```
 
 #### **Tier 2: Production Ready (40 functions)**
+
 Functions needed for real-world applications:
 
 ```typescript
@@ -73,6 +75,7 @@ createError, chainError, isKairoError
 ```
 
 #### **Tier 3: Advanced Patterns (100+ functions)**
+
 Full feature set for complex applications:
 
 ```typescript
@@ -90,6 +93,7 @@ curry functions, effect utilities, advanced combinators
 ```
 
 #### **Tier 4: Expert Level (340+ functions)**
+
 Complete API surface for library contributors and framework builders.
 
 ### **2. Documentation Reorganization**
@@ -123,11 +127,13 @@ Replace abstract API documentation with problem-solution pairs:
 
 ```markdown
 ## "I want to build a REST API"
+
 → Start with `resource()` + `schema()` (Tier 1)
 → Add validation with `rules()` (Tier 2)
 → Add caching and monitoring (Tier 3)
 
 ## "I need to process data"
+
 → Start with `transform()` + `pipe()` (Tier 1)
 → Add error handling with Result pattern (Tier 2)
 → Add complex workflows (Tier 3)
@@ -140,26 +146,24 @@ Replace abstract API documentation with problem-solution pairs:
 ```typescript
 // Before: Too much configuration
 const userAPI = resource('users', {
-  list: { 
-    path: '/users', 
-    method: 'GET', 
-    response: UserArraySchema 
+  list: {
+    path: '/users',
+    method: 'GET',
+    response: UserArraySchema,
   },
-  get: { 
-    path: '/users/:id', 
-    method: 'GET', 
+  get: {
+    path: '/users/:id',
+    method: 'GET',
     params: IdParamsSchema,
-    response: UserSchema 
+    response: UserSchema,
   },
   // ... more boilerplate
 })
 
 // After: Smart defaults with progressive enhancement
-const userAPI = resource('users')
-  .withSchema(UserSchema)
-  .withAuth(bearerToken)
-  // Automatically generates CRUD methods with sensible defaults
-  // Can still override specific methods when needed
+const userAPI = resource('users').withSchema(UserSchema).withAuth(bearerToken)
+// Automatically generates CRUD methods with sensible defaults
+// Can still override specific methods when needed
 ```
 
 #### **Progressive Method Chaining**
@@ -172,7 +176,7 @@ const validation = rules().required().string()
 const advancedValidation = validation
   .minLength(3)
   .matches(/^[a-zA-Z]+$/)
-  .custom(async (value) => await isUnique(value))
+  .custom(async value => await isUnique(value))
 ```
 
 ### **4. Opinionated Happy Paths**
@@ -184,11 +188,16 @@ Create clear recommendations for common patterns:
 ```typescript
 // ✅ Recommended: Standard validation pattern
 const userRules = rules('user')
-  .field('email').required().email()
-  .field('name').required().string().minLength(2)
+  .field('email')
+  .required()
+  .email()
+  .field('name')
+  .required()
+  .string()
+  .minLength(2)
 
 // ⚠️ Advanced: Custom validation (show when to use)
-const customUserRules = rule('user', (data) => {
+const customUserRules = rule('user', data => {
   // Complex custom logic
 })
 
@@ -263,7 +272,7 @@ export const UserAPI = resource('users')
 
 ```typescript
 // IDE hints when hovering over basic patterns
-const users = resource('users') 
+const users = resource('users')
 // 💡 Hover hint: "Add validation with .withValidation(rules)"
 // 💡 Hover hint: "Enable caching with .withCache(options)"
 // 💡 Quick actions: "Generate CRUD operations", "Add authentication"
@@ -275,11 +284,13 @@ const users = resource('users')
 
 ```markdown
 # Current Tier: Production Ready (Tier 2)
+
 ✅ Completed: Essential First Week
 🔄 In Progress: Production Ready → 65% complete
 ⏭️ Next: Advanced Patterns
 
 ## Related Learning
+
 - If you're struggling: Review Tier 1 concepts
 - If this is easy: Preview Tier 3 patterns
 - Common next steps: Add caching, improve error handling
@@ -292,18 +303,21 @@ const users = resource('users')
 ### **Week 1: API Analysis & Tiering**
 
 #### **Day 1-2: API Usage Analysis**
+
 - Analyze current examples, tests, and documentation
 - Identify actual usage patterns vs exposed API surface
 - Create data-driven function importance ranking
 - Map common developer workflows to function combinations
 
 #### **Day 3-4: Tier Definition**
+
 - Define the 15 Tier 1 functions based on usage analysis
 - Expand to 40 Tier 2 functions for production readiness
 - Identify 100+ Tier 3 functions for advanced use cases
 - Document progression logic and learning rationale
 
 #### **Day 5: Export Reorganization**
+
 - Reorganize `src/index.ts` exports by tier importance
 - Add clear grouping comments and JSDoc annotations
 - Create tier-based export files (index-tier1.ts, etc.)
@@ -312,18 +326,21 @@ const users = resource('users')
 ### **Week 2: Documentation Revolution**
 
 #### **Day 1-2: Problem-First Documentation**
+
 - Restructure documentation around developer goals
 - Create contextual examples for common use cases
 - Build decision trees and recommendation engines
 - Add cross-references between related concepts
 
 #### **Day 3-4: Learning Path Creation**
+
 - Create progressive learning guides for each tier
 - Add clear advancement criteria and checkpoints
 - Build interactive examples and exercises
 - Implement progress tracking and recommendations
 
 #### **Day 5: Error Message Enhancement**
+
 - Improve error messages with learning hints
 - Add contextual documentation links
 - Implement development mode suggestions
@@ -332,18 +349,21 @@ const users = resource('users')
 ### **Week 3: Validation & Polish**
 
 #### **Day 1-2: Developer Testing**
+
 - Test learning progression with real developers
 - Validate tier boundaries and progression logic
 - Gather feedback on documentation clarity
 - Measure learning time and success rates
 
 #### **Day 3-4: Tooling Integration**
+
 - Create CLI tools for common patterns
 - Add IDE hints and quick actions
 - Build pattern templates and generators
 - Implement upgrade suggestion system
 
 #### **Day 5: Final Integration**
+
 - Polish all documentation and examples
 - Ensure consistent cross-references and navigation
 - Create comprehensive learning metrics
@@ -381,7 +401,7 @@ const users = resource('users')
 ### **Functional Requirements**
 
 - [ ] Clear API tiers defined with progression logic
-- [ ] Documentation reorganized around developer goals  
+- [ ] Documentation reorganized around developer goals
 - [ ] Error messages provide learning guidance
 - [ ] Smart defaults reduce configuration overhead
 - [ ] Interactive learning tools and templates available

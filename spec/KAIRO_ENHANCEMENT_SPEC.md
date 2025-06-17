@@ -60,11 +60,11 @@ Transform Kairo to serve ALL developers - from simple apps to complex platforms 
 **Timeline**: 3 weeks  
 **Goal**: Improve developer experience through API curation and progressive learning paths
 
-| Component                     | Specification                                                                                        | Status     |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------- | ---------- |
-| **API Curation & Strategy**   | [`api-curation/API_CURATION_SPEC.md`](./api-curation/API_CURATION_SPEC.md)                           | ✅ Ready   |
-| **Learning Experience**       | [`api-curation/LEARNING_EXPERIENCE_SPEC.md`](./api-curation/LEARNING_EXPERIENCE_SPEC.md)             | ✅ Ready   |
-| **API Tiers Definition**      | [`api-curation/API_TIERS_SPEC.md`](./api-curation/API_TIERS_SPEC.md)                                 | ✅ Ready   |
+| Component                   | Specification                                                                            | Status   |
+| --------------------------- | ---------------------------------------------------------------------------------------- | -------- |
+| **API Curation & Strategy** | [`api-curation/API_CURATION_SPEC.md`](./api-curation/API_CURATION_SPEC.md)               | ✅ Ready |
+| **Learning Experience**     | [`api-curation/LEARNING_EXPERIENCE_SPEC.md`](./api-curation/LEARNING_EXPERIENCE_SPEC.md) | ✅ Ready |
+| **API Tiers Definition**    | [`api-curation/API_TIERS_SPEC.md`](./api-curation/API_TIERS_SPEC.md)                     | ✅ Ready |
 
 ### Phase 2: Integration Patterns
 

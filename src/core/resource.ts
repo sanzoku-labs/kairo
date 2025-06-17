@@ -17,6 +17,11 @@ import {
   firstOk,
   mapResult,
   asyncToResult,
+  tap,
+  maybe,
+  withDefault,
+  isNil,
+  isEmpty,
 } from '../utils/fp'
 
 /**
@@ -297,6 +302,7 @@ const createResourceError = (operation: string, message: string, context = {}): 
 /**
  * Safely interpolates URL template parameters using functional error handling.
  * Replaces :paramName placeholders with actual values from the params object.
+ * Enhanced with FP composition for cleaner parameter validation and encoding.
  *
  * @param template - URL template with :paramName placeholders
  * @param params - Object containing parameter values
@@ -318,14 +324,29 @@ const interpolateUrl = (
   template: string,
   params: Record<string, unknown>
 ): Result<ResourceError, string> => {
+  // Enhanced parameter validation with FP patterns
+  const validateAndEncodeParam = (paramName: string): string => {
+    const value = params[paramName]
+
+    // Validate parameter exists
+    if (isNil(value)) {
+      throw new Error(`Missing required parameter: ${paramName}`)
+    }
+
+    // Log parameter usage for debugging (non-intrusive side effect)
+    if (process.env.NODE_ENV === 'development') {
+      tap(() => console.debug(`[Resource] Using parameter ${paramName}:`, value))(value)
+    }
+
+    // Convert and encode the parameter
+    const stringValue = typeof value === 'string' ? value : JSON.stringify(value)
+    return encodeURIComponent(stringValue)
+  }
+
   return tryCatch(
     () => {
       return template.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, (_match, paramName: string) => {
-        const value = params[paramName]
-        if (value === undefined || value === null) {
-          throw new Error(`Missing required parameter: ${paramName}`)
-        }
-        return encodeURIComponent(typeof value === 'string' ? value : JSON.stringify(value))
+        return validateAndEncodeParam(paramName)
       })
     },
     error =>
@@ -360,7 +381,8 @@ const extractPathParams = (path: string): string[] => {
 
 /**
  * Separates input parameters into path parameters and body parameters.
- * Uses functional error handling to safely categorize request data.
+ * Uses functional error handling and FP patterns for safe categorization.
+ * Enhanced with functional composition for cleaner parameter filtering.
  *
  * @template T - Type of input parameters
  * @param input - Combined input parameters
@@ -388,18 +410,30 @@ const separateParams = <T extends Record<string, unknown>>(
 > => {
   return tryCatch(
     () => {
-      const pathParamsObj: Record<string, unknown> = {}
-      const bodyParams: Record<string, unknown> = {}
+      // Use FP patterns for cleaner parameter separation
+      const entries = Object.entries(input)
 
-      for (const [key, value] of Object.entries(input)) {
-        if (pathParams.includes(key)) {
-          pathParamsObj[key] = value
-        } else {
-          bodyParams[key] = value
-        }
+      // Separate path parameters
+      const pathEntries = entries.filter(([key]) => pathParams.includes(key))
+      const pathParamsObj = Object.fromEntries(pathEntries)
+
+      // Separate body parameters
+      const bodyEntries = entries.filter(([key]) => !pathParams.includes(key))
+      const bodyParamsResult = Object.fromEntries(bodyEntries)
+
+      // Debug logging for path parameters
+      if (process.env.NODE_ENV === 'development' && !isEmpty(Object.keys(pathParamsObj))) {
+        tap(() => console.debug('[Resource] Extracted path params:', pathParamsObj))(pathParamsObj)
       }
 
-      return { pathParams: pathParamsObj, bodyParams }
+      // Debug logging for body parameters
+      if (process.env.NODE_ENV === 'development' && !isEmpty(Object.keys(bodyParamsResult))) {
+        tap(() => console.debug('[Resource] Extracted body params:', bodyParamsResult))(
+          bodyParamsResult
+        )
+      }
+
+      return { pathParams: pathParamsObj, bodyParams: bodyParamsResult }
     },
     error =>
       createResourceError(
@@ -410,7 +444,7 @@ const separateParams = <T extends Record<string, unknown>>(
   )
 }
 
-// Create pipeline for a resource method
+// Create pipeline for a resource method with enhanced FP composition
 const createMethodPipeline = (
   resourceName: string,
   methodName: string,
@@ -418,15 +452,25 @@ const createMethodPipeline = (
   config: ResourceOptionsInternal
 ): Pipeline<unknown, unknown> => {
   const pipelineName = `${resourceName}.${methodName}`
-  const baseUrl = config.baseUrl || ''
+  const baseUrl = withDefault('')(config.baseUrl)
   const fullPath = `${baseUrl}${method.path}`
   const pathParams = extractPathParams(method.path)
 
-  // Create the base pipeline
-  let basePipeline = pipeline(
-    pipelineName,
-    config.httpClient ? { httpClient: config.httpClient } : undefined
-  )
+  // Enhanced pipeline creation with FP patterns
+  const createBasePipeline = () => {
+    const pipelineConfig = config.httpClient ? { httpClient: config.httpClient } : undefined
+    const newPipeline = pipeline(pipelineName, pipelineConfig)
+
+    // Add debug logging using tap (non-intrusive side effect)
+    if (process.env.NODE_ENV === 'development') {
+      tap(() => console.debug(`[Resource] Created pipeline: ${pipelineName}`))(newPipeline)
+    }
+
+    return newPipeline
+  }
+
+  // Create the base pipeline using FP composition
+  let basePipeline = createBasePipeline()
 
   // For now, skip input validation at the pipeline level
   // since we need to handle combined param+body inputs properly
@@ -489,25 +533,46 @@ const createMethodPipeline = (
   // Add response validation
   basePipeline = basePipeline.validate(method.response)
 
-  // Apply caching if configured
-  const cacheConfig = method.cache || config.defaultCache
-  if (cacheConfig) {
-    basePipeline = basePipeline.cache(cacheConfig.ttl)
+  // Enhanced pipeline configuration using FP patterns
+  const applyConfiguration = (pipeline: Pipeline<unknown, unknown>) => {
+    // Apply caching using maybe pattern for optional config
+    const withCache = maybe(
+      method.cache || config.defaultCache,
+      cacheConfig => pipeline.cache(cacheConfig.ttl),
+      pipeline
+    )
+
+    // Apply retry configuration
+    const withRetry = maybe(
+      method.retry || config.defaultRetry,
+      retryConfig => withCache.retry(retryConfig.times, retryConfig.delay),
+      withCache
+    )
+
+    // Apply timeout configuration
+    const withTimeout = maybe(
+      method.timeout || config.defaultTimeout,
+      timeout => withRetry.timeout(timeout),
+      withRetry
+    )
+
+    // Add debug logging for applied configurations
+    if (process.env.NODE_ENV === 'development') {
+      const configs: string[] = []
+      if (method.cache || config.defaultCache) configs.push('cache')
+      if (method.retry || config.defaultRetry) configs.push('retry')
+      if (method.timeout || config.defaultTimeout) configs.push('timeout')
+      if (configs.length > 0) {
+        tap(() => console.debug(`[Resource] Applied configurations to ${pipelineName}:`, configs))(
+          withTimeout
+        )
+      }
+    }
+
+    return withTimeout
   }
 
-  // Apply retry if configured
-  const retryConfig = method.retry || config.defaultRetry
-  if (retryConfig) {
-    basePipeline = basePipeline.retry(retryConfig.times, retryConfig.delay)
-  }
-
-  // Apply timeout if configured
-  const timeoutMs = method.timeout || config.defaultTimeout
-  if (timeoutMs) {
-    basePipeline = basePipeline.timeout(timeoutMs)
-  }
-
-  return basePipeline
+  return applyConfiguration(basePipeline)
 }
 
 // Connection pool manager for HTTP connections

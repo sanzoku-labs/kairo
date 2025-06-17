@@ -29,6 +29,7 @@ export default [
         Date: 'readonly',
         JSON: 'readonly',
         Error: 'readonly',
+        process: 'readonly',
       },
     },
     rules: {
@@ -72,6 +73,7 @@ export default [
         global: 'readonly',
         require: 'readonly',
         module: 'readonly',
+        process: 'readonly',
       },
     },
     rules: {

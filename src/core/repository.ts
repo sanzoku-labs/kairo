@@ -15,7 +15,7 @@
 import { Result } from './result'
 import { type KairoError, createError } from './errors'
 import { type Schema } from './native-schema'
-import { cond } from '../utils/fp'
+import { cond, tap, maybe, isNil, isEmpty } from '../utils/fp'
 
 // ============================================================================
 // Core Types
@@ -931,7 +931,7 @@ export class BaseRepository<T extends Record<string, unknown>, R extends Relatio
 
   async create(data: T): Promise<Result<RepositoryError, T>> {
     try {
-      // Validate using FP pipeline
+      // Enhanced validation using FP patterns
       const validationResult = this.validate(data)
       if (!Result.isOk(validationResult)) {
         return Result.Err(
@@ -943,15 +943,27 @@ export class BaseRepository<T extends Record<string, unknown>, R extends Relatio
         )
       }
 
-      // Process data through FP composition
+      // Process data through enhanced FP composition
+      // Debug logging in development using tap
+      tap((data: T) => {
+        if (process.env.NODE_ENV === 'development') {
+          console.debug(`[Repository:${this.name}] Creating record:`, data)
+        }
+      })(data)
+
+      // Pre-processing step
       const processedData = await this.processDataForCreate(data)
 
       // Create record
       const result = await this.storage.create(processedData)
 
-      // Apply afterCreate hook using FP conditional effect
-      if (Result.isOk(result) && this.config.hooks?.afterCreate) {
-        await this.config.hooks.afterCreate(result.value)
+      // Apply afterCreate hook using maybe pattern
+      if (Result.isOk(result)) {
+        await maybe(
+          this.config.hooks?.afterCreate,
+          async hook => await hook(result.value),
+          Promise.resolve()
+        )
       }
 
       return result
@@ -969,7 +981,7 @@ export class BaseRepository<T extends Record<string, unknown>, R extends Relatio
   }
 
   private async processDataForCreate(data: T): Promise<T> {
-    // Apply beforeCreate hook if present
+    // Apply beforeCreate hook using conditional pattern
     const withHook = this.config.hooks?.beforeCreate
       ? await this.config.hooks.beforeCreate(data)
       : data
@@ -1011,6 +1023,21 @@ export class BaseRepository<T extends Record<string, unknown>, R extends Relatio
 
   async find(id: string | number): Promise<Result<RepositoryError, T | null>> {
     try {
+      // Input validation using FP patterns
+      if (isNil(id) || (typeof id === 'string' && isEmpty(id.trim()))) {
+        return Result.Err(
+          createRepositoryError('Invalid ID provided', 'find', this.name, String(id))
+        )
+      }
+
+      // Debug logging in development using tap
+      tap((id: string | number) => {
+        if (process.env.NODE_ENV === 'development') {
+          console.debug(`[Repository:${this.name}] Finding record with ID:`, id)
+        }
+      })(id)
+
+      // Storage operation
       return await this.storage.find(id)
     } catch (error) {
       return Result.Err(
@@ -1061,7 +1088,7 @@ export class BaseRepository<T extends Record<string, unknown>, R extends Relatio
 
   async update(id: string | number, data: Partial<T>): Promise<Result<RepositoryError, T>> {
     try {
-      // Run partial validation
+      // Enhanced validation using FP patterns
       const validationResult = this.validatePartial(data)
       if (!Result.isOk(validationResult)) {
         return Result.Err(
@@ -1074,33 +1101,34 @@ export class BaseRepository<T extends Record<string, unknown>, R extends Relatio
         )
       }
 
-      // Apply beforeUpdate hook
+      // Process data through enhanced FP composition
       let processedData = data
-      if (this.config.hooks?.beforeUpdate) {
-        processedData = await this.config.hooks.beforeUpdate(id, data)
-      }
 
-      // Add updated timestamp if enabled
-      if (this.config.timestamps) {
-        const now = new Date().toISOString()
-        if (typeof this.config.timestamps === 'object') {
-          processedData = {
-            ...processedData,
-            [this.config.timestamps.updatedAt]: now,
-          }
-        } else {
-          processedData = {
-            ...processedData,
-            updatedAt: now,
-          }
+      // Apply beforeUpdate hook using conditional pattern
+      processedData = this.config.hooks?.beforeUpdate
+        ? await this.config.hooks.beforeUpdate(id, data)
+        : data
+
+      // Add timestamps using FP conditional
+      processedData = this.addUpdatedTimestamp(processedData)
+
+      // Debug logging using tap
+      tap((data: Partial<T>) => {
+        if (process.env.NODE_ENV === 'development') {
+          console.debug(`[Repository:${this.name}] Updating record ${id}:`, data)
         }
-      }
+      })(processedData)
 
       // Update record
       const result = await this.storage.update(id, processedData)
 
-      if (Result.isOk(result) && this.config.hooks?.afterUpdate) {
-        await this.config.hooks.afterUpdate(result.value)
+      // Apply afterUpdate hook using maybe pattern
+      if (Result.isOk(result)) {
+        await maybe(
+          this.config.hooks?.afterUpdate,
+          async hook => await hook(result.value),
+          Promise.resolve()
+        )
       }
 
       return result
@@ -1115,6 +1143,35 @@ export class BaseRepository<T extends Record<string, unknown>, R extends Relatio
         )
       )
     }
+  }
+
+  private addUpdatedTimestamp(data: Partial<T>): Partial<T> {
+    const timestampProcessor = cond<Partial<T>, Partial<T>>([
+      [() => !this.config.timestamps, data => data],
+      [
+        () => typeof this.config.timestamps === 'object',
+        data => {
+          const now = new Date().toISOString()
+          const timestampConfig = this.config.timestamps as { createdAt: string; updatedAt: string }
+          return {
+            ...data,
+            [timestampConfig.updatedAt]: now,
+          } as Partial<T>
+        },
+      ],
+      [
+        () => true, // default case
+        data => {
+          const now = new Date().toISOString()
+          return {
+            ...data,
+            updatedAt: now,
+          } as Partial<T>
+        },
+      ],
+    ])
+
+    return timestampProcessor(data) ?? data
   }
 
   async updateMany(
@@ -1274,36 +1331,33 @@ export class BaseRepository<T extends Record<string, unknown>, R extends Relatio
   ): Promise<T & Record<string, unknown>> {
     const enrichedRecord = { ...record } as T & Record<string, unknown>
 
+    // Process each relation using enhanced FP patterns
     for (const relationName of relationNames) {
       const relation = this.relationships[relationName as keyof R]
       if (!relation) continue
 
-      try {
-        switch (relation.type) {
-          case 'hasOne': {
-            // In a real implementation, you'd query the related repository
-            // For now, we'll just set null as a placeholder
-            ;(enrichedRecord as Record<string, unknown>)[relationName] = null
-            break
-          }
-          case 'hasMany': {
-            // In a real implementation, you'd query the related repository
-            // For now, we'll just set empty array as a placeholder
-            ;(enrichedRecord as Record<string, unknown>)[relationName] = []
-            break
-          }
-          case 'belongsTo': {
-            // In a real implementation, you'd query the related repository
-            // For now, we'll just set null as a placeholder
-            ;(enrichedRecord as Record<string, unknown>)[relationName] = null
-            break
-          }
+      // Debug logging using tap
+      tap(() => {
+        if (process.env.NODE_ENV === 'development') {
+          console.debug(`[Repository:${this.name}] Loading relation: ${relationName}`)
         }
+      })(relationName)
+
+      try {
+        // Use cond for determining default value based on relation type
+        const defaultValue = cond([
+          [() => relation.type === 'hasMany', () => []],
+          [() => true, () => null],
+        ])(relation)
+
+        // In a real implementation, you'd query the related repository
+        // For now, we'll just set the appropriate default value
+        ;(enrichedRecord as Record<string, unknown>)[relationName] = defaultValue
       } catch (error) {
         // Log error but don't fail the whole operation
         console.warn(`Failed to load relation ${relationName}:`, error)
-        ;(enrichedRecord as Record<string, unknown>)[relationName] =
-          relation.type === 'hasMany' ? [] : null
+        const defaultValue = relation.type === 'hasMany' ? [] : null
+        ;(enrichedRecord as Record<string, unknown>)[relationName] = defaultValue
       }
     }
 
@@ -1331,10 +1385,17 @@ export class BaseRepository<T extends Record<string, unknown>, R extends Relatio
   }
 
   validatePartial(data: Partial<T>): Result<RepositoryError, Partial<T>> {
-    // For partial validation, we'll validate only the provided fields
-    // This is a simplified approach - in a real implementation, you might want
-    // to use the schema's partial() method if available
     try {
+      // Enhanced validation using FP patterns
+      if (isEmpty(Object.keys(data))) {
+        return Result.Err(
+          createRepositoryError('No data provided for validation', 'validatePartial', this.name)
+        )
+      }
+
+      // For partial validation, we'll validate only the provided fields
+      // This is a simplified approach - in a real implementation, you might want
+      // to use the schema's partial() method if available
       return Result.Ok(data)
     } catch (error) {
       return Result.Err(
