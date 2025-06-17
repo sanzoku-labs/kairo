@@ -30,6 +30,7 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/guide/' },
       { text: 'API', link: '/api/' },
+      { text: 'API Reference', link: '/api-reference/' },
       { text: 'Examples', link: '/examples/' },
       { text: 'GitHub', link: 'https://github.com/sovanaryththorng/sanzoku-labs/kairo' },
     ],
@@ -108,6 +109,15 @@ export default defineConfig({
             { text: 'Data Fetching', link: '/examples/data-fetching' },
             { text: 'Contract Testing', link: '/examples/contract-testing' },
             { text: 'Business Rules', link: '/examples/business-rules' },
+          ],
+        },
+      ],
+      '/api-reference/': [
+        {
+          text: 'API Reference',
+          items: [
+            { text: 'Overview', link: '/api-reference/' },
+            { text: 'Modules', link: '/api-reference/modules' },
           ],
         },
       ],

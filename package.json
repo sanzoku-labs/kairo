@@ -65,7 +65,12 @@
     "format": "bun run prettier --write .",
     "docs:dev": "NODE_ENV=development vitepress dev docs --open",
     "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:preview": "vitepress preview docs",
+    "docs:api": "typedoc",
+    "docs:api:single": "typedoc --options typedoc-single.json",
+    "docs:api:onefile": "rm -rf temp-api-docs && typedoc --plugin typedoc-plugin-markdown --theme markdown --out temp-api-docs --name 'Kairo API Reference' && concat-md --toc --decrease-title-levels --dir-name-as-title temp-api-docs > kairo-api-reference.md && rm -rf temp-api-docs",
+    "docs:api:watch": "typedoc --watch",
+    "docs:all": "bun run docs:api && bun run docs:build"
   },
   "keywords": [
     "typescript",
@@ -83,9 +88,12 @@
     "@typescript-eslint/eslint-plugin": "^8.34.0",
     "@typescript-eslint/parser": "^8.34.0",
     "@vitest/coverage-v8": "^3.2.3",
+    "concat-md": "^0.5.1",
     "eslint": "^9.29.0",
     "prettier": "^3.5.3",
     "tsup": "^8.5.0",
+    "typedoc": "^0.28.5",
+    "typedoc-plugin-markdown": "^4.6.4",
     "typescript": "^5.8.3",
     "vitepress": "^1.6.3",
     "vitest": "^3.2.3"

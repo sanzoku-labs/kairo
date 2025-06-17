@@ -29,6 +29,11 @@ docs/.vitepress/dist/
 .temp/
 .cache/
 
+# TypeDoc generated documentation
+docs/api-reference/
+api-reference-single/
+kairo-api-reference.md
+
 # OS generated files
 .DS_Store
 .DS_Store?
