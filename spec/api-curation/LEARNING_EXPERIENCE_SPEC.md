@@ -9,15 +9,23 @@
 
 ## 🎯 Objective
 
-Transform Kairo's documentation and learning experience from architecture-first to developer-goal-first, enabling progressive mastery through curated learning paths.
+Transform Kairo's documentation and learning experience from architecture-first to developer-goal-first, enabling progressive mastery through **pure organization and enhanced documentation** of existing APIs.
+
+### Core Philosophy
+
+**Zero API Changes**: Focus entirely on presentation and guidance:
+- ✅ **Preserve Flexibility**: All existing APIs remain unchanged
+- ✅ **Maintain Control**: No hidden behavior or magic
+- ✅ **Enhance Discovery**: Better organization reveals existing power
+- ✅ **Guide Learning**: Clear paths through existing functionality
 
 ### Success Criteria
 
-- **Onboarding Time**: New developers productive in < 30 minutes
+- **Onboarding Time**: New developers productive in < 30 minutes using existing APIs
 - **Knowledge Retention**: 90% of Tier 1 concepts retained after first week
 - **Progression Rate**: 80% advance from Tier 1 to Tier 2 organically
 - **Self-Service**: 70% reduction in basic usage support questions
-- **Developer Satisfaction**: 9/10 rating on learning experience
+- **Developer Satisfaction**: 9/10 rating on learning experience with existing APIs
 
 ---
 
@@ -32,20 +40,20 @@ Transform Kairo's documentation and learning experience from architecture-first 
 **Outcome**: Functional CRUD app with basic validation
 
 ```typescript
-// Learning Sequence
+// Learning Sequence (using existing APIs)
 1. Result Pattern (understand error handling)
-   → Result.Ok(), Result.Err(), map(), flatMap()
+   → Result.Ok(), Result.Err(), Result.map(), Result.flatMap()
 
 2. Choose One Pillar (based on use case)
-   → DATA: schema(), repository(), transform()
-   → INTERFACE: resource() basics
-   → PROCESS: pipeline() basics
+   → DATA: nativeSchema.object/string/number(), repository(), transform()
+   → INTERFACE: resource() with explicit method configuration
+   → PROCESS: pipeline() with basic step composition
 
-3. Essential Composition
+3. Essential Composition (existing FP utilities)
    → pipe(), compose(), identity()
 
-4. Basic FP utilities
-   → isNil(), isEmpty()
+4. Basic FP utilities (existing)
+   → isNil(), isEmpty(), tap(), maybe()
 ```
 
 **Learning Materials**:
@@ -62,13 +70,13 @@ Transform Kairo's documentation and learning experience from architecture-first 
 **Outcome**: Production-ready app with proper error handling, validation, and performance basics
 
 ```typescript
-// Learning Sequence
+// Learning Sequence (existing APIs)
 1. Complete Result Pattern mastery
-   → chain(), mapError(), match(), unwrap()
+   → Result.chain(), Result.mapError(), Result.match(), Result.unwrap()
 
-2. Multi-Pillar Integration
-   → Combine 2-3 pillars effectively
-   → Understand pillar interaction patterns
+2. Multi-Pillar Integration (existing patterns)
+   → Combine resource() + pipeline() + rules()
+   → Understand existing composition patterns
 
 3. Essential FP Utilities (20 functions)
    → map, filter, flatMap, maybe, asyncPipe

@@ -9,15 +9,23 @@
 
 ## 🎯 Objective
 
-Define clear tiers of Kairo functionality based on learning progression and usage patterns, enabling developers to master the framework incrementally without overwhelming choice.
+Define clear tiers of Kairo's **existing functionality** based on learning progression and usage patterns, enabling developers to master the framework incrementally through better organization and documentation.
+
+### Core Philosophy
+
+**Pure Organization Approach**: Tiers are for learning organization only, not feature restriction:
+- ✅ **All APIs Preserved**: Every existing function remains available and unchanged
+- ✅ **No Feature Hiding**: Tiers guide learning, don't limit access
+- ✅ **Flexible Usage**: Developers can use any function at any time
+- ✅ **Documentation Focus**: Tiers organize docs and examples, not functionality
 
 ### Success Criteria
 
-- **Clear Boundaries**: Unambiguous tier assignments for all 340+ API elements
-- **Logical Progression**: Each tier builds naturally on previous tiers
-- **Usage Alignment**: Tier assignments match real-world usage patterns
-- **Complete Coverage**: 100% of API surface categorized appropriately
-- **Validation**: Developer testing confirms tier effectiveness
+- **Clear Learning Boundaries**: Unambiguous tier assignments for all 340+ API elements
+- **Logical Progression**: Each tier builds naturally on previous tiers  
+- **Usage Alignment**: Tier assignments match real-world learning patterns
+- **Complete Coverage**: 100% of existing API surface categorized appropriately
+- **Validation**: Developer testing confirms tier-based learning effectiveness
 
 ---
 
