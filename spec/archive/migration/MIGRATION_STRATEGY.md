@@ -1,9 +1,11 @@
 # Migration Strategy Specification
 
+> **⚠️ ARCHIVED CONCEPT** - This specification has been archived (2025-01-17) to maintain Kairo's framework-agnostic philosophy. While technically valuable, migration tools would require framework-specific adapters that contradict Kairo's core principle of being unopinionated and agnostic.
+
 **Document**: Migration Strategy  
 **Version**: 1.0  
-**Phase**: Stream -1 (Migration Tools)  
-**Priority**: Highest
+**Phase**: Stream -1 (Migration Tools) - **ARCHIVED**  
+**Priority**: ~~Highest~~ **ARCHIVED**
 
 ---
 

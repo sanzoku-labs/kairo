@@ -55,18 +55,7 @@ Transform Kairo to serve ALL developers - from simple apps to complex platforms 
 | --------------- | ---------------------------------------------------------------------------------- | --------------------- |
 | **Refactoring** | [`refactoring/KAIRO_REFACTORING_PLAN.md`](./refactoring/KAIRO_REFACTORING_PLAN.md) | ⚠️ **Required First** |
 
-### Phase 1: Migration Tools
-
-**Timeline**: 4 weeks  
-**Goal**: Enable incremental adoption from existing codebases
-
-| Component              | Specification                                                                    | Status     |
-| ---------------------- | -------------------------------------------------------------------------------- | ---------- |
-| **Migration Strategy** | [`migration/MIGRATION_STRATEGY.md`](./migration/MIGRATION_STRATEGY.md)           | ✅ Ready   |
-| **Migration Tools**    | [`migration/MIGRATION_TOOLS_SPEC.md`](./migration/MIGRATION_TOOLS_SPEC.md)       | 📋 Planned |
-| **Framework Adapters** | [`migration/FRAMEWORK_ADAPTERS_SPEC.md`](./migration/FRAMEWORK_ADAPTERS_SPEC.md) | 📋 Planned |
-
-### Phase 2: Simple Mode
+### Phase 1: Simple Mode
 
 **Timeline**: 3 weeks  
 **Goal**: Ultra-simple entry point for basic use cases
@@ -77,7 +66,7 @@ Transform Kairo to serve ALL developers - from simple apps to complex platforms 
 | **Progressive Enhancement** | [`simple-mode/PROGRESSIVE_ENHANCEMENT_SPEC.md`](./simple-mode/PROGRESSIVE_ENHANCEMENT_SPEC.md) | 📋 Planned |
 | **Simple API Reference**    | [`simple-mode/SIMPLE_API_REFERENCE.md`](./simple-mode/SIMPLE_API_REFERENCE.md)                 | 📋 Planned |
 
-### Phase 3: Integration Patterns
+### Phase 2: Integration Patterns
 
 **Timeline**: 2 weeks  
 **Goal**: Clear guidance for component composition
@@ -88,7 +77,7 @@ Transform Kairo to serve ALL developers - from simple apps to complex platforms 
 | **Recipe Library**        | [`integration/RECIPE_LIBRARY_SPEC.md`](./integration/RECIPE_LIBRARY_SPEC.md)             | 📋 Planned |
 | **Troubleshooting Guide** | [`integration/TROUBLESHOOTING_SPEC.md`](./integration/TROUBLESHOOTING_SPEC.md)           | 📋 Planned |
 
-### Phase 4: DX Tooling
+### Phase 3: DX Tooling
 
 **Timeline**: 6 weeks  
 **Goal**: Intelligent development assistance
@@ -100,7 +89,7 @@ Transform Kairo to serve ALL developers - from simple apps to complex platforms 
 | **Visual Inspector**  | [`dx-tooling/VISUAL_INSPECTOR_SPEC.md`](./dx-tooling/VISUAL_INSPECTOR_SPEC.md)   | 📋 Planned |
 | **Dev Warnings**      | [`dx-tooling/DEV_WARNINGS_SPEC.md`](./dx-tooling/DEV_WARNINGS_SPEC.md)           | 📋 Planned |
 
-### Phase 5: Implementation Standards
+### Phase 4: Implementation Standards
 
 **Timeline**: Ongoing  
 **Goal**: Quality assurance and release management
@@ -200,7 +189,6 @@ const createTodo = pipeline('create-todo')
 
 ### 📋 Ready to Implement
 
-- [`migration/MIGRATION_STRATEGY.md`](./migration/MIGRATION_STRATEGY.md)
 - [`simple-mode/SIMPLE_MODE_SPEC.md`](./simple-mode/SIMPLE_MODE_SPEC.md)
 - [`integration/INTEGRATION_PATTERNS_SPEC.md`](./integration/INTEGRATION_PATTERNS_SPEC.md)
 - [`dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md`](./dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md)

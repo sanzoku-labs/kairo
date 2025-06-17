@@ -32,12 +32,11 @@ Each specification provides complete implementation details, acceptance criteria
 
 | Phase                             | Status                | Specification                                                                            | Timeline | Priority     |
 | --------------------------------- | --------------------- | ---------------------------------------------------------------------------------------- | -------- | ------------ |
-| **Phase 0: Foundation**           | ⚠️ **Required First** | [`refactoring/KAIRO_REFACTORING_PLAN.md`](./refactoring/KAIRO_REFACTORING_PLAN.md)       | 4 weeks  | **CRITICAL** |
-| **Phase 1: Migration Tools**      | 📋 Ready              | [`migration/MIGRATION_STRATEGY.md`](./migration/MIGRATION_STRATEGY.md)                   | 4 weeks  | High         |
-| **Phase 2: Simple Mode**          | 📋 Ready              | [`simple-mode/SIMPLE_MODE_SPEC.md`](./simple-mode/SIMPLE_MODE_SPEC.md)                   | 3 weeks  | High         |
-| **Phase 3: Integration Patterns** | 📋 Ready              | [`integration/INTEGRATION_PATTERNS_SPEC.md`](./integration/INTEGRATION_PATTERNS_SPEC.md) | 2 weeks  | Medium       |
-| **Phase 4: DX Tooling**           | 📋 Ready              | [`dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md`](./dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md)         | 6 weeks  | Medium       |
-| **Phase 5: Standards**            | 📋 Ready              | [`implementation/DEVELOPMENT_STANDARDS.md`](./implementation/DEVELOPMENT_STANDARDS.md)   | Ongoing  | Medium       |
+| **Phase 0: Foundation**           | ✅ **Complete**       | [`refactoring/KAIRO_REFACTORING_PLAN.md`](./refactoring/KAIRO_REFACTORING_PLAN.md)       | 4 weeks  | **CRITICAL** |
+| **Phase 1: Simple Mode**          | 📋 Ready              | [`simple-mode/SIMPLE_MODE_SPEC.md`](./simple-mode/SIMPLE_MODE_SPEC.md)                   | 3 weeks  | High         |
+| **Phase 2: Integration Patterns** | 📋 Ready              | [`integration/INTEGRATION_PATTERNS_SPEC.md`](./integration/INTEGRATION_PATTERNS_SPEC.md) | 2 weeks  | Medium       |
+| **Phase 3: DX Tooling**           | 📋 Ready              | [`dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md`](./dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md)         | 6 weeks  | Medium       |
+| **Phase 4: Standards**            | 📋 Ready              | [`implementation/DEVELOPMENT_STANDARDS.md`](./implementation/DEVELOPMENT_STANDARDS.md)   | Ongoing  | Medium       |
 
 ---
 
@@ -68,13 +67,12 @@ spec/refactoring/
 ├── KAIRO_REFACTORING_PLAN.md    # Complete Zod migration & FP enhancement
 ```
 
-### 🔄 Migration & Adoption
+### 📚 Archived Concepts
 
 ```
-spec/migration/
-├── MIGRATION_STRATEGY.md         # Incremental adoption strategy
-├── MIGRATION_TOOLS_SPEC.md       # 📝 Coming Soon
-└── FRAMEWORK_ADAPTERS_SPEC.md    # 📝 Coming Soon
+spec/archive/
+└── migration/                    # Framework-specific migration tools (archived)
+    └── MIGRATION_STRATEGY.md     # Preserved for future reference
 ```
 
 ### 🌱 Developer Experience
@@ -143,13 +141,12 @@ spec/implementation/
 ### Developer Experience Metrics
 
 - **Time to First Success**: Simple app < 5 minutes
-- **Migration Success**: 90% completion rate
 - **Error Reduction**: 80% fewer integration errors with tooling
 - **Learning Curve**: Simple mode understood in < 10 minutes
 
 ### Technical Quality Metrics
 
-- **Performance**: Equal or better performance after migration
+- **Performance**: Maintain or improve current performance
 - **Compatibility**: 100% backwards compatibility maintained
 - **Bundle Size**: 50%+ reduction with native schemas
 - **Test Coverage**: Maintain current standards
@@ -207,11 +204,10 @@ const createTodo = pipeline('create-todo')
 
 ### 📋 Ready for Implementation
 
-- [`migration/MIGRATION_STRATEGY.md`](./migration/MIGRATION_STRATEGY.md) - Incremental adoption
-- [`simple-mode/SIMPLE_MODE_SPEC.md`](./simple-mode/SIMPLE_MODE_SPEC.md) - Ultra-simple API
-- [`integration/INTEGRATION_PATTERNS_SPEC.md`](./integration/INTEGRATION_PATTERNS_SPEC.md) - Component composition
-- [`dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md`](./dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md) - IDE assistance
-- [`implementation/DEVELOPMENT_STANDARDS.md`](./implementation/DEVELOPMENT_STANDARDS.md) - Quality standards
+- [`simple-mode/SIMPLE_MODE_SPEC.md`](./simple-mode/SIMPLE_MODE_SPEC.md) - Ultra-simple API (Phase 1)
+- [`integration/INTEGRATION_PATTERNS_SPEC.md`](./integration/INTEGRATION_PATTERNS_SPEC.md) - Component composition (Phase 2)
+- [`dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md`](./dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md) - IDE assistance (Phase 3)
+- [`implementation/DEVELOPMENT_STANDARDS.md`](./implementation/DEVELOPMENT_STANDARDS.md) - Quality standards (Phase 4)
 
 ### 🗺️ Master Roadmap
 
