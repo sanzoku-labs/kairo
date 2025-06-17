@@ -12,6 +12,14 @@ This folder contains ideas and specifications that were considered but not imple
 
 **Location**: `./migration/`
 
+### Simple Mode (archived 2025-01-17)
+
+**Reason**: Simple Mode would add unnecessary complexity to Kairo by creating two APIs developers need to learn. After analysis, the real problem is not that Kairo's API is complex, but that it needs better curation, progressive learning paths, and improved discoverability. Adding another abstraction layer contradicts Kairo's principle of clarity and explicitness.
+
+**Status**: Archived in favor of API curation and learning experience improvements.
+
+**Location**: `./simple-mode/`
+
 ---
 
 These concepts remain documented for future reference and potential re-evaluation, but are not part of the active development roadmap.

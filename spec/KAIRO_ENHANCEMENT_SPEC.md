@@ -55,16 +55,16 @@ Transform Kairo to serve ALL developers - from simple apps to complex platforms 
 | --------------- | ---------------------------------------------------------------------------------- | --------------------- |
 | **Refactoring** | [`refactoring/KAIRO_REFACTORING_PLAN.md`](./refactoring/KAIRO_REFACTORING_PLAN.md) | ⚠️ **Required First** |
 
-### Phase 1: Simple Mode
+### Phase 1: API Curation & Learning Experience
 
 **Timeline**: 3 weeks  
-**Goal**: Ultra-simple entry point for basic use cases
+**Goal**: Improve developer experience through API curation and progressive learning paths
 
-| Component                   | Specification                                                                                  | Status     |
-| --------------------------- | ---------------------------------------------------------------------------------------------- | ---------- |
-| **Simple Mode API**         | [`simple-mode/SIMPLE_MODE_SPEC.md`](./simple-mode/SIMPLE_MODE_SPEC.md)                         | ✅ Ready   |
-| **Progressive Enhancement** | [`simple-mode/PROGRESSIVE_ENHANCEMENT_SPEC.md`](./simple-mode/PROGRESSIVE_ENHANCEMENT_SPEC.md) | 📋 Planned |
-| **Simple API Reference**    | [`simple-mode/SIMPLE_API_REFERENCE.md`](./simple-mode/SIMPLE_API_REFERENCE.md)                 | 📋 Planned |
+| Component                     | Specification                                                                                        | Status     |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------- | ---------- |
+| **API Curation & Strategy**   | [`api-curation/API_CURATION_SPEC.md`](./api-curation/API_CURATION_SPEC.md)                           | ✅ Ready   |
+| **Learning Experience**       | [`api-curation/LEARNING_EXPERIENCE_SPEC.md`](./api-curation/LEARNING_EXPERIENCE_SPEC.md)             | ✅ Ready   |
+| **API Tiers Definition**      | [`api-curation/API_TIERS_SPEC.md`](./api-curation/API_TIERS_SPEC.md)                                 | ✅ Ready   |
 
 ### Phase 2: Integration Patterns
 
@@ -189,7 +189,7 @@ const createTodo = pipeline('create-todo')
 
 ### 📋 Ready to Implement
 
-- [`simple-mode/SIMPLE_MODE_SPEC.md`](./simple-mode/SIMPLE_MODE_SPEC.md)
+- [`api-curation/API_CURATION_SPEC.md`](./api-curation/API_CURATION_SPEC.md)
 - [`integration/INTEGRATION_PATTERNS_SPEC.md`](./integration/INTEGRATION_PATTERNS_SPEC.md)
 - [`dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md`](./dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md)
 - [`implementation/DEVELOPMENT_STANDARDS.md`](./implementation/DEVELOPMENT_STANDARDS.md)

@@ -33,7 +33,7 @@ Each specification provides complete implementation details, acceptance criteria
 | Phase                             | Status                | Specification                                                                            | Timeline | Priority     |
 | --------------------------------- | --------------------- | ---------------------------------------------------------------------------------------- | -------- | ------------ |
 | **Phase 0: Foundation**           | ✅ **Complete**       | [`refactoring/KAIRO_REFACTORING_PLAN.md`](./refactoring/KAIRO_REFACTORING_PLAN.md)       | 4 weeks  | **CRITICAL** |
-| **Phase 1: Simple Mode**          | 📋 Ready              | [`simple-mode/SIMPLE_MODE_SPEC.md`](./simple-mode/SIMPLE_MODE_SPEC.md)                   | 3 weeks  | High         |
+| **Phase 1: API Curation & Learning** | 📋 Ready              | [`api-curation/API_CURATION_SPEC.md`](./api-curation/API_CURATION_SPEC.md)               | 3 weeks  | High         |
 | **Phase 2: Integration Patterns** | 📋 Ready              | [`integration/INTEGRATION_PATTERNS_SPEC.md`](./integration/INTEGRATION_PATTERNS_SPEC.md) | 2 weeks  | Medium       |
 | **Phase 3: DX Tooling**           | 📋 Ready              | [`dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md`](./dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md)         | 6 weeks  | Medium       |
 | **Phase 4: Standards**            | 📋 Ready              | [`implementation/DEVELOPMENT_STANDARDS.md`](./implementation/DEVELOPMENT_STANDARDS.md)   | Ongoing  | Medium       |
@@ -78,10 +78,10 @@ spec/archive/
 ### 🌱 Developer Experience
 
 ```
-spec/simple-mode/
-├── SIMPLE_MODE_SPEC.md           # Ultra-simple API design
-├── PROGRESSIVE_ENHANCEMENT_SPEC.md  # 📝 Coming Soon
-└── SIMPLE_API_REFERENCE.md       # 📝 Coming Soon
+spec/api-curation/
+├── API_CURATION_SPEC.md          # API organization & curation strategy
+├── LEARNING_EXPERIENCE_SPEC.md   # Progressive learning & documentation
+└── API_TIERS_SPEC.md             # Function categorization & progression
 
 spec/dx-tooling/
 ├── TYPESCRIPT_PLUGIN_SPEC.md     # IDE intelligent assistance
@@ -204,7 +204,7 @@ const createTodo = pipeline('create-todo')
 
 ### 📋 Ready for Implementation
 
-- [`simple-mode/SIMPLE_MODE_SPEC.md`](./simple-mode/SIMPLE_MODE_SPEC.md) - Ultra-simple API (Phase 1)
+- [`api-curation/API_CURATION_SPEC.md`](./api-curation/API_CURATION_SPEC.md) - API curation & learning experience (Phase 1)
 - [`integration/INTEGRATION_PATTERNS_SPEC.md`](./integration/INTEGRATION_PATTERNS_SPEC.md) - Component composition (Phase 2)
 - [`dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md`](./dx-tooling/TYPESCRIPT_PLUGIN_SPEC.md) - IDE assistance (Phase 3)
 - [`implementation/DEVELOPMENT_STANDARDS.md`](./implementation/DEVELOPMENT_STANDARDS.md) - Quality standards (Phase 4)

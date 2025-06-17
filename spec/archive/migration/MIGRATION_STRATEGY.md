@@ -382,7 +382,7 @@ const authenticate = pipeline.step('authenticate').map(async (input, context) =>
 
 ### **Integration Points**
 
-- Simple Mode API (for migration targets)
+- API Curation guidelines (for migration targets)
 - Framework adapters
 - Documentation system
 - Community feedback channels

@@ -1,9 +1,11 @@
 # Simple Mode Specification
 
+> **⚠️ ARCHIVED CONCEPT** - This specification has been archived (2025-01-17) to avoid adding unnecessary complexity to Kairo. After analysis, Simple Mode would create two APIs to learn instead of improving the existing API's discoverability and learning experience.
+
 **Document**: Simple Mode Implementation  
 **Version**: 1.0  
-**Phase**: Stream 0 (Simple Mode Development)  
-**Priority**: High
+**Phase**: ~~Stream 0 (Simple Mode Development)~~ **ARCHIVED**  
+**Priority**: ~~High~~ **ARCHIVED**
 
 ---
 

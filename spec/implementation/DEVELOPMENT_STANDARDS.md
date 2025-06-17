@@ -455,7 +455,7 @@ Common issues and solutions.
 #### **Branch Strategy**
 ```bash
 # Feature branches from main
-git checkout -b feature/simple-mode-implementation
+git checkout -b feature/api-curation-implementation
 
 # Regular commits with descriptive messages
 git commit -m "feat(simple): implement basic resource creation"

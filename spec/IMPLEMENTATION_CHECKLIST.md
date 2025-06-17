@@ -66,46 +66,55 @@ This checklist helps track implementation progress and ensure all requirements a
 
 ---
 
-## 📋 Phase 1: Simple Mode - Status: 📋 Ready (After Phase 0)
+## 📋 Phase 1: API Curation & Learning Experience - Status: 📋 Ready (After Phase 0)
 
 ### Implementation Checklist
 
-#### **Simple API Design (Week 1)**
+#### **API Analysis & Tiering (Week 1)**
 
-- [ ] **Core Simple API**
+- [ ] **Core API Analysis**
 
-  - [ ] `simpleResource` implementation
-  - [ ] `simplePipeline` implementation
-  - [ ] Auto-inference of CRUD operations
-  - [ ] Smart defaults system
+  - [ ] Identify 15 Tier 1 functions (Essential First Week)
+  - [ ] Define 40 Tier 2 functions (Production Ready)
+  - [ ] Categorize 100+ Tier 3 functions (Advanced Patterns)
+  - [ ] Map complete API surface to appropriate tiers
 
-- [ ] **Migration Utilities**
-  - [ ] Simple → standard migration tools
-  - [ ] Progressive enhancement hints
-  - [ ] Upgrade path documentation
+- [ ] **Export Organization**
+  - [ ] Reorganize src/index.ts exports by learning progression
+  - [ ] Add smart defaults for common configurations
+  - [ ] Implement better method chaining
+  - [ ] Create tier-based export groupings
 
-#### **Progressive Enhancement CLI (Week 2)**
+#### **Documentation Revolution (Week 2)**
 
-- [ ] **Enhancement Commands**
+- [ ] **Problem-First Documentation**
 
-  - [ ] `kairo enhance validation`
-  - [ ] `kairo enhance pipeline`
-  - [ ] `kairo enhance events`
-  - [ ] `kairo enhance transactions`
+  - [ ] Restructure docs around developer goals
+  - [ ] Create contextual examples for common use cases
+  - [ ] Build decision trees and recommendation engines
+  - [ ] Add cross-references between related concepts
 
-- [ ] **Validation & Documentation**
-  - [ ] Enhancement validation
-  - [ ] Growth path examples
-  - [ ] Progressive documentation
+- [ ] **Learning Path Creation**
+  - [ ] Progressive learning guides for each tier
+  - [ ] Clear advancement criteria and checkpoints
+  - [ ] Interactive examples and exercises
+  - [ ] Progress tracking and recommendations
 
-#### **Simple Mode Validation (Week 3)**
+#### **Enhanced Developer Experience (Week 3)**
 
-- [ ] **User Experience Testing**
-  - [ ] Simple app created in < 5 minutes
-  - [ ] Clear upgrade paths
-  - [ ] Comprehensive examples
+- [ ] **Error-Driven Learning**
+  - [ ] Improve error messages with learning hints
+  - [ ] Add contextual documentation links
+  - [ ] Implement development mode suggestions
+  - [ ] Create troubleshooting guides
 
-**✅ Validation Criteria**: Developers can build functional apps in under 5 minutes.
+- [ ] **Validation & Testing**
+  - [ ] Test learning progression with real developers
+  - [ ] Validate tier boundaries and progression logic
+  - [ ] Gather feedback on documentation clarity
+  - [ ] Measure learning time and success rates
+
+**✅ Validation Criteria**: Developers can build functional apps with Tier 1 (15 functions) in < 30 minutes and show clear progression path to advanced usage.
 
 ---
 
@@ -201,7 +210,7 @@ This checklist helps track implementation progress and ensure all requirements a
 | Phase                    | Timeline | Status      | Progress | Blockers            |
 | ------------------------ | -------- | ----------- | -------- | ------------------- |
 | **Phase 0: Foundation**  | 4 weeks  | ✅ Complete | 100%     | None                |
-| **Phase 1: Simple Mode** | 3 weeks  | 📋 Ready    | 0%       | None                |
+| **Phase 1: API Curation & Learning** | 3 weeks  | 📋 Ready    | 0%       | None                |
 | **Phase 2: Integration** | 2 weeks  | 📋 Ready    | 0%       | Phase 1             |
 | **Phase 3: DX Tooling**  | 6 weeks  | 📋 Ready    | 0%       | Phase 1             |
 | **Phase 4: Standards**   | Ongoing  | 📋 Ready    | 0%       | Phase 1             |
