@@ -1,14 +1,25 @@
 # SERVICE Pillar - Methods Specification
 
-> **Complete API for HTTP-only service operations**
+> **Pareto-optimized API for HTTP-only service operations (5 core methods)**
 
 ## Core Philosophy
 
-The SERVICE pillar provides **HTTP-only** integration with external APIs. It's specifically scoped to handle:
+The SERVICE pillar provides **essential HTTP operations** following 80/20 Pareto principle:
 - ✅ HTTP methods (GET, POST, PUT, DELETE, PATCH)
 - ✅ Request/response handling
 - ✅ Native HTTP client implementation
 - ❌ NOT databases, file systems, or other protocols
+
+## V2.0 Scope: 5 Core Methods
+
+**80% Use Cases Covered by Core Methods:**
+- `service.get()` - Fetch data
+- `service.post()` - Create resources
+- `service.put()` - Update resources
+- `service.patch()` - Partial updates
+- `service.delete()` - Remove resources
+
+**V2.1+ Features:** Advanced capabilities (`batch()`, `stream()`, `upload()`, `configure()`, `create()`), specialized utilities
 
 ## Method Signatures
 
@@ -144,207 +155,23 @@ const result = await service.delete('/users/123', {
 })
 ```
 
-## Batch Operations
-
-### **`service.batch()`**
-**Signature**:
-```typescript
-service.batch<T = unknown>(
-  requests: BatchRequest[],
-  options?: BatchOptions
-): Promise<Result<ServiceError, T[]>>
-```
-
-**Purpose**: Execute multiple HTTP requests efficiently
-
-**Examples**:
-```typescript
-// Multiple requests
-const results = await service.batch([
-  { method: 'GET', url: '/users/1' },
-  { method: 'GET', url: '/users/2' },
-  { method: 'POST', url: '/users', data: newUser }
-], {
-  parallel: true,
-  maxConcurrency: 5,
-  failFast: false
-})
-```
-
-## Streaming Operations
-
-### **`service.stream()`**
-**Signature**:
-```typescript
-service.stream<T = unknown>(
-  url: string,
-  options?: StreamOptions
-): AsyncIterable<Result<ServiceError, T>>
-```
-
-**Purpose**: Handle streaming responses (SSE, chunked responses)
-
-**Examples**:
-```typescript
-// Server-sent events
-for await (const event of service.stream('/events', { 
-  type: 'sse',
-  reconnect: true 
-})) {
-  if (Result.isOk(event)) {
-    console.log('New event:', event.value)
-  }
-}
-```
-
-## Upload Operations
-
-### **`service.upload()`**
-**Signature**:
-```typescript
-service.upload<T = unknown>(
-  url: string,
-  files: File | File[] | FormData,
-  options?: UploadOptions
-): Promise<Result<ServiceError, T>>
-```
-
-**Purpose**: File upload with progress tracking
-
-**Examples**:
-```typescript
-// File upload
-const result = await service.upload('/files', fileInput, {
-  progress: (percent) => console.log(`${percent}% uploaded`),
-  chunk: true,
-  validate: UploadResponseSchema
-})
-```
-
-## Configuration Methods
-
-### **`service.configure()`**
-**Signature**:
-```typescript
-service.configure(config: GlobalServiceConfig): void
-```
-
-**Purpose**: Set global configuration for all service calls
-
-**Examples**:
-```typescript
-// Global configuration
-service.configure({
-  baseURL: 'https://api.example.com',
-  timeout: 30000,
-  headers: { 'Authorization': 'Bearer token' },
-  retries: { attempts: 3, delay: 1000 }
-})
-```
-
-### **`service.create()`**
-**Signature**:
-```typescript
-service.create(config: ServiceConfig): ServiceInstance
-```
-
-**Purpose**: Create configured service instance
-
-**Examples**:
-```typescript
-// Custom service instance
-const apiV2 = service.create({
-  baseURL: 'https://api.example.com/v2',
-  timeout: 60000,
-  validate: true
-})
-
-const users = await apiV2.get('/users')
-```
-
-## Error Handling Methods
-
-### **`service.isError()`**
-**Signature**:
-```typescript
-service.isError(result: unknown): result is ServiceError
-```
-
-**Purpose**: Type guard for service errors
-
-### **`service.retryable()`**
-**Signature**:
-```typescript
-service.retryable(error: ServiceError): boolean
-```
-
-**Purpose**: Determine if an error is retryable
-
-## Utility Methods
-
-### **`service.buildURL()`**
-**Signature**:
-```typescript
-service.buildURL(base: string, params?: Record<string, unknown>): string
-```
-
-**Purpose**: URL construction with parameters
-
-### **`service.parseResponse()`**
-**Signature**:
-```typescript
-service.parseResponse<T>(response: Response, schema?: Schema<T>): Result<ServiceError, T>
-```
-
-**Purpose**: Parse and validate HTTP responses
-
 ## Method Categories
 
-### **Core CRUD (5 methods)**
+### **Core HTTP Methods (5 methods)**
 - `get()` - Fetch data
-- `post()` - Create data  
-- `put()` - Update data (full)
-- `patch()` - Update data (partial)
-- `delete()` - Remove data
+- `post()` - Create resources
+- `put()` - Update/replace resources
+- `patch()` - Partial updates
+- `delete()` - Remove resources
 
-### **Advanced Operations (3 methods)**
-- `batch()` - Multiple requests
-- `stream()` - Streaming data
-- `upload()` - File uploads
-
-### **Configuration (2 methods)**
-- `configure()` - Global config
-- `create()` - Instance creation
-
-### **Utilities (4 methods)**
-- `isError()` - Error type checking
-- `retryable()` - Retry logic
-- `buildURL()` - URL construction
-- `parseResponse()` - Response parsing
-
-**Total: 14 methods** (focused, comprehensive HTTP API)
+**Total: 5 methods** (Pareto-optimized HTTP operations)
 
 ## Implementation Priorities
 
-### **Phase 1 - Core CRUD**
+### **Phase 1 - Core HTTP (5 methods)**
 - `get()`, `post()`, `put()`, `patch()`, `delete()`
-- Basic options support
 - Native fetch implementation
-
-### **Phase 2 - Configuration**
-- `configure()`, `create()`
-- Global and instance-level config
-- Advanced options
-
-### **Phase 3 - Advanced**
-- `batch()`, `stream()`, `upload()`
-- Performance optimizations
-- Complex scenarios
-
-### **Phase 4 - Utilities**
-- Helper methods
-- Developer experience improvements
-- Debug tooling
+- Essential HTTP operations
 
 ---
 

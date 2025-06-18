@@ -1,18 +1,23 @@
 # Kairo V2 Development
 
-> **Complete V2 refactoring toward three-pillar architecture**
+> **Complete architectural redesign - built from scratch with strategic V1 component reuse**
 
 ## Vision
 
-Kairo V2 represents a fundamental shift toward **simplicity, predictability, and focused functionality**:
+Kairo V2 is a **complete architectural redesign** built from scratch, representing a fundamental shift toward **simplicity, predictability, and focused functionality**:
 
 ```typescript
 // V1: Complex, many concepts, 340+ functions
 resource(), pipeline(), repository(), schema(), transform(), rules(), cache()...
 
-// V2: Simple, three pillars, ~45 functions
+// V2: Simple, three pillars, 23 core methods (87% reduction)
 service(), pipeline(), data()
 ```
+
+### **Fresh Implementation Strategy**
+- **Built from scratch** - No V1 legacy constraints
+- **Strategic component reuse** - Only proven V1 foundations (Result pattern, native-schema, FP utilities)
+- **Zero refactoring complexity** - Clean implementation aligned with V2 principles
 
 ## The Three Pillars
 
@@ -49,7 +54,7 @@ const insights = data.aggregate(salesData, {
 ## Key Improvements
 
 ### **Massive Simplification**
-- **340+ functions** → **45 functions** (87% reduction)
+- **340+ functions** → **23 core methods** (93% reduction)
 - **Multiple patterns** → **One consistent pattern** (function + config)
 - **Complex composition** → **Simple function calls**
 
@@ -73,24 +78,30 @@ const insights = data.aggregate(salesData, {
 ```
 src/v2/
 ├── specs/                  # Complete specifications
-│   ├── architecture/      # Three-pillar architecture
+│   ├── architecture/      # Four-layer architecture (NEW)
 │   ├── pillars/           # Detailed pillar specs
-│   │   ├── service/       # HTTP-only service operations
-│   │   ├── pipeline/      # Logic composition
-│   │   └── data/          # Data operations + aggregation
+│   │   ├── service/       # HTTP-only service operations (5 methods)
+│   │   ├── pipeline/      # Logic composition (8 methods)
+│   │   └── data/          # Data operations + aggregation (10 methods)
 │   ├── api-design/        # Consistent API patterns
-│   └── implementation/    # Implementation strategy
-├── core/                  # V2 implementation (coming)
-├── examples/              # Usage examples (coming)
-└── migration/             # V1→V2 migration tools (coming)
+│   └── implementation/    # Fresh implementation strategy
+├── core/                  # V2 implementation (built from scratch)
+├── reused/                # Strategic V1 component reuse
+│   ├── result.ts          # Proven Result pattern
+│   ├── native-schema.ts   # Native schema (3x faster than Zod)
+│   ├── fp-utils/          # Mature FP utilities
+│   └── errors.ts          # Error handling foundation
+├── examples/              # V2 usage examples
+└── migration/             # User migration tools (V1→V2)
 ```
 
 ## Current Status
 
-- ✅ **Complete specifications** - All three pillars designed
-- ✅ **Implementation strategy** - 6-phase roadmap
-- 🟡 **Phase 1: Foundation** - In progress
-- ⏳ **Implementation** - Starting with SERVICE pillar
+- ✅ **Complete specifications** - Four-layer architecture designed
+- ✅ **Fresh implementation strategy** - Built from scratch approach
+- ✅ **V1 component evaluation** - Strategic reuse identified
+- 🟡 **Phase 1: Foundation** - Ready to begin fresh implementation
+- ⏳ **Implementation** - Starting with SERVICE pillar (clean build)
 
 [View detailed status →](./specs/status.md)
 

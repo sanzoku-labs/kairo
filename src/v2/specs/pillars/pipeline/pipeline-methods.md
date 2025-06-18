@@ -1,14 +1,28 @@
 # PIPELINE Pillar - Methods Specification
 
-> **Complete API for logic composition and data processing**
+> **Pareto-optimized API for logic composition and data processing (8 core methods)**
 
 ## Core Philosophy
 
-The PIPELINE pillar provides **pure logic composition** for business workflows and data transformation:
+The PIPELINE pillar provides **essential logic composition** following 80/20 Pareto principle:
 - ✅ Functional data transformation
 - ✅ Business rule validation
 - ✅ Workflow orchestration
 - ✅ Pure computation only (no external dependencies)
+
+## V2.0 Scope: 8 Core Methods
+
+**80% Use Cases Covered by Core Methods:**
+- `pipeline.map()` - Transform collections
+- `pipeline.filter()` - Filter collections
+- `pipeline.reduce()` - Aggregate data
+- `pipeline.compose()` - Function composition
+- `pipeline.chain()` - Data pipeline chaining
+- `pipeline.branch()` - Conditional execution
+- `pipeline.parallel()` - Parallel processing
+- `pipeline.validate()` - Data validation
+
+**V2.1+ Features:** Advanced utilities (`flatMap()`, `retry()`, `guard()`, `tap()`, `delay()`, `chunk()`, `stream()`)
 
 ## Method Signatures
 
@@ -100,29 +114,6 @@ const stats = pipeline.reduce(data, aggregateStats, {}, {
 })
 ```
 
-### **`pipeline.flatMap()`**
-**Signature**:
-```typescript
-pipeline.flatMap<TInput, TOutput>(
-  data: TInput[],
-  transform: (item: TInput) => TOutput | TOutput[],
-  options?: FlatMapOptions
-): Result<PipelineError, TOutput[]>
-```
-
-**Purpose**: Transform and flatten nested results
-
-**Examples**:
-```typescript
-// Flatten nested arrays
-const allTags = pipeline.flatMap(posts, post => post.tags)
-
-// Complex transformation with flattening
-const expanded = pipeline.flatMap(categories, expandSubcategories, {
-  depth: 2,
-  async: true
-})
-```
 
 ## Composition Methods
 
@@ -253,28 +244,6 @@ const enriched = pipeline.parallel(user, [
 })
 ```
 
-### **`pipeline.retry()`**
-**Signature**:
-```typescript
-pipeline.retry<TInput, TOutput>(
-  data: TInput,
-  operation: (data: TInput) => Result<PipelineError, TOutput>,
-  options?: RetryOptions
-): Result<PipelineError, TOutput>
-```
-
-**Purpose**: Retry operations with configurable strategy
-
-**Examples**:
-```typescript
-// Retry unreliable operations
-const result = pipeline.retry(data, unreliableOperation, {
-  attempts: 3,
-  delay: 1000,
-  backoff: 'exponential',
-  condition: (error) => error.retryable
-})
-```
 
 ## Validation Methods
 
@@ -306,156 +275,39 @@ const checked = pipeline.validate(order, [
 })
 ```
 
-### **`pipeline.guard()`**
-**Signature**:
-```typescript
-pipeline.guard<T>(
-  data: T,
-  guards: GuardCondition<T>[],
-  options?: GuardOptions
-): Result<PipelineError, T>
-```
-
-**Purpose**: Apply guard conditions before processing
-
-**Examples**:
-```typescript
-// Pre-condition guards
-const result = pipeline.guard(input, [
-  (data) => data !== null,
-  (data) => data.id !== undefined,
-  (data) => data.status === 'active'
-], {
-  errorMessage: 'Data failed guard conditions',
-  shortCircuit: true
-})
-```
 
 ## Utility Methods
 
-### **`pipeline.tap()`**
-**Signature**:
-```typescript
-pipeline.tap<T>(
-  data: T,
-  sideEffect: (data: T) => void,
-  options?: TapOptions
-): Result<PipelineError, T>
-```
 
-**Purpose**: Execute side effects without changing data
 
-**Examples**:
-```typescript
-// Logging and debugging
-const result = pipeline.tap(processedData, (data) => {
-  console.log('Processing completed:', data.length, 'items')
-  analytics.track('processing_complete', { count: data.length })
-})
-```
-
-### **`pipeline.delay()`**
-**Signature**:
-```typescript
-pipeline.delay<T>(
-  data: T,
-  ms: number,
-  options?: DelayOptions
-): Promise<Result<PipelineError, T>>
-```
-
-**Purpose**: Add delays for rate limiting or testing
-
-**Examples**:
-```typescript
-// Rate limiting
-const delayed = await pipeline.delay(data, 1000, {
-  jitter: true,
-  reason: 'rate-limiting'
-})
-```
-
-### **`pipeline.chunk()`**
-**Signature**:
-```typescript
-pipeline.chunk<T>(
-  data: T[],
-  size: number,
-  options?: ChunkOptions
-): Result<PipelineError, T[][]>
-```
-
-**Purpose**: Split data into chunks for batch processing
-
-**Examples**:
-```typescript
-// Batch processing
-const chunks = pipeline.chunk(largeDataset, 100)
-const results = pipeline.map(chunks, processChunk, { async: true })
-```
 
 ## Stream Processing Methods
 
-### **`pipeline.stream()`**
-**Signature**:
-```typescript
-pipeline.stream<TInput, TOutput>(
-  source: AsyncIterable<TInput>,
-  operations: StreamOperation<TInput, TOutput>[],
-  options?: StreamOptions
-): AsyncIterable<Result<PipelineError, TOutput>>
-```
-
-**Purpose**: Process streaming data
-
-**Examples**:
-```typescript
-// Stream processing
-for await (const result of pipeline.stream(dataStream, [
-  (item) => pipeline.validate(item, schema),
-  (item) => pipeline.transform(item, processor),
-  (item) => pipeline.enrich(item, addMetadata)
-], {
-  buffer: 1000,
-  parallel: 4
-})) {
-  // Handle streaming results
-}
-```
 
 ## Method Categories
 
-### **Core Transformations (4 methods)**
+### **Core Transformations (3 methods)**
 - `map()` - Transform items
 - `filter()` - Filter items  
 - `reduce()` - Aggregate data
-- `flatMap()` - Transform and flatten
 
 ### **Composition (2 methods)**
 - `compose()` - Function composition
 - `chain()` - Data pipeline chaining
 
-### **Control Flow (3 methods)**
+### **Control Flow (2 methods)**
 - `branch()` - Conditional execution
 - `parallel()` - Parallel processing
-- `retry()` - Retry logic
 
-### **Validation (2 methods)**
+### **Validation (1 method)**
 - `validate()` - Schema/rule validation
-- `guard()` - Pre-condition checking
 
-### **Utilities (4 methods)**
-- `tap()` - Side effects
-- `delay()` - Rate limiting
-- `chunk()` - Batch processing
-- `stream()` - Stream processing
-
-**Total: 15 methods** (comprehensive logic composition)
+**Total: 8 methods** (Pareto-optimized logic composition)
 
 ## Implementation Priorities
 
-### **Phase 1 - Core (4 methods)**
-- `map()`, `filter()`, `reduce()`, `flatMap()`
+### **Phase 1 - Core (3 methods)**
+- `map()`, `filter()`, `reduce()`
 - Basic synchronous operations
 - Simple options support
 
@@ -464,15 +316,14 @@ for await (const result of pipeline.stream(dataStream, [
 - Pipeline building
 - Error propagation
 
-### **Phase 3 - Control Flow (3 methods)**
-- `branch()`, `parallel()`, `retry()`
+### **Phase 3 - Control Flow (2 methods)**
+- `branch()`, `parallel()`
 - Advanced flow control
 - Async operations
 
-### **Phase 4 - Validation & Utilities (6 methods)**
-- All remaining methods
-- Advanced features
-- Performance optimizations
+### **Phase 4 - Validation (1 method)**
+- `validate()`
+- Business rule validation
 
 ---
 

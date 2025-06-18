@@ -1,10 +1,10 @@
 # Three-Pillar Architecture Overview
 
-> **The foundational architecture of Kairo V2**
+> **The foundational architecture of Kairo V2 - built from scratch with strategic V1 reuse**
 
 ## Core Philosophy
 
-Kairo V2 is built on **three pure abstractions** that handle the fundamental patterns in every application:
+Kairo V2 is a **complete architectural redesign** built on **three pure abstractions** that handle the fundamental patterns in every application:
 
 1. **SERVICE** - External system integration (HTTP APIs)
 2. **PIPELINE** - Logic composition and workflows  
@@ -165,10 +165,19 @@ schema()       → data.schema() // Part of data pillar
 transform()    → data.transform() // Part of data pillar
 ```
 
+### **Implementation Strategy**
+- **Built from scratch** - No V1 legacy constraints
+- **Strategic component reuse** - Only proven V1 foundations:
+  - `Result` pattern (error handling)
+  - `native-schema` (3x faster than Zod)
+  - FP utilities (curry, compose, pipe)
+  - Error handling foundation
+
 ### **Simplification**
-- **340+ functions** → **~30 core functions** (3 pillars × ~10 methods each)
+- **340+ functions** → **23 core methods** (93% reduction)
 - **Multiple patterns** → **One consistent pattern** (function + config)
 - **Complex composition** → **Simple function calls**
+- **Method chaining** → **Configuration objects**
 
 ---
 

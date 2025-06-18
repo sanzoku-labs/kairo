@@ -1,41 +1,134 @@
 # Implementation Strategy
 
-> **Complete strategy for implementing Kairo V2 three-pillar architecture**
+> **Complete strategy for building Kairo V2 from scratch with strategic V1 component reuse**
 
 ## Overview
 
 This document outlines the comprehensive strategy for implementing Kairo V2, including:
+- **Fresh implementation from scratch** - No V1 legacy constraints
+- **Strategic V1 component reuse** - Only proven foundations
+- **Four-layer architecture implementation**
+- **Pareto-optimized development (23 core methods)**
 - **Phased implementation approach**
-- **Priority-based development**
 - **Risk mitigation strategies**
 - **Quality assurance processes**
-- **Migration planning**
+- **User migration planning**
+
+## Architecture Scope
+
+### **V2 Four-Layer Architecture**
+```
+Layer 1: Core Methods (23)      ✅ Designed ⭐ Pareto-optimized
+├─ SERVICE: 5 methods           ✅ Complete
+├─ DATA: 10 methods             ✅ Complete  
+└─ PIPELINE: 8 methods          ✅ Complete
+
+Layer 2: Configuration Objects  ✅ Designed
+├─ Rich options for all methods ✅ Complete
+└─ Progressive enhancement      ✅ Complete
+
+Layer 3: Public Utilities (15) ✅ Designed
+├─ SERVICE: 4 utils             ✅ Complete
+├─ DATA: 6 utils                ✅ Complete
+└─ PIPELINE: 5 utils            ✅ Complete
+
+Layer 4: Internal Utilities     ✅ Designed
+└─ Private implementation funcs ✅ Complete
+```
+
+### **Strategic V1 Component Reuse**
+```
+✅ REUSE (Proven V1 Components):
+├─ Result pattern          ✅ Core error handling foundation
+├─ Native schema          ✅ 3x faster than Zod, zero dependencies  
+├─ FP utilities           ✅ Mature functional programming tools
+└─ Error handling         ✅ Solid error foundation
+
+🔄 BUILD FROM SCRATCH (V2 Architecture):
+├─ All pillar implementations (SERVICE, DATA, PIPELINE)
+├─ Four-layer architecture patterns
+├─ Configuration object system
+├─ Public utility functions
+└─ Cross-pillar composition patterns
+```
+
+### **V2.1+ Deferred Features**
+- **SERVICE**: `batch()`, `stream()`, `upload()`, `configure()`, `create()` + 5 utilities
+- **DATA**: `analyze()`, `sample()`, `pivot()`, `normalize()`, `diff()`, `partial()`
+- **PIPELINE**: `flatMap()`, `retry()`, `guard()`, `tap()`, `delay()`, `chunk()`, `stream()`
 
 ## Implementation Phases
 
 ### **Phase 1: Foundation (Weeks 1-4)**
-**Goal**: Establish core three-pillar architecture with essential functionality
+**Goal**: Establish fresh V2 foundation with strategic V1 component reuse
 
-#### **Week 1: Project Setup**
-- [ ] Set up V2 development structure in `develop` branch
-- [ ] Create build system for V2 (separate from V1)
-- [ ] Establish testing framework for V2 components
-- [ ] Set up documentation system for V2 specs
+**Decision Checkpoint**: All [Phase 1 decisions](./phase-decisions.md#phase-1-foundation-weeks-1-4) must be complete before starting implementation.
 
-#### **Week 2-3: Core Infrastructure**
-- [ ] Implement Result pattern for V2 (reuse from V1)
-- [ ] Create base error classes for each pillar
-- [ ] Build configuration system for options objects
-- [ ] Implement TypeScript type system for V2
+#### **Required Decisions Before Phase 1**
+- [x] Fresh implementation strategy - Confirmed: Build from scratch
+- [x] V1 component reuse evaluation - [migration-decisions.md](./migration-decisions.md)
+- [x] Performance targets and constraints - [performance-targets.md](../architecture/performance-targets.md)
+- [x] Browser support and environment matrix - [phase-decisions.md](./phase-decisions.md)
+- [x] Development standards and tooling - Auto-configured
 
-#### **Week 4: Basic Method Framework**
-- [ ] Create method signature framework
-- [ ] Implement options parsing and validation
-- [ ] Build basic error handling and propagation
-- [ ] Set up debugging and logging infrastructure
+#### **Week 1: Project Setup & V1 Component Extraction**
+- [ ] Set up V2 development structure in `src/v2/core/`
+- [ ] Extract and adapt proven V1 components:
+  - [ ] Copy `result.ts` (Result pattern foundation)
+  - [ ] Copy `native-schema.ts` (Native schema system)
+  - [ ] Copy `utils/fp/` (Functional programming utilities)
+  - [ ] Copy `errors.ts` (Error handling foundation)
+- [ ] Create V2-specific build system (separate from V1)
+- [ ] Establish V2 testing framework
+
+#### **Week 2-3: V2 Core Infrastructure**
+- [ ] Adapt V1 Result pattern for V2 architecture
+- [ ] Create V2 pillar-specific error classes
+- [ ] Build V2 configuration object system (no method chaining)
+- [ ] Implement V2 TypeScript type system for four-layer architecture
+- [ ] Create V2 method signature framework
+
+#### **Week 4: V2 Method Framework**
+- [ ] Implement V2 configuration options parsing
+- [ ] Build V2 error handling and propagation
+- [ ] Set up V2 debugging and logging infrastructure
+- [ ] Create V2 utility function patterns
 
 ### **Phase 2: SERVICE Pillar (Weeks 5-8)**
-**Goal**: Complete HTTP-only service implementation
+**Goal**: Complete HTTP-only service implementation (5 core methods + 4 utilities)
+
+**Decision Checkpoint**: All [Phase 2 decisions](./phase-decisions.md#phase-2-service-pillar-weeks-5-8) must be complete before starting SERVICE implementation.
+
+#### **Implementation Scope**
+```
+Core Methods (5):     Target Implementation
+├─ get()              ⏳ Essential HTTP operation
+├─ post()             ⏳ Essential HTTP operation
+├─ put()              ⏳ Essential HTTP operation
+├─ patch()            ⏳ Essential HTTP operation
+└─ delete()           ⏳ Essential HTTP operation
+
+Public Utilities (4): Target Implementation
+├─ buildURL()         ⏳ URL construction
+├─ parseURL()         ⏳ URL parsing
+├─ isError()          ⏳ Error type guard
+└─ isRetryable()      ⏳ Retry logic
+
+Configuration Layer:  Target Implementation
+└─ Rich options for all methods with progressive enhancement
+
+Internal Utilities:   Target Implementation
+└─ Request processing, caching, retry logic
+```
+
+#### **Required Decisions Before Phase 2**
+- [ ] Authentication strategy - [service-decisions.md](../pillars/service/service-decisions.md#1-authentication-strategy-)
+- [ ] Error handling granularity - [service-decisions.md](../pillars/service/service-decisions.md#2-error-handling-granularity-)
+- [ ] Caching strategy - [service-decisions.md](../pillars/service/service-decisions.md#3-caching-strategy-)
+- [ ] URL construction patterns - [service-decisions.md](../pillars/service/service-decisions.md#5-url-construction-patterns-)
+- [ ] Retry logic configuration - [service-decisions.md](../pillars/service/service-decisions.md#6-retry-logic-configuration-)
+- [ ] Request/response transformation - [service-decisions.md](../pillars/service/service-decisions.md#4-requestresponse-transformation-)
+- [ ] File upload handling - [service-decisions.md](../pillars/service/service-decisions.md#7-file-upload-handling-)
 
 #### **Week 5: Core HTTP Methods**
 - [ ] `service.get()` - GET requests with options
@@ -55,13 +148,54 @@ This document outlines the comprehensive strategy for implementing Kairo V2, inc
 - [ ] Timeout and abort signal handling
 
 #### **Week 8: Service Utilities**
-- [ ] `service.batch()` - Multiple request handling
-- [ ] `service.configure()` - Global configuration
-- [ ] `service.create()` - Instance creation
-- [ ] Upload and streaming (basic implementation)
+- [ ] `service.buildURL()` - URL construction utility
+- [ ] `service.parseURL()` - URL parsing utility
+- [ ] `service.isError()` - Error type guard utility
+- [ ] `service.isRetryable()` - Retry logic utility
 
 ### **Phase 3: DATA Pillar (Weeks 9-12)**
-**Goal**: Comprehensive data operations including aggregation
+**Goal**: Essential data operations including aggregation (10 core methods + 6 utilities)
+
+**Decision Checkpoint**: All [Phase 3 decisions](./phase-decisions.md#phase-3-data-pillar-weeks-9-12) must be complete before starting DATA implementation.
+
+#### **Implementation Scope**
+```
+Core Methods (10):    Target Implementation
+├─ schema()           ⏳ Schema creation
+├─ validate()         ⏳ Data validation
+├─ transform()        ⏳ Structure mapping
+├─ convert()          ⏳ Schema migration
+├─ aggregate()        ⏳ Statistical operations ⭐ Major V2 Feature
+├─ groupBy()          ⏳ Data grouping
+├─ serialize()        ⏳ Data export
+├─ deserialize()      ⏳ Data import
+├─ clone()            ⏳ Deep copying
+└─ merge()            ⏳ Data merging
+
+Public Utilities (6): Target Implementation
+├─ get()              ⏳ Safe property access
+├─ set()              ⏳ Safe property setting
+├─ has()              ⏳ Property existence check
+├─ inferType()        ⏳ Type inference
+├─ isValid()          ⏳ Quick validation
+└─ unique()           ⏳ Array deduplication
+
+Configuration Layer:  Target Implementation
+└─ Rich validation, transformation, and aggregation options
+
+Internal Utilities:   Target Implementation
+└─ Schema compilation, transform engine, aggregation engine
+```
+
+#### **Required Decisions Before Phase 3**
+- [ ] Schema definition syntax - [data-decisions.md](../pillars/data/data-decisions.md#1-schema-definition-syntax-)
+- [ ] Validation error reporting - [data-decisions.md](../pillars/data/data-decisions.md#2-validation-error-reporting-)
+- [ ] Data transformation capabilities - [data-decisions.md](../pillars/data/data-decisions.md#3-data-transformation-capabilities-)
+- [ ] Aggregation operations priority - [data-decisions.md](../pillars/data/data-decisions.md#4-aggregation-operations-priority-)
+- [ ] Type inference strategy - [data-decisions.md](../pillars/data/data-decisions.md#5-type-inference-strategy-)
+- [ ] Serialization/deserialization support - [data-decisions.md](../pillars/data/data-decisions.md#6-serializationdeserialization-support-)
+- [ ] Performance vs. features trade-offs - [data-decisions.md](../pillars/data/data-decisions.md#7-performance-vs-features-trade-offs-)
+- [ ] Schema composition patterns - [data-decisions.md](../pillars/data/data-decisions.md#8-schema-composition-patterns-)
 
 #### **Week 9: Schema and Validation**
 - [ ] `data.schema()` - Native schema creation
@@ -83,11 +217,50 @@ This document outlines the comprehensive strategy for implementing Kairo V2, inc
 
 #### **Week 12: Data Utilities**
 - [ ] `data.serialize()` / `data.deserialize()` - Format conversion
-- [ ] `data.analyze()` - Data profiling
-- [ ] `data.clone()`, `data.diff()`, `data.merge()` - Utility operations
+- [ ] `data.clone()`, `data.merge()` - Essential utility operations
+- [ ] `data.get()`, `data.set()`, `data.has()` - Property access utilities
+- [ ] `data.inferType()`, `data.isValid()`, `data.unique()` - Type and validation utilities
 
 ### **Phase 4: PIPELINE Pillar (Weeks 13-16)**
-**Goal**: Functional composition and business logic
+**Goal**: Essential logic composition and control flow (8 core methods + 5 utilities)
+
+**Decision Checkpoint**: All [Phase 4 decisions](./phase-decisions.md#phase-4-pipeline-pillar-weeks-13-16) must be complete before starting PIPELINE implementation.
+
+#### **Implementation Scope**
+```
+Core Methods (8):     Target Implementation
+├─ map()              ⏳ Transform collections
+├─ filter()           ⏳ Filter collections
+├─ reduce()           ⏳ Aggregate data
+├─ compose()          ⏳ Function composition
+├─ chain()            ⏳ Data pipeline chaining
+├─ branch()           ⏳ Conditional execution
+├─ parallel()         ⏳ Parallel processing
+└─ validate()         ⏳ Data validation
+
+Public Utilities (5): Target Implementation
+├─ curry()            ⏳ Curried functions
+├─ partial()          ⏳ Partial application
+├─ when()             ⏳ Conditional execution
+├─ unless()           ⏳ Guard conditions
+└─ trap()             ⏳ Error safety
+
+Configuration Layer:  Target Implementation
+└─ Rich async, parallel, and control flow options
+
+Internal Utilities:   Target Implementation
+└─ Execution control, composition engine, flow control
+```
+
+#### **Required Decisions Before Phase 4**
+- [ ] Composition strategy - [pipeline-decisions.md](../pillars/pipeline/pipeline-decisions.md#1-composition-strategy-)
+- [ ] Error propagation strategy - [pipeline-decisions.md](../pillars/pipeline/pipeline-decisions.md#2-error-propagation-strategy-)
+- [ ] Async operation handling - [pipeline-decisions.md](../pillars/pipeline/pipeline-decisions.md#3-async-operation-handling-)
+- [ ] Data flow control patterns - [pipeline-decisions.md](../pillars/pipeline/pipeline-decisions.md#4-data-flow-control-patterns-)
+- [ ] Integration with other pillars - [pipeline-decisions.md](../pillars/pipeline/pipeline-decisions.md#5-integration-with-other-pillars-)
+- [ ] Performance optimization patterns - [pipeline-decisions.md](../pillars/pipeline/pipeline-decisions.md#6-performance-optimization-patterns-)
+- [ ] Pipeline debugging and observability - [pipeline-decisions.md](../pillars/pipeline/pipeline-decisions.md#7-pipeline-debugging-and-observability-)
+- [ ] Memory management for large datasets - [pipeline-decisions.md](../pillars/pipeline/pipeline-decisions.md#8-memory-management-for-large-datasets-)
 
 #### **Week 13: Core Transformations**
 - [ ] `pipeline.map()` - Collection transformation
@@ -104,17 +277,24 @@ This document outlines the comprehensive strategy for implementing Kairo V2, inc
 #### **Week 15: Control Flow**
 - [ ] `pipeline.branch()` - Conditional execution
 - [ ] `pipeline.parallel()` - Parallel processing
-- [ ] `pipeline.retry()` - Retry logic
+- [ ] `pipeline.validate()` - Validation integration
 - [ ] Advanced async pattern support
 
 #### **Week 16: Pipeline Utilities**
-- [ ] `pipeline.validate()` - Validation integration
-- [ ] `pipeline.tap()` - Side effects
-- [ ] `pipeline.delay()`, `pipeline.chunk()` - Utility operations
-- [ ] Stream processing basics
+- [ ] `pipeline.curry()` - Curried functions
+- [ ] `pipeline.partial()` - Partial application
+- [ ] `pipeline.when()`, `pipeline.unless()` - Conditional utilities
+- [ ] `pipeline.trap()` - Error safety wrapper
 
 ### **Phase 5: Integration & Optimization (Weeks 17-20)**
 **Goal**: Inter-pillar composition and performance optimization
+
+**Decision Checkpoint**: All [Phase 5 decisions](./phase-decisions.md#phase-5-integration--optimization-weeks-17-20) must be complete before starting integration phase.
+
+#### **Required Decisions Before Phase 5**
+- [ ] Cross-pillar composition patterns - [phase-decisions.md](./phase-decisions.md#1-cross-pillar-composition-patterns-high-impact)
+- [ ] Performance optimization priorities - [phase-decisions.md](./phase-decisions.md#2-performance-optimization-priorities-medium-impact)
+- [ ] Developer experience enhancements - [phase-decisions.md](./phase-decisions.md#3-developer-experience-enhancements-medium-impact)
 
 #### **Week 17: Cross-Pillar Integration**
 - [ ] Service → Data → Pipeline flow patterns
@@ -142,6 +322,13 @@ This document outlines the comprehensive strategy for implementing Kairo V2, inc
 
 ### **Phase 6: Migration & Release (Weeks 21-24)**
 **Goal**: V1 to V2 migration and production release
+
+**Decision Checkpoint**: All [Phase 6 decisions](./phase-decisions.md#phase-6-migration--release-weeks-21-24) must be complete before starting migration phase.
+
+#### **Required Decisions Before Phase 6**
+- [ ] Migration tooling scope - [migration-decisions.md](./migration-decisions.md#3-migration-tooling-investment-level-)
+- [ ] Compatibility layer features - [migration-decisions.md](./migration-decisions.md#2-compatibility-layer-strategy-)
+- [ ] Release communication strategy - [migration-decisions.md](./migration-decisions.md#4-breaking-change-communication-strategy-)
 
 #### **Week 21-22: Migration Tooling**
 - [ ] Automated migration scripts

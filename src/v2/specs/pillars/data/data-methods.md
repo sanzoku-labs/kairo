@@ -1,15 +1,31 @@
 # DATA Pillar - Methods Specification
 
-> **Complete API for data validation, transformation, and processing**
+> **Pareto-optimized API for essential data operations (10 core methods)**
 
 ## Core Philosophy
 
-The DATA pillar provides **comprehensive data operations** for the complete data lifecycle:
+The DATA pillar provides **essential data operations** following 80/20 Pareto principle:
 - ✅ Schema validation (native, fast)
 - ✅ Data transformation and mapping
-- ✅ Aggregation and analytics (major gap in V1)
-- ✅ Serialization and normalization
+- ✅ Aggregation and analytics (major V2 value proposition)
+- ✅ Serialization for data exchange
 - ✅ Pure data operations only
+
+## V2.0 Scope: 10 Core Methods
+
+**80% Use Cases Covered by Core Methods:**
+- `data.schema()` - Schema creation
+- `data.validate()` - Data validation
+- `data.transform()` - Data transformation
+- `data.aggregate()` - Statistical operations ⭐ Major V2 feature
+- `data.groupBy()` - Data grouping
+- `data.serialize()` - Data export
+- `data.deserialize()` - Data import
+- `data.convert()` - Schema migration
+- `data.clone()` - Deep copying
+- `data.merge()` - Object merging
+
+**V2.1+ Features:** Advanced analytics (`analyze()`, `sample()`, `pivot()`), data quality (`normalize()`, `diff()`), specialized utilities (`partial()`)
 
 ## Method Signatures
 
@@ -84,27 +100,6 @@ const result = data.validate(complexData, ComplexSchema, {
 })
 ```
 
-### **`data.partial()`**
-**Signature**:
-```typescript
-data.partial<T>(
-  input: Partial<T>,
-  schema: Schema<T>,
-  options?: PartialValidationOptions
-): Result<ValidationError, Partial<T>>
-```
-
-**Purpose**: Validate partial data (for updates)
-
-**Examples**:
-```typescript
-// Partial validation for updates
-const updateResult = data.partial(
-  { email: 'new@email.com' },
-  UserSchema,
-  { allowEmpty: false }
-)
-```
 
 ## Transformation Methods
 
@@ -139,39 +134,6 @@ const enriched = data.transform(rawData, userTransformMapping, {
 })
 ```
 
-### **`data.normalize()`**
-**Signature**:
-```typescript
-data.normalize<T>(
-  input: T,
-  strategy: NormalizationStrategy,
-  options?: NormalizeOptions
-): Result<DataError, T>
-```
-
-**Purpose**: Normalize data format and structure
-
-**Examples**:
-```typescript
-// Standard normalization
-const clean = data.normalize(messyData, 'standard', {
-  trimStrings: true,
-  removeNulls: true,
-  convertDates: true,
-  camelCase: true
-})
-
-// Custom normalization
-const normalized = data.normalize(data, {
-  fields: {
-    email: 'lowercase',
-    phone: 'removeSpaces',
-    name: 'titleCase'
-  },
-  removeEmpty: true,
-  sortKeys: true
-})
-```
 
 ### **`data.convert()`**
 **Signature**:
@@ -262,28 +224,6 @@ const grouped = data.groupBy(data,
 )
 ```
 
-### **`data.pivot()`**
-**Signature**:
-```typescript
-data.pivot<T>(
-  input: T[],
-  config: PivotConfig<T>,
-  options?: PivotOptions
-): Result<DataError, PivotResult>
-```
-
-**Purpose**: Create pivot tables from data
-
-**Examples**:
-```typescript
-// Sales pivot table
-const pivoted = data.pivot(salesData, {
-  rows: ['region', 'salesperson'],
-  columns: ['quarter'],
-  values: 'revenue',
-  aggregation: 'sum'
-})
-```
 
 ## Serialization Methods
 
@@ -348,66 +288,6 @@ const imported = data.deserialize(csvData, 'csv', {
 })
 ```
 
-## Analysis Methods
-
-### **`data.analyze()`**
-**Signature**:
-```typescript
-data.analyze<T>(
-  input: T[],
-  fields?: (keyof T)[],
-  options?: AnalyzeOptions
-): Result<DataError, DataAnalysis<T>>
-```
-
-**Purpose**: Analyze data structure and quality
-
-**Examples**:
-```typescript
-// Data profiling
-const analysis = data.analyze(dataset, ['age', 'income', 'region'], {
-  includeDistribution: true,
-  detectOutliers: true,
-  calculateCorrelations: true
-})
-
-// Result includes:
-// - Field types and formats
-// - Null/empty counts
-// - Value distributions
-// - Statistical summaries
-// - Data quality metrics
-```
-
-### **`data.sample()`**
-**Signature**:
-```typescript
-data.sample<T>(
-  input: T[],
-  config: SampleConfig,
-  options?: SampleOptions
-): Result<DataError, T[]>
-```
-
-**Purpose**: Extract representative data samples
-
-**Examples**:
-```typescript
-// Random sampling
-const sample = data.sample(largeDataset, {
-  size: 1000,
-  method: 'random',
-  seed: 42
-})
-
-// Stratified sampling
-const stratified = data.sample(dataset, {
-  size: 500,
-  method: 'stratified',
-  stratifyBy: 'category',
-  proportional: true
-})
-```
 
 ## Utility Methods
 
@@ -432,21 +312,29 @@ const cloned = data.clone(complexObject, {
 })
 ```
 
-### **`data.diff()`**
+### **`data.merge()`**
 **Signature**:
 ```typescript
-data.diff<T>(
-  original: T,
-  modified: T,
-  options?: DiffOptions
-): Result<DataError, DataDiff<T>>
+data.merge<T, U>(
+  target: T,
+  source: U,
+  options?: MergeOptions
+): Result<DataError, T & U>
 ```
 
-**Purpose**: Compare data structures and find differences
+**Purpose**: Merge multiple data objects
 
 **Examples**:
 ```typescript
-// Data comparison
+// Simple merge
+const merged = data.merge(userBase, userExtended)
+
+// Deep merge with conflict resolution
+const combined = data.merge(config1, config2, {
+  deep: true,
+  strategy: 'source-wins',
+  arrays: 'concat'
+})
 const changes = data.diff(originalUser, updatedUser, {
   deep: true,
   includeArrayIndices: true,
@@ -474,54 +362,45 @@ const merged = data.merge(baseConfig, userConfig, envConfig, {
 
 ## Method Categories
 
-### **Schema & Validation (3 methods)**
+### **Schema & Validation (2 methods)**
 - `schema()` - Create schemas
-- `validate()` - Full validation
-- `partial()` - Partial validation
+- `validate()` - Data validation
 
-### **Transformation (3 methods)**
+### **Transformation (2 methods)**
 - `transform()` - Structure mapping
-- `normalize()` - Data cleanup
 - `convert()` - Schema migration
 
-### **Aggregation (3 methods)** ⭐ New in V2
+### **Aggregation (2 methods)** ⭐ New in V2
 - `aggregate()` - Statistical operations
 - `groupBy()` - Data grouping
-- `pivot()` - Pivot tables
 
 ### **Serialization (2 methods)**
 - `serialize()` - Export data
 - `deserialize()` - Import data
 
-### **Analysis (2 methods)** ⭐ New in V2
-- `analyze()` - Data profiling
-- `sample()` - Data sampling
-
-### **Utilities (3 methods)**
+### **Utilities (2 methods)**
 - `clone()` - Deep copying
-- `diff()` - Change detection
 - `merge()` - Data merging
 
-**Total: 16 methods** (comprehensive data operations)
+**Total: 10 methods** (Pareto-optimized data operations)
 
 ## Implementation Priorities
 
-### **Phase 1 - Foundation (6 methods)**
-- `schema()`, `validate()`, `partial()`
-- `transform()`, `normalize()`, `convert()`
+### **Phase 1 - Foundation (4 methods)**
+- `schema()`, `validate()`, `transform()`, `convert()`
 - Core data operations
 
-### **Phase 2 - Aggregation (3 methods)** ⭐ Major V2 Feature
-- `aggregate()`, `groupBy()`, `pivot()`
-- Analytics and reporting capabilities
+### **Phase 2 - Aggregation (2 methods)** ⭐ Major V2 Feature
+- `aggregate()`, `groupBy()`
+- Analytics capabilities
 
 ### **Phase 3 - Serialization (2 methods)**
 - `serialize()`, `deserialize()`
 - Import/export functionality
 
-### **Phase 4 - Advanced (5 methods)**
-- `analyze()`, `sample()`, `clone()`, `diff()`, `merge()`
-- Advanced data operations
+### **Phase 4 - Utilities (2 methods)**
+- `clone()`, `merge()`
+- Essential utilities
 
 ---
 
