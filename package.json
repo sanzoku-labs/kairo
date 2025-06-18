@@ -37,7 +37,7 @@
     "functional",
     "service",
     "data",
-    "pipeline", 
+    "pipeline",
     "result",
     "error-handling",
     "validation",

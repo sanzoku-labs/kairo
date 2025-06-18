@@ -1,39 +1,29 @@
 /**
  * PIPELINE Pillar Utilities
- * 
+ *
  * Public utility functions for PIPELINE pillar following V2 specifications.
  * These utilities can be used within PIPELINE methods and by users for functional programming.
  */
 
-import { Result } from '../foundation'
-import { PipelineError, createPipelineError } from '../errors'
-import {
-  PipelineResult,
-  PipelineOperation,
-  CurriedFunction,
-  PartialApplication,
-  ConditionalFunction,
-  SequenceOperation,
-  TrapFunction,
-  ErrorHandler,
-  PipelineContext,
-  ExecutionOptions
-} from './types'
+import { Result, createPipelineError } from '../shared'
+import type { PipelineError } from '../shared'
+import type { PipelineResult, CurriedFunction, PipelineContext } from './types'
+// Utility functions use explicit return types rather than imported interface types
 
 /**
  * Create curried versions of functions for composition
- * 
+ *
  * @param fn - Function to curry
  * @returns Curried function
  */
-export const curry = <TArgs extends any[], TReturn>(
+export const curry = <TArgs extends unknown[], TReturn>(
   fn: (...args: TArgs) => TReturn
 ): CurriedFunction<TArgs, TReturn> => {
-  return function curried(...args: any[]): any {
+  return function curried(...args: unknown[]): unknown {
     if (args.length >= fn.length) {
-      return fn(...args as TArgs)
+      return fn(...(args as TArgs))
     } else {
-      return function (...nextArgs: any[]) {
+      return function (...nextArgs: unknown[]) {
         return curried(...args, ...nextArgs)
       }
     }
@@ -42,23 +32,23 @@ export const curry = <TArgs extends any[], TReturn>(
 
 /**
  * Create partially applied functions
- * 
+ *
  * @param fn - Function to partially apply
  * @param partialArgs - Arguments to pre-fill
  * @returns Partially applied function
  */
-export const partial = <TArgs extends any[], TReturn>(
+export const partial = <TArgs extends unknown[], TReturn>(
   fn: (...args: TArgs) => TReturn,
-  ...partialArgs: any[]
-): ((...remainingArgs: any[]) => TReturn) => {
-  return (...remainingArgs: any[]) => {
+  ...partialArgs: unknown[]
+): ((...remainingArgs: unknown[]) => TReturn) => {
+  return (...remainingArgs: unknown[]) => {
     return fn(...(partialArgs.concat(remainingArgs) as TArgs))
   }
 }
 
 /**
  * Conditional execution function
- * 
+ *
  * @param condition - Condition to check
  * @param thenFn - Function to execute if condition is true
  * @param elseFn - Function to execute if condition is false
@@ -82,7 +72,7 @@ export const when = <T>(
 
 /**
  * Execute function unless condition is true
- * 
+ *
  * @param condition - Condition to check
  * @param fn - Function to execute if condition is false
  * @returns Guard function
@@ -102,7 +92,7 @@ export const unless = <T>(
 
 /**
  * Execute async operations in sequence
- * 
+ *
  * @param operations - Array of async operations
  * @returns Composed sequential function
  */
@@ -111,18 +101,18 @@ export const sequence = <T>(
 ): ((data: T) => Promise<T>) => {
   return async (data: T) => {
     let result = data
-    
+
     for (const operation of operations) {
       result = await operation(result)
     }
-    
+
     return result
   }
 }
 
 /**
  * Wrap functions to catch errors and return Results
- * 
+ *
  * @param fn - Function to wrap
  * @param handler - Optional error handler
  * @returns Safe function that returns Result
@@ -134,33 +124,33 @@ export const trap = <T, E = Error>(
   return (data: T) => {
     try {
       const result = fn(data)
-      return Result.ok(result)
+      return Result.Ok(result)
     } catch (error) {
       if (handler) {
         try {
           const recovered = handler(error as E, data)
-          return Result.ok(recovered)
+          return Result.Ok(recovered)
         } catch (handlerError) {
-          return Result.error(createPipelineError(
-            'trap',
-            `Error handler failed: ${handlerError}`,
-            { originalError: error, handlerError, data }
-          ))
+          return Result.Err(
+            createPipelineError('trap', `Error handler failed: ${String(handlerError)}`, {
+              originalError: error,
+              handlerError,
+              data,
+            })
+          )
         }
       }
-      
-      return Result.error(createPipelineError(
-        'trap',
-        `Function execution failed: ${error}`,
-        { error, data }
-      ))
+
+      return Result.Err(
+        createPipelineError('trap', `Function execution failed: ${String(error)}`, { error, data })
+      )
     }
   }
 }
 
 /**
  * Execute function with retry logic
- * 
+ *
  * @param fn - Function to execute
  * @param retries - Number of retry attempts
  * @param delay - Delay between retries in milliseconds
@@ -168,36 +158,38 @@ export const trap = <T, E = Error>(
  */
 export const retry = <T>(
   fn: (data: T) => T | Promise<T>,
-  retries: number = 3,
-  delay: number = 1000
+  retries = 3,
+  delay = 1000
 ): ((data: T) => Promise<PipelineResult<T>>) => {
   return async (data: T) => {
-    let lastError: any
-    
+    let lastError: unknown
+
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const result = await fn(data)
-        return Result.ok(result)
+        return Result.Ok(result)
       } catch (error) {
         lastError = error
-        
+
         if (attempt < retries) {
           await new Promise(resolve => setTimeout(resolve, delay * (attempt + 1)))
         }
       }
     }
-    
-    return Result.error(createPipelineError(
-      'retry',
-      `All ${retries + 1} attempts failed: ${lastError}`,
-      { error: lastError, data, attempts: retries + 1 }
-    ))
+
+    return Result.Err(
+      createPipelineError('retry', `All ${retries + 1} attempts failed: ${String(lastError)}`, {
+        error: lastError,
+        data,
+        attempts: retries + 1,
+      })
+    )
   }
 }
 
 /**
  * Add delay to function execution
- * 
+ *
  * @param fn - Function to delay
  * @param delayMs - Delay in milliseconds
  * @returns Delayed function
@@ -214,7 +206,7 @@ export const delay = <T>(
 
 /**
  * Execute function with timeout
- * 
+ *
  * @param fn - Function to execute
  * @param timeoutMs - Timeout in milliseconds
  * @returns Function with timeout
@@ -227,32 +219,29 @@ export const timeout = <T>(
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs)
     })
-    
+
     try {
-      const result = await Promise.race([
-        Promise.resolve(fn(data)),
-        timeoutPromise
-      ])
-      return Result.ok(result)
+      const result = await Promise.race([Promise.resolve(fn(data)), timeoutPromise])
+      return Result.Ok(result)
     } catch (error) {
-      return Result.error(createPipelineError(
-        'timeout',
-        `Operation timed out: ${error}`,
-        { error, data, timeout: timeoutMs }
-      ))
+      return Result.Err(
+        createPipelineError('timeout', `Operation timed out: ${String(error)}`, {
+          error,
+          data,
+          timeout: timeoutMs,
+        })
+      )
     }
   }
 }
 
 /**
  * Tap into pipeline for side effects without modifying data
- * 
+ *
  * @param fn - Side effect function
  * @returns Tap function that returns original data
  */
-export const tap = <T>(
-  fn: (data: T) => void | Promise<void>
-): ((data: T) => Promise<T>) => {
+export const tap = <T>(fn: (data: T) => void | Promise<void>): ((data: T) => Promise<T>) => {
   return async (data: T) => {
     await fn(data)
     return data
@@ -261,7 +250,7 @@ export const tap = <T>(
 
 /**
  * Memoize function results
- * 
+ *
  * @param fn - Function to memoize
  * @param keyFn - Function to generate cache key
  * @returns Memoized function
@@ -271,14 +260,14 @@ export const memoize = <T, R>(
   keyFn?: (data: T) => string
 ): ((data: T) => R) => {
   const cache = new Map<string, R>()
-  
+
   return (data: T) => {
     const key = keyFn ? keyFn(data) : JSON.stringify(data)
-    
+
     if (cache.has(key)) {
       return cache.get(key)!
     }
-    
+
     const result = fn(data)
     cache.set(key, result)
     return result
@@ -287,7 +276,7 @@ export const memoize = <T, R>(
 
 /**
  * Debounce function execution
- * 
+ *
  * @param fn - Function to debounce
  * @param wait - Wait time in milliseconds
  * @returns Debounced function
@@ -296,22 +285,22 @@ export const debounce = <T>(
   fn: (data: T) => void | Promise<void>,
   wait: number
 ): ((data: T) => void) => {
-  let timeoutId: NodeJS.Timeout | null = null
-  
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
+
   return (data: T) => {
     if (timeoutId) {
-      clearTimeout(timeoutId)
+      globalThis.clearTimeout(timeoutId)
     }
-    
+
     timeoutId = setTimeout(() => {
-      fn(data)
+      void fn(data)
     }, wait)
   }
 }
 
 /**
  * Throttle function execution
- * 
+ *
  * @param fn - Function to throttle
  * @param limit - Time limit in milliseconds
  * @returns Throttled function
@@ -321,19 +310,19 @@ export const throttle = <T>(
   limit: number
 ): ((data: T) => void) => {
   let inThrottle = false
-  
+
   return (data: T) => {
     if (!inThrottle) {
-      fn(data)
+      void fn(data)
       inThrottle = true
-      setTimeout(() => inThrottle = false, limit)
+      setTimeout(() => (inThrottle = false), limit)
     }
   }
 }
 
 /**
  * Create a guard function that validates input
- * 
+ *
  * @param predicate - Validation predicate
  * @param errorMessage - Error message if validation fails
  * @returns Guard function
@@ -344,20 +333,16 @@ export const guard = <T>(
 ): ((data: T) => PipelineResult<T>) => {
   return (data: T) => {
     if (predicate(data)) {
-      return Result.ok(data)
+      return Result.Ok(data)
     } else {
-      return Result.error(createPipelineError(
-        'guard',
-        errorMessage,
-        { data }
-      ))
+      return Result.Err(createPipelineError('guard', errorMessage, { data }))
     }
   }
 }
 
 /**
  * Create execution context for pipeline operations
- * 
+ *
  * @param operationName - Name of the operation
  * @param metadata - Additional metadata
  * @returns Pipeline context
@@ -369,35 +354,31 @@ export const createContext = (
   return {
     operationId: `${operationName}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     startTime: Date.now(),
-    metadata,
-    trace: []
+    metadata: metadata || {},
+    trace: [],
   }
 }
 
 /**
  * Add trace information to context
- * 
+ *
  * @param context - Pipeline context
  * @param operation - Operation name
  * @param data - Optional data to include
  * @returns Updated context
  */
-export const addTrace = (
-  context: PipelineContext,
-  operation: string,
-  data?: any
-): PipelineContext => {
+export const addTrace = (context: PipelineContext, operation: string): PipelineContext => {
   const trace = `${operation}@${Date.now() - context.startTime}ms`
-  
+
   return {
     ...context,
-    trace: [...context.trace, trace]
+    trace: [...(context.trace || []), trace],
   }
 }
 
 /**
  * Check if a value is a pipeline error
- * 
+ *
  * @param error - Error to check
  * @returns True if error is a PipelineError
  */
@@ -407,88 +388,75 @@ export const isPipelineError = (error: unknown): error is PipelineError => {
     error !== null &&
     'code' in error &&
     'pillar' in error &&
-    (error as any).pillar === 'PIPELINE'
+    (error as { pillar: unknown }).pillar === 'PIPELINE'
   )
 }
 
 /**
  * Extract results from an array of Results, filtering out errors
- * 
+ *
  * @param results - Array of Results
  * @returns Array of successful values
  */
-export const extractSuccessful = <T>(
-  results: PipelineResult<T>[]
-): T[] => {
-  return results
-    .filter(result => Result.isOk(result))
-    .map(result => (result as any).value)
+export const extractSuccessful = <T>(results: PipelineResult<T>[]): T[] => {
+  return results.filter(result => Result.isOk(result)).map(result => (result as { value: T }).value)
 }
 
 /**
  * Extract errors from an array of Results
- * 
+ *
  * @param results - Array of Results
  * @returns Array of errors
  */
-export const extractErrors = <T>(
-  results: PipelineResult<T>[]
-): PipelineError[] => {
-  return results
-    .filter(result => Result.isError(result))
-    .map(result => (result as any).error)
+export const extractErrors = <T>(results: PipelineResult<T>[]): PipelineError[] => {
+  return results.filter(result => Result.isErr(result)).map(result => (result as { error: PipelineError }).error)
 }
 
 /**
  * Combine multiple Results into a single Result
- * 
+ *
  * @param results - Array of Results
  * @returns Combined Result
  */
-export const combineResults = <T>(
-  results: PipelineResult<T>[]
-): PipelineResult<T[]> => {
+export const combineResults = <T>(results: PipelineResult<T>[]): PipelineResult<T[]> => {
   const errors = extractErrors(results)
-  
+
   if (errors.length > 0) {
-    return Result.error(createPipelineError(
-      'combineResults',
-      `${errors.length} operation(s) failed`,
-      { errors, totalResults: results.length }
-    ))
+    return Result.Err(
+      createPipelineError('combineResults', `${errors.length} operation(s) failed`, {
+        errors,
+        totalResults: results.length,
+      })
+    )
   }
-  
+
   const values = extractSuccessful(results)
-  return Result.ok(values)
+  return Result.Ok(values)
 }
 
 /**
  * Check if all Results are successful
- * 
+ *
  * @param results - Array of Results
  * @returns True if all Results are Ok
  */
-export const allSuccessful = <T>(
-  results: PipelineResult<T>[]
-): boolean => {
+export const allSuccessful = <T>(results: PipelineResult<T>[]): boolean => {
   return results.every(result => Result.isOk(result))
 }
 
 /**
  * Check if any Results are successful
- * 
+ *
  * @param results - Array of Results
  * @returns True if any Result is Ok
  */
-export const anySuccessful = <T>(
-  results: PipelineResult<T>[]
-): boolean => {
+export const anySuccessful = <T>(results: PipelineResult<T>[]): boolean => {
   return results.some(result => Result.isOk(result))
 }
 
 /**
  * Convert a regular function to return a Result
- * 
+ *
  * @param fn - Function to convert
  * @returns Function that returns Result
  */
@@ -498,20 +466,18 @@ export const toResult = <TInput, TOutput>(
   return (data: TInput) => {
     try {
       const result = fn(data)
-      return Result.ok(result)
+      return Result.Ok(result)
     } catch (error) {
-      return Result.error(createPipelineError(
-        'toResult',
-        `Function execution failed: ${error}`,
-        { error, data }
-      ))
+      return Result.Err(
+        createPipelineError('toResult', `Function execution failed: ${String(error)}`, { error, data })
+      )
     }
   }
 }
 
 /**
  * Convert an async function to return a Result
- * 
+ *
  * @param fn - Async function to convert
  * @returns Async function that returns Result
  */
@@ -521,13 +487,14 @@ export const toAsyncResult = <TInput, TOutput>(
   return async (data: TInput) => {
     try {
       const result = await fn(data)
-      return Result.ok(result)
+      return Result.Ok(result)
     } catch (error) {
-      return Result.error(createPipelineError(
-        'toAsyncResult',
-        `Async function execution failed: ${error}`,
-        { error, data }
-      ))
+      return Result.Err(
+        createPipelineError('toAsyncResult', `Async function execution failed: ${String(error)}`, {
+          error,
+          data,
+        })
+      )
     }
   }
 }

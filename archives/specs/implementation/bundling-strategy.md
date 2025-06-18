@@ -12,10 +12,11 @@ Kairo V2 is designed for maximum tree-shaking efficiency, allowing developers to
 ## ✅ Bundle Architecture Goals - ACHIEVED
 
 ### **✅ Size Targets - ACHIEVED**
+
 ```
 Individual Pillars:
 ├─ SERVICE only:     <15KB gzipped
-├─ DATA only:        <20KB gzipped  
+├─ DATA only:        <20KB gzipped
 ├─ PIPELINE only:    <10KB gzipped
 └─ Core utilities:   <5KB gzipped
 
@@ -33,6 +34,7 @@ Development vs Production:
 ## Entry Point Strategy
 
 ### **Package.json Configuration**
+
 ```json
 {
   "name": "kairo",
@@ -48,13 +50,13 @@ Development vs Production:
       "types": "./dist/index.d.ts"
     },
     "./service": {
-      "import": "./dist/service/index.esm.js", 
+      "import": "./dist/service/index.esm.js",
       "require": "./dist/service/index.cjs.js",
       "types": "./dist/service/index.d.ts"
     },
     "./data": {
       "import": "./dist/data/index.esm.js",
-      "require": "./dist/data/index.cjs.js", 
+      "require": "./dist/data/index.cjs.js",
       "types": "./dist/data/index.d.ts"
     },
     "./pipeline": {
@@ -71,23 +73,20 @@ Development vs Production:
       "types": "./dist/types/index.d.ts"
     }
   },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
+  "files": ["dist", "README.md", "LICENSE"],
   "sideEffects": false
 }
 ```
 
 ### **Import Patterns**
+
 ```typescript
 // Full library import (not recommended for production)
 import { service, data, pipeline } from 'kairo'
 
 // Pillar-specific imports (recommended)
 import { service } from 'kairo/service'
-import { data } from 'kairo/data'  
+import { data } from 'kairo/data'
 import { pipeline } from 'kairo/pipeline'
 
 // Method-specific imports (most optimized)
@@ -108,6 +107,7 @@ import { parallel } from 'kairo/pipeline/advanced'
 ## Build Configuration
 
 ### **Rollup Configuration**
+
 ```javascript
 // rollup.config.js
 import { defineConfig } from 'rollup'
@@ -123,7 +123,7 @@ const createConfig = (input, outputDir, format) => ({
     format,
     entryFileNames: format === 'es' ? '[name].esm.js' : '[name].cjs.js',
     chunkFileNames: format === 'es' ? '[name]-[hash].esm.js' : '[name]-[hash].cjs.js',
-    sourcemap: true
+    sourcemap: true,
   },
   plugins: [
     nodeResolve(),
@@ -132,30 +132,30 @@ const createConfig = (input, outputDir, format) => ({
       tsconfig: './tsconfig.build.json',
       outDir: `dist/${outputDir}`,
       declaration: format === 'es', // Only generate types for ESM
-      declarationDir: format === 'es' ? `dist/${outputDir}` : undefined
+      declarationDir: format === 'es' ? `dist/${outputDir}` : undefined,
     }),
     terser({
       compress: {
         pure_getters: true,
         unsafe: true,
         unsafe_comps: true,
-        warnings: false
-      }
-    })
+        warnings: false,
+      },
+    }),
   ],
   external: [], // No external dependencies
   treeshake: {
     moduleSideEffects: false,
     propertyReadSideEffects: false,
-    unknownGlobalSideEffects: false
-  }
+    unknownGlobalSideEffects: false,
+  },
 })
 
 export default defineConfig([
   // Main entry point
   createConfig('src/index.ts', '.', 'es'),
   createConfig('src/index.ts', '.', 'cjs'),
-  
+
   // Individual pillars
   createConfig('src/service/index.ts', 'service', 'es'),
   createConfig('src/service/index.ts', 'service', 'cjs'),
@@ -163,19 +163,20 @@ export default defineConfig([
   createConfig('src/data/index.ts', 'data', 'cjs'),
   createConfig('src/pipeline/index.ts', 'pipeline', 'es'),
   createConfig('src/pipeline/index.ts', 'pipeline', 'cjs'),
-  
+
   // Core utilities
   createConfig('src/core/index.ts', 'core', 'es'),
   createConfig('src/core/index.ts', 'core', 'cjs'),
-  
+
   // Advanced features (separate bundles)
   createConfig('src/data/aggregation/index.ts', 'data/aggregation', 'es'),
   createConfig('src/service/streaming/index.ts', 'service/streaming', 'es'),
-  createConfig('src/pipeline/advanced/index.ts', 'pipeline/advanced', 'es')
+  createConfig('src/pipeline/advanced/index.ts', 'pipeline/advanced', 'es'),
 ])
 ```
 
 ### **TypeScript Configuration**
+
 ```json
 // tsconfig.build.json
 {
@@ -203,7 +204,7 @@ export default defineConfig([
   "include": ["src/**/*"],
   "exclude": [
     "src/**/*.test.ts",
-    "src/**/*.spec.ts", 
+    "src/**/*.spec.ts",
     "src/**/__tests__/**/*",
     "src/**/__fixtures__/**/*"
   ]
@@ -213,6 +214,7 @@ export default defineConfig([
 ## Source Code Structure for Optimal Bundling
 
 ### **Directory Organization**
+
 ```
 src/
 ├── index.ts                 # Main entry (re-exports all pillars)
@@ -277,6 +279,7 @@ src/
 ```
 
 ### **Entry Point Files**
+
 ```typescript
 // src/index.ts - Main entry
 export * from './service'
@@ -294,7 +297,7 @@ export { get } from './methods/get'
 export { post } from './methods/post'
 // ... etc
 
-// src/data/index.ts - DATA pillar entry  
+// src/data/index.ts - DATA pillar entry
 export { schema, validate, partial, transform } from './core'
 export { serialize, deserialize } from './serialization'
 export type { ValidationOptions, ValidationError } from './types'
@@ -318,11 +321,12 @@ export { filter } from './core/filter'
 ## Tree-Shaking Optimization
 
 ### **Function-Level Exports**
+
 ```typescript
 // ✅ Good: Individual function exports for optimal tree-shaking
 // src/service/methods/get.ts
 export const get = async <T>(
-  url: string, 
+  url: string,
   options?: ServiceOptions
 ): Promise<Result<ServiceError, T>> => {
   // Implementation
@@ -340,13 +344,20 @@ export const post = async <T, U>(
 // ❌ Bad: Object exports (harder to tree-shake)
 // src/service/methods/index.ts
 export const methods = {
-  get: async () => { /* ... */ },
-  post: async () => { /* ... */ },
-  put: async () => { /* ... */ }
+  get: async () => {
+    /* ... */
+  },
+  post: async () => {
+    /* ... */
+  },
+  put: async () => {
+    /* ... */
+  },
 }
 ```
 
 ### **Conditional Feature Loading**
+
 ```typescript
 // Dynamic imports for optional features
 export const loadAggregation = async () => {
@@ -372,6 +383,7 @@ const processLargeDataset = async (data: unknown[]) => {
 ```
 
 ### **Side-Effect-Free Code**
+
 ```typescript
 // ✅ Good: Pure functions with no side effects
 export const validateUser = (input: unknown): Result<ValidationError, User> => {
@@ -396,6 +408,7 @@ export const createUserSchema = () => {
 ## Bundle Analysis and Monitoring
 
 ### **Bundle Size Analysis**
+
 ```javascript
 // scripts/analyze-bundle.js
 import { rollup } from 'rollup'
@@ -407,9 +420,9 @@ const analyzeBundles = async () => {
     { input: 'src/service/index.ts', name: 'service' },
     { input: 'src/data/index.ts', name: 'data' },
     { input: 'src/pipeline/index.ts', name: 'pipeline' },
-    { input: 'src/index.ts', name: 'full' }
+    { input: 'src/index.ts', name: 'full' },
   ]
-  
+
   for (const config of configs) {
     const bundle = await rollup({
       input: config.input,
@@ -419,30 +432,30 @@ const analyzeBundles = async () => {
         visualizer({
           filename: `bundle-analysis/${config.name}.html`,
           open: false,
-          gzipSize: true
-        })
-      ]
+          gzipSize: true,
+        }),
+      ],
     })
-    
+
     const { output } = await bundle.generate({
       format: 'es',
-      sourcemap: false
+      sourcemap: false,
     })
-    
+
     const code = output[0].code
     const size = Buffer.byteLength(code, 'utf8')
     const gzipped = await gzipSize(code)
-    
+
     console.log(`${config.name}: ${size} bytes (${gzipped} gzipped)`)
-    
+
     // Fail build if size exceeds targets
     const targets = {
       service: 15 * 1024,
       data: 20 * 1024,
       pipeline: 10 * 1024,
-      full: 50 * 1024
+      full: 50 * 1024,
     }
-    
+
     if (gzipped > targets[config.name]) {
       throw new Error(
         `Bundle ${config.name} exceeds size target: ${gzipped} > ${targets[config.name]}`
@@ -455,6 +468,7 @@ analyzeBundles().catch(console.error)
 ```
 
 ### **Tree-Shaking Validation**
+
 ```typescript
 // scripts/validate-treeshaking.ts
 import { rollup } from 'rollup'
@@ -464,32 +478,32 @@ const validateTreeShaking = async () => {
   const testCases = [
     {
       input: `import { get } from 'kairo/service'; export { get }`,
-      shouldNotInclude: ['post', 'put', 'patch', 'delete']
+      shouldNotInclude: ['post', 'put', 'patch', 'delete'],
     },
     {
       input: `import { validate } from 'kairo/data'; export { validate }`,
-      shouldNotInclude: ['aggregate', 'transform', 'serialize']
+      shouldNotInclude: ['aggregate', 'transform', 'serialize'],
     },
     {
       input: `import { map } from 'kairo/pipeline'; export { map }`,
-      shouldNotInclude: ['filter', 'reduce', 'parallel']
-    }
+      shouldNotInclude: ['filter', 'reduce', 'parallel'],
+    },
   ]
-  
+
   for (const testCase of testCases) {
     // Create temporary file
     const tempFile = `temp-${Date.now()}.js`
     writeFileSync(tempFile, testCase.input)
-    
+
     try {
       const bundle = await rollup({
         input: tempFile,
-        plugins: [nodeResolve(), typescript()]
+        plugins: [nodeResolve(), typescript()],
       })
-      
+
       const { output } = await bundle.generate({ format: 'es' })
       const code = output[0].code
-      
+
       // Check that excluded functions are not in the bundle
       for (const excluded of testCase.shouldNotInclude) {
         if (code.includes(excluded)) {
@@ -498,7 +512,7 @@ const validateTreeShaking = async () => {
           )
         }
       }
-      
+
       console.log(`✓ Tree-shaking validated for: ${testCase.input}`)
     } finally {
       unlinkSync(tempFile)
@@ -510,13 +524,14 @@ const validateTreeShaking = async () => {
 ## Development vs Production Builds
 
 ### **Development Configuration**
+
 ```typescript
 // Development builds include debugging utilities
 const developmentConfig = {
   define: {
     'process.env.NODE_ENV': '"development"',
-    '__DEBUG__': 'true',
-    '__VERSION__': `"${packageJson.version}"`
+    __DEBUG__: 'true',
+    __VERSION__: `"${packageJson.version}"`,
   },
   plugins: [
     // Include source maps and debugging
@@ -525,32 +540,35 @@ const developmentConfig = {
   ],
   output: {
     sourcemap: true,
-    format: 'es'
-  }
+    format: 'es',
+  },
 }
 
 // Development-only utilities
-export const debugUtils = __DEBUG__ ? {
-  logValidation: (input: unknown, schema: Schema<any>, result: Result<any, any>) => {
-    console.group(`Validation: ${schema.name || 'unnamed'}`)
-    console.log('Input:', input)
-    console.log('Result:', result)
-    console.groupEnd()
-  },
-  traceExecution: (operation: string, duration: number) => {
-    console.log(`${operation} took ${duration}ms`)
-  }
-} : {}
+export const debugUtils = __DEBUG__
+  ? {
+      logValidation: (input: unknown, schema: Schema<any>, result: Result<any, any>) => {
+        console.group(`Validation: ${schema.name || 'unnamed'}`)
+        console.log('Input:', input)
+        console.log('Result:', result)
+        console.groupEnd()
+      },
+      traceExecution: (operation: string, duration: number) => {
+        console.log(`${operation} took ${duration}ms`)
+      },
+    }
+  : {}
 ```
 
 ### **Production Configuration**
+
 ```typescript
 // Production builds are optimized for size and performance
 const productionConfig = {
   define: {
     'process.env.NODE_ENV': '"production"',
-    '__DEBUG__': 'false',
-    '__VERSION__': `"${packageJson.version}"`
+    __DEBUG__: 'false',
+    __VERSION__: `"${packageJson.version}"`,
   },
   plugins: [
     typescript({ sourceMap: false }),
@@ -559,30 +577,31 @@ const productionConfig = {
         dead_code: true,
         drop_console: true,
         drop_debugger: true,
-        pure_funcs: ['console.log', 'console.warn']
+        pure_funcs: ['console.log', 'console.warn'],
       },
       mangle: {
         toplevel: true,
-        safari10: true
-      }
-    })
+        safari10: true,
+      },
+    }),
   ],
   output: {
     sourcemap: false,
-    format: 'es'
-  }
+    format: 'es',
+  },
 }
 ```
 
 ## Bundle Delivery Strategy
 
 ### **CDN Distribution**
+
 ```html
 <!-- ESM from CDN -->
 <script type="module">
   import { service } from 'https://cdn.jsdelivr.net/npm/kairo@2/service'
   import { data } from 'https://cdn.jsdelivr.net/npm/kairo@2/data'
-  
+
   // Use Kairo in browser
   const users = await service.get('/api/users')
   const validated = data.validate(users, UserSchema)
@@ -596,6 +615,7 @@ const productionConfig = {
 ```
 
 ### **Package Registry Configuration**
+
 ```json
 // .npmrc
 registry=https://registry.npmjs.org/
@@ -609,12 +629,17 @@ message="Release v%s"
 ## Best Practices
 
 ### **1. Minimize Bundle Boundaries**
+
 ```typescript
 // ✅ Good: Keep related functionality together
 // src/service/http-client.ts
 export class HttpClient {
-  get() { /* ... */ }
-  post() { /* ... */ }
+  get() {
+    /* ... */
+  }
+  post() {
+    /* ... */
+  }
   // All HTTP methods in one cohesive module
 }
 
@@ -623,6 +648,7 @@ export class HttpClient {
 ```
 
 ### **2. Use Barrel Exports Carefully**
+
 ```typescript
 // ✅ Good: Selective re-exports
 // src/service/index.ts
@@ -636,6 +662,7 @@ export * from './methods' // Imports everything
 ```
 
 ### **3. Lazy Load Advanced Features**
+
 ```typescript
 // ✅ Good: Dynamic imports for optional features
 const withAggregation = async (data: unknown[]) => {
@@ -657,15 +684,16 @@ const withAggregation = (data: unknown[]) => {
 ```
 
 ### **4. Monitor Bundle Size Continuously**
+
 ```javascript
 // CI/CD bundle size monitoring
 const checkBundleSize = () => {
   const maxSizes = {
     'kairo/service': 15 * 1024,
     'kairo/data': 20 * 1024,
-    'kairo/pipeline': 10 * 1024
+    'kairo/pipeline': 10 * 1024,
   }
-  
+
   // Fail CI if any bundle exceeds limits
   Object.entries(maxSizes).forEach(([pkg, limit]) => {
     const size = getBundleSize(pkg)

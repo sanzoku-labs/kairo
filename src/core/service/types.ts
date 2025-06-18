@@ -1,13 +1,21 @@
 /**
  * SERVICE Pillar Types
- * 
+ *
  * Type definitions for the SERVICE pillar following V2 specifications.
  * Implements HTTP-only operations with configuration object pattern.
  */
 
-import { Result, Schema } from '../shared'
-import { ServiceError, ServiceHttpError, ServiceNetworkError } from '../shared'
-import { BaseOptions, CacheOptions, RetryOptions, ValidationOptions } from '../shared'
+import type {
+  Result,
+  Schema,
+  ServiceError,
+  ServiceHttpError,
+  ServiceNetworkError,
+  BaseOptions,
+  CacheOptions,
+  RetryOptions,
+  ValidationOptions,
+} from '../shared'
 
 /**
  * Base options for all SERVICE methods
@@ -17,13 +25,13 @@ export interface ServiceBaseOptions extends BaseOptions, ValidationOptions {
   headers?: Record<string, string>
   timeout?: number
   signal?: AbortSignal
-  
+
   // Response handling
   responseType?: 'json' | 'text' | 'blob' | 'arrayBuffer'
-  
+
   // Caching
   cache?: boolean | CacheOptions
-  
+
   // Retry logic
   retry?: boolean | RetryOptions
 }
@@ -34,7 +42,7 @@ export interface ServiceBaseOptions extends BaseOptions, ValidationOptions {
 export interface GetOptions extends ServiceBaseOptions {
   // Query parameters
   params?: Record<string, unknown>
-  
+
   // Conditional requests
   ifModifiedSince?: Date
   ifNoneMatch?: string
@@ -46,10 +54,10 @@ export interface GetOptions extends ServiceBaseOptions {
 export interface PostOptions extends ServiceBaseOptions {
   // Content handling
   contentType?: 'json' | 'form' | 'multipart' | 'text'
-  
+
   // Request validation
   validateRequest?: Schema<unknown>
-  
+
   // Idempotency
   idempotencyKey?: string
 }
@@ -59,11 +67,11 @@ export interface PostOptions extends ServiceBaseOptions {
  */
 export interface PutOptions extends ServiceBaseOptions {
   // Update strategy
-  merge?: boolean          // Merge with existing vs replace
-  upsert?: boolean         // Create if doesn't exist
-  
+  merge?: boolean // Merge with existing vs replace
+  upsert?: boolean // Create if doesn't exist
+
   // Concurrency control
-  ifMatch?: string         // ETag for optimistic locking
+  ifMatch?: string // ETag for optimistic locking
   ifUnmodifiedSince?: Date
 }
 
@@ -73,8 +81,8 @@ export interface PutOptions extends ServiceBaseOptions {
 export interface PatchOptions extends ServiceBaseOptions {
   // Merge strategy
   strategy?: 'merge' | 'replace' | 'remove'
-  deep?: boolean           // Deep merge for nested objects
-  
+  deep?: boolean // Deep merge for nested objects
+
   // Patch format
   format?: 'merge-patch' | 'json-patch' | 'strategic-merge'
 }
@@ -84,14 +92,14 @@ export interface PatchOptions extends ServiceBaseOptions {
  */
 export interface DeleteOptions extends ServiceBaseOptions {
   // Deletion strategy
-  soft?: boolean           // Soft delete vs hard delete
-  force?: boolean          // Force delete (bypass confirmations)
-  
+  soft?: boolean // Soft delete vs hard delete
+  force?: boolean // Force delete (bypass confirmations)
+
   // Return data
-  returnDeleted?: boolean  // Return deleted resource
-  
+  returnDeleted?: boolean // Return deleted resource
+
   // Confirmation
-  confirm?: boolean | string  // Require confirmation
+  confirm?: boolean | string // Require confirmation
 }
 
 /**

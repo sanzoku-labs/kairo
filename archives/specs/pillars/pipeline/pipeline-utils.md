@@ -17,6 +17,7 @@ PIPELINE function utils provide convenience functions for functional programming
 ### **✅ Function Composition - IMPLEMENTED**
 
 #### **✅ `pipeline.curry()` - IMPLEMENTED**
+
 ```typescript
 pipeline.curry<TArgs extends any[], TReturn>(
   fn: (...args: TArgs) => TReturn
@@ -42,6 +43,7 @@ const processUser = validateAndTransform(UserSchema, normalizeUser)
 ```
 
 #### **✅ `pipeline.partial()` - IMPLEMENTED**
+
 ```typescript
 pipeline.partial<TArgs extends any[], TReturn>(
   fn: (...args: TArgs) => TReturn,
@@ -66,6 +68,7 @@ const processAPIData = (items: any[]) => pipeline.map(items, apiTransform)
 ### **✅ Control Flow - IMPLEMENTED**
 
 #### **✅ `pipeline.when()` - IMPLEMENTED**
+
 ```typescript
 pipeline.when<T>(
   condition: (data: T) => boolean,
@@ -94,6 +97,7 @@ const applyDiscount = pipeline.when(
 ```
 
 #### **✅ `pipeline.unless()` - IMPLEMENTED**
+
 ```typescript
 pipeline.unless<T>(
   condition: (data: T) => boolean,
@@ -121,6 +125,7 @@ const updateUnlessLocked = pipeline.unless(
 ### **✅ Async Operations - IMPLEMENTED**
 
 #### **✅ `pipeline.sequence()` - IMPLEMENTED**
+
 ```typescript
 pipeline.sequence<T>(
   operations: Array<(data: T) => Promise<T>>
@@ -135,20 +140,21 @@ pipeline.sequence<T>(
 const processUserSequence = pipeline.sequence([
   async user => await validateUser(user),
   async user => await enrichWithProfile(user),
-  async user => await auditLog(user)
+  async user => await auditLog(user),
 ])
 
 // User code - API call sequences
 const fetchUserData = pipeline.sequence([
   async userId => await service.get(`/users/${userId}`),
   async user => await service.get(`/users/${user.id}/preferences`),
-  async prefs => ({ ...user, preferences: prefs })
+  async prefs => ({ ...user, preferences: prefs }),
 ])
 ```
 
 ### **✅ Error Handling - IMPLEMENTED**
 
 #### **✅ `pipeline.trap()` - IMPLEMENTED**
+
 ```typescript
 pipeline.trap<T, E = Error>(
   fn: (data: T) => T,
@@ -181,6 +187,7 @@ These functions are used internally by PIPELINE methods but not exposed to users
 ### **Execution Control**
 
 #### **`executeWithOptions()`**
+
 ```typescript
 executeWithOptions<T, R>(
   fn: (data: T) => R,
@@ -193,6 +200,7 @@ executeWithOptions<T, R>(
 **Usage**: Core execution engine
 
 #### **`handleAsync()`**
+
 ```typescript
 handleAsync<T, R>(
   fn: (data: T) => R | Promise<R>,
@@ -205,6 +213,7 @@ handleAsync<T, R>(
 **Usage**: Unified async handling
 
 #### **`batchProcess()`**
+
 ```typescript
 batchProcess<T, R>(
   items: T[],
@@ -219,6 +228,7 @@ batchProcess<T, R>(
 ### **Composition Engine**
 
 #### **`createComposition()`**
+
 ```typescript
 createComposition<T>(
   operations: PipelineOperation<T>[],
@@ -230,6 +240,7 @@ createComposition<T>(
 **Usage**: Performance optimization
 
 #### **`optimizeOperations()`**
+
 ```typescript
 optimizeOperations<T>(
   operations: PipelineOperation<T>[]
@@ -242,6 +253,7 @@ optimizeOperations<T>(
 ### **Flow Control**
 
 #### **`createBranch()`**
+
 ```typescript
 createBranch<T>(
   condition: BranchCondition<T>,
@@ -254,6 +266,7 @@ createBranch<T>(
 **Usage**: Conditional execution
 
 #### **`parallelExecutor()`**
+
 ```typescript
 parallelExecutor<T>(
   operations: ParallelOperation<T>[],
@@ -267,6 +280,7 @@ parallelExecutor<T>(
 ### **Validation Support**
 
 #### **`createValidator()`**
+
 ```typescript
 createValidator<T>(
   rules: ValidationRule<T>[],
@@ -278,6 +292,7 @@ createValidator<T>(
 **Usage**: Validation processing
 
 #### **`combineValidators()`**
+
 ```typescript
 combineValidators<T>(
   validators: ValidatorFunction<T>[]
@@ -298,22 +313,22 @@ function map<TInput, TOutput>(
   transform: (item: TInput, index: number) => TOutput,
   options: MapOptions = {}
 ): Result<PipelineError, TOutput[]> {
-  
   // Use internal utils for execution control
   if (options.async || options.parallel) {
     return handleAsync(
-      (items) => batchProcess(items, transform, {
-        parallel: options.parallel,
-        batchSize: options.batchSize || 10
-      }),
+      items =>
+        batchProcess(items, transform, {
+          parallel: options.parallel,
+          batchSize: options.batchSize || 10,
+        }),
       data,
       options
     )
   }
-  
+
   // Use trap() for error safety
   const safeTransform = pipeline.trap(transform)
-  
+
   try {
     const results = data.map((item, index) => {
       const result = safeTransform(item)
@@ -325,7 +340,7 @@ function map<TInput, TOutput>(
       }
       return result.value
     })
-    
+
     return Result.ok(results)
   } catch (error) {
     return Result.error(new PipelineError(error.message))
@@ -339,31 +354,29 @@ function map<TInput, TOutput>(
 // User leverages public utils for custom pipeline building
 const createUserProcessor = () => {
   // Use curry for reusable transformations
-  const validateUser = pipeline.curry((schema: Schema, user: any) => 
+  const validateUser = pipeline.curry((schema: Schema, user: any) =>
     pipeline.validate(user, schema)
   )
-  
-  const transformUser = pipeline.curry((mapping: any, user: any) =>
-    data.transform(user, mapping)
-  )
-  
+
+  const transformUser = pipeline.curry((mapping: any, user: any) => data.transform(user, mapping))
+
   // Use when/unless for conditional processing
   const addDefaultPreferences = pipeline.when(
     user => !user.preferences,
     user => ({ ...user, preferences: defaultPreferences })
   )
-  
+
   const skipInactiveUsers = pipeline.unless(
     user => user.status === 'inactive',
     user => user
   )
-  
+
   // Compose the pipeline
   return pipeline.compose([
     validateUser(UserSchema),
     skipInactiveUsers,
     transformUser(userMapping),
-    addDefaultPreferences
+    addDefaultPreferences,
   ])
 }
 
@@ -381,19 +394,19 @@ const createAsyncProcessor = (endpoint: string) => {
   const fetchAndEnrich = pipeline.sequence([
     async (id: string) => await service.get(`${endpoint}/${id}`),
     async (item: any) => await service.get(`${endpoint}/${item.id}/details`),
-    async (details: any) => ({ ...item, details })
+    async (details: any) => ({ ...item, details }),
   ])
-  
+
   // Use trap for error handling
   const safeFetch = pipeline.trap(fetchAndEnrich)
-  
+
   // Use partial for specialized processors
   const processWithRetry = pipeline.partial(
     async (retryCount: number, processor: Function, data: any) => {
       for (let i = 0; i < retryCount; i++) {
         const result = await safeFetch(data)
         if (Result.isOk(result)) return result
-        
+
         if (i < retryCount - 1) {
           await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)))
         }
@@ -402,7 +415,7 @@ const createAsyncProcessor = (endpoint: string) => {
     },
     3 // 3 retries
   )
-  
+
   return processWithRetry
 }
 ```
@@ -413,61 +426,44 @@ const createAsyncProcessor = (endpoint: string) => {
 // Advanced flow control using utils
 const createComplexProcessor = () => {
   // Multi-branch processing
-  const routeByType = pipeline.branch(
-    item => item.type,
+  const routeByType = pipeline.branch(item => item.type, {
+    user: pipeline.compose([validateUser, enrichUserData, auditUserAccess]),
+    order: pipeline.compose([validateOrder, calculateTotals, updateInventory]),
+    product: pipeline.compose([validateProduct, updateCatalog, syncSearchIndex]),
+  })
+
+  // Parallel processing with coordination
+  const processInParallel = pipeline.parallel(
+    [item => auditLog(item), item => updateCache(item), item => notifyWebhooks(item)],
     {
-      'user': pipeline.compose([
-        validateUser,
-        enrichUserData,
-        auditUserAccess
-      ]),
-      'order': pipeline.compose([
-        validateOrder,
-        calculateTotals,
-        updateInventory
-      ]),
-      'product': pipeline.compose([
-        validateProduct,
-        updateCatalog,
-        syncSearchIndex
-      ])
+      failFast: false,
+      maxConcurrency: 3,
     }
   )
-  
-  // Parallel processing with coordination
-  const processInParallel = pipeline.parallel([
-    item => auditLog(item),
-    item => updateCache(item),
-    item => notifyWebhooks(item)
-  ], {
-    failFast: false,
-    maxConcurrency: 3
-  })
-  
+
   // Final composition
-  return pipeline.chain([
-    routeByType,
-    processInParallel,
-    finalizeProcessing
-  ])
+  return pipeline.chain([routeByType, processInParallel, finalizeProcessing])
 }
 ```
 
 ## Benefits
 
 ### **For METHOD Implementation**
+
 - Consistent async handling patterns
 - Reusable composition utilities
 - Safe error handling wrappers
 - Performance optimization helpers
 
 ### **For USER Code**
+
 - Functional programming utilities
 - Composable pipeline building
 - Error-safe operation wrappers
 - Async coordination helpers
 
 ### **For FRAMEWORK Design**
+
 - Modular pipeline construction
 - Testable utility functions
 - Performance optimizations
@@ -476,19 +472,23 @@ const createComplexProcessor = () => {
 ## Implementation Status ✅ COMPLETE
 
 ### **✅ Phase 1: Core Utils - COMPLETED**
+
 - ✅ `curry()`, `partial()`, `when()`, `trap()` - **All implemented**
 - ✅ Essential for functional composition - **Fully functional**
 
 ### **✅ Phase 2: Async Utils - COMPLETED + BONUS**
+
 - ✅ `sequence()`, `unless()`, async handling - **All implemented**
 - ✅ Enhanced async processing - **Working with advanced features**
 - ✅ **Bonus utilities implemented**: retry, delay, timeout, tap, memoize, debounce, throttle, guard
 
 ### **✅ Phase 3: Internal Utils - COMPLETED**
+
 - ✅ All internal utilities for method implementation - **Complete execution engine**
 - ✅ Performance and optimization features - **Async/parallel support, composition optimization**
 
 ### **✅ Bonus Phase: V2.1+ Features Early Implementation**
+
 - ✅ **10 bonus utilities delivered beyond specification**
 - ✅ Advanced functional programming patterns
 - ✅ Comprehensive async/parallel support

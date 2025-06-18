@@ -1,31 +1,32 @@
 /**
  * SERVICE Pillar Core Methods
- * 
+ *
  * Implements the 5 core SERVICE methods according to V2 specifications:
  * - get() - Fetch data
- * - post() - Create resources  
+ * - post() - Create resources
  * - put() - Update resources
  * - patch() - Partial updates
  * - delete() - Remove resources
  */
 
 import { Result } from '../shared'
-import { ServiceError, ServiceNetworkError, createServiceError, createServiceHttpError } from '../shared'
-import { 
-  GetOptions, 
-  PostOptions, 
-  PutOptions, 
-  PatchOptions, 
+import type { ServiceError, ServiceHttpError, ServiceNetworkError } from '../shared'
+import { createServiceError } from '../shared'
+import type {
+  GetOptions,
+  PostOptions,
+  PutOptions,
+  PatchOptions,
   DeleteOptions,
   ServiceResult,
   RequestConfig,
-  HttpMethod
 } from './types'
-import { 
-  mergeOptions, 
-  normalizeTimeout, 
-  normalizeRetryOptions, 
-  normalizeCacheOptions 
+import {
+  mergeOptions,
+  normalizeTimeout,
+  normalizeRetryOptions,
+  normalizeCacheOptions,
+  type RetryOptions,
 } from '../shared/config'
 import { buildURL, parseResponse, isRetryable } from './utils'
 
@@ -42,43 +43,47 @@ const executeRequest = async <T>(config: RequestConfig): Promise<ServiceResult<T
     const response = await fetch(config.url, {
       method: config.method,
       headers: config.headers,
-      body: config.body,
-      signal: config.signal
+      body: config.body || null,
+      signal: config.signal || null,
     })
-    
+
     const parsed = await parseResponse<T>(response)
-    if (Result.isError(parsed)) {
+    if (Result.isErr(parsed)) {
       return parsed
     }
-    
-    return Result.ok(parsed.value.data)
-    
-  } catch (error: any) {
+
+    return Result.Ok(parsed.value.data)
+  } catch (error: unknown) {
     // Handle different types of errors
-    if (error.name === 'AbortError') {
-      return Result.error(createServiceError(
-        config.method.toLowerCase(),
-        'Request was aborted',
-        { url: config.url }
-      ))
+    if (error instanceof Error && error.name === 'AbortError') {
+      return Result.Err(
+        createServiceError(config.method.toLowerCase(), 'Request was aborted', { url: config.url })
+      )
     }
-    
-    if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-      return Result.error({
+
+    if (
+      error instanceof Error &&
+      error.name === 'TypeError' &&
+      error.message.includes('Failed to fetch')
+    ) {
+      return Result.Err({
         code: 'SERVICE_NETWORK_ERROR',
         pillar: 'SERVICE',
         operation: config.method.toLowerCase(),
         message: 'Network error occurred',
         url: config.url,
-        context: { error }
+        timestamp: Date.now(),
+        context: { error },
       } as ServiceNetworkError)
     }
-    
-    return Result.error(createServiceError(
-      config.method.toLowerCase(),
-      error.message || 'Unknown error occurred',
-      { url: config.url, error }
-    ))
+
+    return Result.Err(
+      createServiceError(
+        config.method.toLowerCase(),
+        error instanceof Error ? error.message : 'Unknown error occurred',
+        { url: config.url, error }
+      )
+    )
   }
 }
 
@@ -87,91 +92,91 @@ const executeRequest = async <T>(config: RequestConfig): Promise<ServiceResult<T
  */
 const executeWithRetry = async <T>(
   config: RequestConfig,
-  options: { retry?: boolean | any }
+  options: { retry?: boolean | RetryOptions }
 ): Promise<ServiceResult<T>> => {
   const retryConfig = normalizeRetryOptions(options.retry)
-  
+
   if (retryConfig.attempts === 0) {
     return executeRequest<T>(config)
   }
-  
-  let lastError: ServiceError | undefined
-  
-  for (let attempt = 0; attempt <= retryConfig.attempts; attempt++) {
+
+  let lastError: ServiceHttpError | ServiceNetworkError | ServiceError<'SERVICE_ERROR'> | undefined
+
+  for (let attempt = 0; attempt <= (retryConfig.attempts ?? 0); attempt++) {
     const result = await executeRequest<T>(config)
-    
+
     if (Result.isOk(result)) {
       return result
     }
-    
+
     lastError = result.error
-    
+
     // Don't retry on last attempt
     if (attempt === retryConfig.attempts) {
       break
     }
-    
+
     // Check if error is retryable
-    if (!isRetryable(lastError)) {
+    if (!lastError || !isRetryable(lastError)) {
       break
     }
-    
+
     // Calculate delay for next attempt
     const delay = retryConfig.delay || 1000
     let actualDelay = delay
-    
+
     if (retryConfig.backoff === 'exponential') {
       actualDelay = delay * Math.pow(2, attempt)
     } else if (retryConfig.backoff === 'linear') {
       actualDelay = delay * (attempt + 1)
     }
-    
+
     // Apply max delay cap
     if (retryConfig.maxDelay && actualDelay > retryConfig.maxDelay) {
       actualDelay = retryConfig.maxDelay
     }
-    
+
     // Wait before retry
     await new Promise(resolve => setTimeout(resolve, actualDelay))
   }
-  
-  return Result.error(lastError!)
+
+  return Result.Err(lastError!)
 }
 
 /**
  * Internal function to handle caching
  */
-const getCachedResult = <T>(cacheKey: string, cacheConfig: any): T | null => {
+const getCachedResult = <T>(cacheKey: string, cacheConfig: { enabled?: boolean; ttl?: number }): T | null => {
   if (!cacheConfig.enabled) {
     return null
   }
-  
+
   const cached = cache.get(cacheKey)
   if (!cached) {
     return null
   }
-  
+
   // Check if cache is expired
   if (Date.now() - cached.timestamp > cached.ttl) {
     cache.delete(cacheKey)
     return null
   }
-  
+
   return cached.data as T
 }
 
 /**
  * Internal function to set cache
  */
-const setCachedResult = <T>(cacheKey: string, data: T, cacheConfig: any): void => {
+const setCachedResult = <T>(cacheKey: string, data: T, cacheConfig: { enabled?: boolean; ttl?: number }): void => {
   if (!cacheConfig.enabled) {
     return
   }
-  
+
   cache.set(cacheKey, {
     data,
     timestamp: Date.now(),
-    ttl: cacheConfig.ttl || 300000
+    ttl: cacheConfig.ttl ?? 300000,
   })
 }
 
@@ -182,34 +187,33 @@ export const get = async <T = unknown>(
   url: string,
   options: GetOptions = {}
 ): Promise<ServiceResult<T>> => {
-  const opts = mergeOptions({
+  const opts = mergeOptions(options, {
     timeout: 30000,
-    responseType: 'json' as const
-  }, options)
-  
+    responseType: 'json' as const,
+  })
+
   // Build complete URL with query parameters
   const completeURL = buildURL(url, undefined, opts.params)
-  
+
   // Handle caching
   const cacheConfig = normalizeCacheOptions(opts.cache)
-  const cacheKey = typeof cacheConfig.key === 'function' 
-    ? cacheConfig.key(opts)
-    : cacheConfig.key || completeURL
-  
+  const cacheKey =
+    typeof cacheConfig.key === 'function' ? cacheConfig.key(opts) : cacheConfig.key || completeURL
+
   // Check cache first
   if (cacheConfig.enabled) {
     const cached = getCachedResult<T>(cacheKey, cacheConfig)
     if (cached !== null) {
-      return Result.ok(cached)
+      return Result.Ok(cached)
     }
   }
-  
+
   // Prepare request
   const headers: Record<string, string> = {
-    'Accept': opts.responseType === 'json' ? 'application/json' : '*/*',
-    ...opts.headers
+    Accept: opts.responseType === 'json' ? 'application/json' : '*/*',
+    ...opts.headers,
   }
-  
+
   // Add conditional request headers
   if (opts.ifModifiedSince) {
     headers['If-Modified-Since'] = opts.ifModifiedSince.toUTCString()
@@ -217,23 +221,23 @@ export const get = async <T = unknown>(
   if (opts.ifNoneMatch) {
     headers['If-None-Match'] = opts.ifNoneMatch
   }
-  
+
   const config: RequestConfig = {
     method: 'GET',
     url: completeURL,
     headers,
     timeout: normalizeTimeout(opts.timeout),
-    signal: opts.signal
+    ...(opts.signal && { signal: opts.signal }),
   }
-  
+
   // Execute with retry logic
   const result = await executeWithRetry<T>(config, opts)
-  
+
   // Cache successful results
   if (Result.isOk(result) && cacheConfig.enabled) {
     setCachedResult(cacheKey, result.value, cacheConfig)
   }
-  
+
   return result
 }
 
@@ -245,20 +249,20 @@ export const post = async <TData = unknown, TResponse = unknown>(
   data?: TData,
   options: PostOptions = {}
 ): Promise<ServiceResult<TResponse>> => {
-  const opts = mergeOptions({
+  const opts = mergeOptions(options, {
     timeout: 30000,
-    contentType: 'json' as const
-  }, options)
-  
+    contentType: 'json' as const,
+  })
+
   // Prepare headers
   const headers: Record<string, string> = {
-    'Accept': 'application/json',
-    ...opts.headers
+    Accept: 'application/json',
+    ...opts.headers,
   }
-  
+
   // Prepare body based on content type
   let body: string | FormData | undefined
-  
+
   if (data !== undefined) {
     if (opts.contentType === 'json') {
       headers['Content-Type'] = 'application/json'
@@ -295,21 +299,21 @@ export const post = async <TData = unknown, TResponse = unknown>(
       body = String(data)
     }
   }
-  
+
   // Add idempotency key if provided
   if (opts.idempotencyKey) {
     headers['Idempotency-Key'] = opts.idempotencyKey
   }
-  
+
   const config: RequestConfig = {
     method: 'POST',
     url,
     headers,
-    body,
+    ...(body !== undefined && { body }),
     timeout: normalizeTimeout(opts.timeout),
-    signal: opts.signal
+    ...(opts.signal && { signal: opts.signal }),
   }
-  
+
   return executeWithRetry<TResponse>(config, opts)
 }
 
@@ -321,17 +325,17 @@ export const put = async <TData = unknown, TResponse = unknown>(
   data: TData,
   options: PutOptions = {}
 ): Promise<ServiceResult<TResponse>> => {
-  const opts = mergeOptions({
+  const opts = mergeOptions(options, {
     timeout: 30000,
-    merge: false
-  }, options)
-  
+    merge: false,
+  })
+
   const headers: Record<string, string> = {
-    'Accept': 'application/json',
+    Accept: 'application/json',
     'Content-Type': 'application/json',
-    ...opts.headers
+    ...opts.headers,
   }
-  
+
   // Add concurrency control headers
   if (opts.ifMatch) {
     headers['If-Match'] = opts.ifMatch
@@ -339,16 +343,16 @@ export const put = async <TData = unknown, TResponse = unknown>(
   if (opts.ifUnmodifiedSince) {
     headers['If-Unmodified-Since'] = opts.ifUnmodifiedSince.toUTCString()
   }
-  
+
   const config: RequestConfig = {
     method: 'PUT',
     url,
     headers,
     body: JSON.stringify(data),
     timeout: normalizeTimeout(opts.timeout),
-    signal: opts.signal
+    ...(opts.signal && { signal: opts.signal }),
   }
-  
+
   return executeWithRetry<TResponse>(config, opts)
 }
 
@@ -360,17 +364,17 @@ export const patch = async <TData = unknown, TResponse = unknown>(
   data: TData,
   options: PatchOptions = {}
 ): Promise<ServiceResult<TResponse>> => {
-  const opts = mergeOptions({
+  const opts = mergeOptions(options, {
     timeout: 30000,
     strategy: 'merge' as const,
-    format: 'merge-patch' as const
-  }, options)
-  
+    format: 'merge-patch' as const,
+  })
+
   const headers: Record<string, string> = {
-    'Accept': 'application/json',
-    ...opts.headers
+    Accept: 'application/json',
+    ...opts.headers,
   }
-  
+
   // Set content type based on patch format
   if (opts.format === 'json-patch') {
     headers['Content-Type'] = 'application/json-patch+json'
@@ -379,16 +383,16 @@ export const patch = async <TData = unknown, TResponse = unknown>(
   } else {
     headers['Content-Type'] = 'application/json'
   }
-  
+
   const config: RequestConfig = {
     method: 'PATCH',
     url,
     headers,
     body: JSON.stringify(data),
     timeout: normalizeTimeout(opts.timeout),
-    signal: opts.signal
+    ...(opts.signal && { signal: opts.signal }),
   }
-  
+
   return executeWithRetry<TResponse>(config, opts)
 }
 
@@ -399,33 +403,33 @@ export const deleteMethod = async <TResponse = unknown>(
   url: string,
   options: DeleteOptions = {}
 ): Promise<ServiceResult<TResponse>> => {
-  const opts = mergeOptions({
+  const opts = mergeOptions(options, {
     timeout: 30000,
     soft: false,
     force: false,
-    returnDeleted: false
-  }, options)
-  
+    returnDeleted: false,
+  })
+
   const headers: Record<string, string> = {
-    'Accept': 'application/json',
-    ...opts.headers
+    Accept: 'application/json',
+    ...opts.headers,
   }
-  
+
   // Add query parameters for delete options
   const deleteURL = buildURL(url, undefined, {
     ...(opts.soft && { soft: 'true' }),
     ...(opts.force && { force: 'true' }),
-    ...(opts.returnDeleted && { return: 'true' })
+    ...(opts.returnDeleted && { return: 'true' }),
   })
-  
+
   const config: RequestConfig = {
     method: 'DELETE',
     url: deleteURL,
     headers,
     timeout: normalizeTimeout(opts.timeout),
-    signal: opts.signal
+    ...(opts.signal && { signal: opts.signal }),
   }
-  
+
   return executeWithRetry<TResponse>(config, opts)
 }
 

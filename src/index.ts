@@ -1,13 +1,13 @@
 /**
  * Kairo V2 - Core API
- * 
+ *
  * Complete architectural redesign built from scratch with strategic V1 component reuse.
  * Four-layer architecture with Pareto-optimized API surface.
- * 
+ *
  * Architecture:
  * - Layer 1: Core Methods (23 total)
  * - Layer 2: Configuration Objects (rich options)
- * - Layer 3: Public Utilities (15 total) 
+ * - Layer 3: Public Utilities (15 total)
  * - Layer 4: Internal Utilities (private)
  */
 
@@ -28,7 +28,7 @@ export type {
   ServiceResult,
   ServiceError,
   ServiceHttpError,
-  ServiceNetworkError
+  ServiceNetworkError,
 } from './core/service'
 
 // DATA Pillar - Data Operations + Aggregation (10 methods + 6 utilities)
@@ -51,7 +51,7 @@ export type {
   TransformMapping,
   AggregateOperations,
   AggregateResult,
-  SerializationFormat
+  SerializationFormat,
 } from './core/data'
 
 // PIPELINE Pillar - Logic Composition (8 methods + 5 utilities)
@@ -72,7 +72,7 @@ export type {
   PredicateFunction,
   ReducerFunction,
   ValidationRule,
-  ComposedPipeline
+  ComposedPipeline,
 } from './core/pipeline'
 
 // V2 Error Types
@@ -80,7 +80,7 @@ export type {
   ServiceError as V2ServiceError,
   DataError,
   PipelineError,
-  V2Error
+  V2Error,
 } from './core/shared'
 
 // Core Configuration Types
@@ -89,31 +89,31 @@ export type {
   ValidationOptions,
   CacheOptions,
   RetryOptions,
-  TransformOptions
+  TransformOptions,
 } from './core/shared'
 
 /**
  * Kairo V2 API
- * 
+ *
  * Three pillars with consistent patterns:
  * - service() - HTTP-only API integration
  * - data() - Data validation, transformation, aggregation
  * - pipeline() - Logic composition and workflows
- * 
+ *
  * @example
  * ```typescript
  * import { service, data, pipeline, Result } from 'kairo'
- * 
+ *
  * // HTTP API requests
  * const users = await service.get('/users')
- * 
+ *
  * // Data validation and transformation
  * const UserSchema = data.schema({
  *   id: { type: 'string', format: 'uuid' },
  *   name: { type: 'string', min: 2, max: 100 },
  *   email: { type: 'string', format: 'email' }
  * })
- * 
+ *
  * // Pipeline processing
  * const processUsers = pipeline.compose([
  *   users => pipeline.filter(users, user => user.active),
@@ -124,9 +124,9 @@ export type {
  *     avg: ['satisfaction']
  *   })
  * ])
- * 
+ *
  * const result = await processUsers(users)
- * 
+ *
  * // Error handling
  * if (Result.isError(result)) {
  *   console.error('Processing failed:', result.error.message)
@@ -140,10 +140,10 @@ export type {
 export const V2_STATUS = {
   version: '2.0.0-alpha',
   pillars: {
-    SERVICE: 'IMPLEMENTED',    // 5 methods + 4 utilities ✅
-    DATA: 'IMPLEMENTED',       // 10 methods + 6 utilities ✅
-    PIPELINE: 'IMPLEMENTED'    // 8 methods + 5 utilities ✅
+    SERVICE: 'IMPLEMENTED', // 5 methods + 4 utilities ✅
+    DATA: 'IMPLEMENTED', // 10 methods + 6 utilities ✅
+    PIPELINE: 'IMPLEMENTED', // 8 methods + 5 utilities ✅
   },
-  foundation: 'COMPLETE',     // Strategic V1 reuse ✅
-  architecture: 'COMPLETE'    // Four-layer design ✅
+  foundation: 'COMPLETE', // Strategic V1 reuse ✅
+  architecture: 'COMPLETE', // Four-layer design ✅
 } as const

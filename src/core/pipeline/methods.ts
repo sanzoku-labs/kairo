@@ -1,6 +1,6 @@
 /**
  * PIPELINE Pillar Core Methods
- * 
+ *
  * Implements the 8 core PIPELINE methods according to V2 specifications:
  * - map() - Transform collections
  * - filter() - Filter collections
@@ -12,10 +12,11 @@
  * - validate() - Data validation
  */
 
-import { Result, Schema } from '../foundation'
-import { PipelineError, createPipelineError } from '../errors'
-import { mergeOptions } from '../config'
-import {
+import { Result } from '../shared'
+import type { Schema } from '../shared'
+import { createPipelineError } from '../shared'
+import { mergeOptions } from '../shared/config'
+import type {
   MapOptions,
   FilterOptions,
   ReduceOptions,
@@ -34,20 +35,9 @@ import {
   ChainOperation,
   ParallelOperation,
   ValidationRule,
-  PipelineContext,
-  ComposedPipeline
+  ComposedPipeline,
 } from './types'
-import {
-  createContext,
-  addTrace,
-  trap,
-  toResult,
-  toAsyncResult,
-  combineResults,
-  extractSuccessful,
-  extractErrors,
-  allSuccessful
-} from './utils'
+import { createContext, addTrace } from './utils'
 
 /**
  * Transform each item in a collection
@@ -57,75 +47,79 @@ export const map = async <TInput, TOutput>(
   transform: TransformFunction<TInput, TOutput>,
   options: MapOptions = {}
 ): Promise<PipelineResult<TOutput[]>> => {
-  const opts = mergeOptions({
-    async: false,
-    parallel: false,
-    batchSize: 10,
-    keepErrors: false
-  }, options)
-  
+  const opts = mergeOptions(
+    {
+      async: false,
+      parallel: false,
+      batchSize: 10,
+      keepErrors: false,
+    } as MapOptions,
+    options
+  )
+
   const context = createContext('map', { inputLength: data.length })
-  
+
   try {
     if (!Array.isArray(data)) {
-      return Result.error(createPipelineError(
-        'map',
-        'Input must be an array',
-        { data, context }
-      ))
+      return Result.Err(createPipelineError('map', 'Input must be an array', { data, context }))
     }
-    
+
     if (data.length === 0) {
-      return Result.ok([])
+      return Result.Ok([])
     }
-    
+
     // Sequential processing
     if (!opts.parallel) {
       const results: TOutput[] = []
-      
+
       for (let i = 0; i < data.length; i++) {
         try {
           const item = data[i]
+          if (item === undefined) continue
+
           let result: TOutput
-          
+
           if (opts.async) {
             result = await transform(item, i, data)
           } else {
             result = transform(item, i, data) as TOutput
           }
-          
+
           results.push(result)
         } catch (error) {
           if (opts.fallback) {
-            const fallbackResult = opts.fallback(error, data[i], i)
-            results.push(fallbackResult)
+            const safeError = error instanceof Error ? error : new Error('Unknown error')
+            const fallbackResult = opts.fallback(safeError, data[i], i)
+            results.push(fallbackResult as TOutput)
           } else if (opts.keepErrors) {
             // Skip errors and continue
             continue
           } else {
-            return Result.error(createPipelineError(
-              'map',
-              `Transform failed at index ${i}: ${error}`,
-              { error, item: data[i], index: i, context }
-            ))
+            return Result.Err(
+              createPipelineError(
+                'map',
+                `Transform failed at index ${i}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                { error, item: data[i], index: i, context }
+              )
+            )
           }
         }
       }
-      
-      return Result.ok(results)
+
+      return Result.Ok(results)
     }
-    
+
     // Parallel processing
     const batchSize = opts.batchSize || 10
     const batches: TInput[][] = []
-    
+
     // Create batches
     for (let i = 0; i < data.length; i += batchSize) {
       batches.push(data.slice(i, i + batchSize))
     }
-    
+
     const allResults: TOutput[] = []
-    
+
     // Process batches in parallel
     for (const batch of batches) {
       const batchPromises = batch.map(async (item, localIndex) => {
@@ -134,34 +128,38 @@ export const map = async <TInput, TOutput>(
           return await transform(item, globalIndex, data)
         } catch (error) {
           if (opts.fallback) {
-            return opts.fallback(error, item, globalIndex)
+            const safeError = error instanceof Error ? error : new Error('Unknown error')
+            return opts.fallback(safeError, item, globalIndex) as TOutput
           } else if (!opts.keepErrors) {
             throw error
           }
           return null // Will be filtered out
         }
       })
-      
+
       try {
         const batchResults = await Promise.all(batchPromises)
         allResults.push(...batchResults.filter(result => result !== null))
       } catch (error) {
-        return Result.error(createPipelineError(
-          'map',
-          `Parallel processing failed: ${error}`,
-          { error, context }
-        ))
+        return Result.Err(
+          createPipelineError(
+            'map',
+            `Parallel processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            { error, context }
+          )
+        )
       }
     }
-    
-    return Result.ok(allResults)
-    
-  } catch (error: any) {
-    return Result.error(createPipelineError(
-      'map',
-      `Map operation failed: ${error.message}`,
-      { error, data, context }
-    ))
+
+    return Result.Ok(allResults)
+  } catch (error: unknown) {
+    return Result.Err(
+      createPipelineError(
+        'map',
+        `Map operation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { error, data, context }
+      )
+    )
   }
 }
 
@@ -173,62 +171,67 @@ export const filter = async <T>(
   predicate: PredicateFunction<T>,
   options: FilterOptions = {}
 ): Promise<PipelineResult<T[]>> => {
-  const opts = mergeOptions({
-    async: false,
-    keepErrors: false
-  }, options)
-  
+  const opts = mergeOptions(
+    {
+      async: false,
+      keepErrors: false,
+    } as FilterOptions,
+    options
+  )
+
   const context = createContext('filter', { inputLength: data.length })
-  
+
   try {
     if (!Array.isArray(data)) {
-      return Result.error(createPipelineError(
-        'filter',
-        'Input must be an array',
-        { data, context }
-      ))
+      return Result.Err(createPipelineError('filter', 'Input must be an array', { data, context }))
     }
-    
+
     const results: T[] = []
-    
+
     for (let i = 0; i < data.length; i++) {
       try {
         const item = data[i]
+        if (item === undefined) continue
+
         let shouldInclude: boolean
-        
+
         if (opts.async) {
           shouldInclude = await predicate(item, i, data)
         } else {
           shouldInclude = predicate(item, i, data) as boolean
         }
-        
+
         if (shouldInclude) {
           results.push(item)
         }
       } catch (error) {
         if (opts.onError) {
-          opts.onError(error, data[i], i)
+          const safeError = error instanceof Error ? error : new Error('Unknown error')
+          opts.onError(safeError, data[i], i)
         }
-        
+
         if (!opts.keepErrors) {
-          return Result.error(createPipelineError(
-            'filter',
-            `Predicate failed at index ${i}: ${error}`,
-            { error, item: data[i], index: i, context }
-          ))
+          return Result.Err(
+            createPipelineError(
+              'filter',
+              `Predicate failed at index ${i}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              { error, item: data[i], index: i, context }
+            )
+          )
         }
         // Skip errors and continue
       }
     }
-    
-    return Result.ok(results)
-    
-  } catch (error: any) {
-    return Result.error(createPipelineError(
-      'filter',
-      `Filter operation failed: ${error.message}`,
-      { error, data, context }
-    ))
+
+    return Result.Ok(results)
+  } catch (error: unknown) {
+    return Result.Err(
+      createPipelineError(
+        'filter',
+        `Filter operation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { error, data, context }
+      )
+    )
   }
 }
 
@@ -241,61 +244,68 @@ export const reduce = async <TInput, TOutput>(
   initialValue: TOutput,
   options: ReduceOptions = {}
 ): Promise<PipelineResult<TOutput>> => {
-  const opts = mergeOptions({
-    async: false,
-    parallel: false, // Reduce is inherently sequential
-    checkpoints: false
-  }, options)
-  
+  const opts = mergeOptions(
+    {
+      async: false,
+      parallel: false, // Reduce is inherently sequential
+      checkpoints: false,
+    } as ReduceOptions,
+    options
+  )
+
   const context = createContext('reduce', { inputLength: data.length })
-  
+
   try {
     if (!Array.isArray(data)) {
-      return Result.error(createPipelineError(
-        'reduce',
-        'Input must be an array',
-        { data, context }
-      ))
+      return Result.Err(createPipelineError('reduce', 'Input must be an array', { data, context }))
     }
-    
+
     let accumulator = initialValue
-    const checkpoints: any[] = []
-    
+    const checkpoints: unknown[] = []
+
     for (let i = 0; i < data.length; i++) {
       try {
         const item = data[i]
-        
+        if (item === undefined) continue
+
         if (opts.async) {
           accumulator = await reducer(accumulator, item, i, data)
         } else {
           accumulator = reducer(accumulator, item, i, data) as TOutput
         }
-        
+
         // Store checkpoints if enabled
-        if (opts.checkpoints && opts.checkpointInterval && (i + 1) % opts.checkpointInterval === 0) {
+        if (
+          opts.checkpoints &&
+          opts.checkpointInterval &&
+          (i + 1) % opts.checkpointInterval === 0
+        ) {
           checkpoints.push({
             index: i,
             value: accumulator,
-            timestamp: Date.now()
+            timestamp: Date.now(),
           })
         }
       } catch (error) {
-        return Result.error(createPipelineError(
-          'reduce',
-          `Reducer failed at index ${i}: ${error}`,
-          { error, item: data[i], index: i, accumulator, checkpoints, context }
-        ))
+        return Result.Err(
+          createPipelineError(
+            'reduce',
+            `Reducer failed at index ${i}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            { error, item: data[i], index: i, accumulator, checkpoints, context }
+          )
+        )
       }
     }
-    
-    return Result.ok(accumulator)
-    
-  } catch (error: any) {
-    return Result.error(createPipelineError(
-      'reduce',
-      `Reduce operation failed: ${error.message}`,
-      { error, data, context }
-    ))
+
+    return Result.Ok(accumulator)
+  } catch (error: unknown) {
+    return Result.Err(
+      createPipelineError(
+        'reduce',
+        `Reduce operation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { error, data, context }
+      )
+    )
   }
 }
 
@@ -303,78 +313,94 @@ export const reduce = async <TInput, TOutput>(
  * Compose multiple operations into single pipeline
  */
 export const compose = <TInput, TOutput>(
-  operations: PipelineOperation<any, any>[],
+  operations: PipelineOperation<unknown, unknown>[],
   options: ComposeOptions = {}
 ): ComposedPipeline<TInput, TOutput> => {
-  const opts = mergeOptions({
-    stopOnError: true,
-    rollback: false,
-    optimize: false,
-    memoize: false
-  }, options)
-  
+  const opts = mergeOptions(
+    {
+      stopOnError: true,
+      rollback: false,
+      optimize: false,
+      memoize: false,
+    } as ComposeOptions,
+    options
+  )
+
   return async (data: TInput): Promise<PipelineResult<TOutput>> => {
     const context = createContext('compose', { operationCount: operations.length })
-    let currentData: any = data
-    const intermediateResults: any[] = []
-    
+    let currentData: unknown = data
+    const intermediateResults: unknown[] = []
+
     try {
       for (let i = 0; i < operations.length; i++) {
         const operation = operations[i]
+        if (!operation) continue
+
         const stepContext = addTrace(context, `step-${i}`)
-        
+
         try {
           // Execute operation
-          let result: any
-          
-          if (operation.constructor.name === 'AsyncFunction' || 
-              (typeof operation === 'function' && operation.toString().includes('async'))) {
+          let result: unknown
+
+          if (
+            operation.constructor.name === 'AsyncFunction' ||
+            (typeof operation === 'function' && operation.toString().includes('async'))
+          ) {
             result = await operation(currentData)
           } else {
             result = operation(currentData)
           }
-          
+
           // Handle Result type
-          if (result && typeof result === 'object' && 'isOk' in result) {
-            if (Result.isError(result)) {
+          if (result && typeof result === 'object' && 'tag' in result) {
+            const resultObj = result as { tag: string; value?: unknown; error?: unknown }
+            if (resultObj.tag === 'Err') {
               if (opts.stopOnError) {
-                return result
+                return Result.Err(
+                  createPipelineError('compose', `Operation ${i} failed`, {
+                    error: resultObj.error,
+                    operationIndex: i,
+                    context,
+                  })
+                )
               } else {
                 // Continue with previous data
                 continue
               }
-            } else {
-              currentData = result.value
+            } else if (resultObj.tag === 'Ok') {
+              currentData = resultObj.value
             }
           } else {
             currentData = result
           }
-          
+
           // Store intermediate result for potential rollback
           if (opts.rollback) {
             intermediateResults.push(currentData)
           }
-          
         } catch (error) {
           if (opts.stopOnError) {
-            return Result.error(createPipelineError(
-              'compose',
-              `Operation ${i} failed: ${error}`,
-              { error, operationIndex: i, intermediateResults, context: stepContext }
-            ))
+            return Result.Err(
+              createPipelineError(
+                'compose',
+                `Operation ${i} failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                { error, operationIndex: i, intermediateResults, context: stepContext }
+              )
+            )
           }
           // Continue with previous data if not stopping on error
         }
       }
-      
-      return Result.ok(currentData)
-      
-    } catch (error: any) {
-      return Result.error(createPipelineError(
-        'compose',
-        `Composition failed: ${error.message}`,
-        { error, intermediateResults, context }
-      ))
+
+      return Result.Ok(currentData as TOutput)
+    } catch (error: unknown) {
+      return Result.Err(
+        createPipelineError(
+          'compose',
+          `Composition failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          { error, intermediateResults, context }
+        )
+      )
     }
   }
 }
@@ -384,75 +410,92 @@ export const compose = <TInput, TOutput>(
  */
 export const chain = async <TInput, TOutput>(
   data: TInput,
-  operations: ChainOperation<any, any>[],
+  operations: ChainOperation<unknown, unknown>[],
   options: ChainOptions = {}
 ): Promise<PipelineResult<TOutput>> => {
-  const opts = mergeOptions({
-    stopOnError: true,
-    collectResults: false
-  }, options)
-  
+  const opts = mergeOptions(
+    {
+      stopOnError: true,
+      collectResults: false,
+    } as ChainOptions,
+    options
+  )
+
   const context = createContext('chain', { operationCount: operations.length })
-  let currentData: any = data
-  const results: any[] = []
-  
+  let currentData: unknown = data
+  const results: unknown[] = []
+
   try {
     for (let i = 0; i < operations.length; i++) {
       const operation = operations[i]
+      if (!operation) continue
+
       const stepContext = addTrace(context, `chain-${i}`)
-      
+
       try {
-        let result: any
-        
+        let result: unknown
+
         // Execute operation
-        if (operation.constructor.name === 'AsyncFunction' || 
-            (typeof operation === 'function' && operation.toString().includes('async'))) {
+        if (
+          operation.constructor.name === 'AsyncFunction' ||
+          (typeof operation === 'function' && operation.toString().includes('async'))
+        ) {
           result = await operation(currentData)
         } else {
           result = operation(currentData)
         }
-        
+
         // Handle Result type
-        if (result && typeof result === 'object' && 'isOk' in result) {
-          if (Result.isError(result)) {
+        if (result && typeof result === 'object' && 'tag' in result) {
+          const resultObj = result as { tag: string; value?: unknown; error?: unknown }
+          if (resultObj.tag === 'Err') {
             if (opts.stopOnError) {
-              return result
+              return Result.Err(
+                createPipelineError('chain', `Chain operation ${i} failed`, {
+                  error: resultObj.error,
+                  operationIndex: i,
+                  results,
+                  context,
+                })
+              )
             } else {
               // Continue with previous data
               continue
             }
-          } else {
-            currentData = result.value
+          } else if (resultObj.tag === 'Ok') {
+            currentData = resultObj.value
           }
         } else {
           currentData = result
         }
-        
+
         // Collect results if requested
         if (opts.collectResults) {
           results.push(currentData)
         }
-        
       } catch (error) {
         if (opts.stopOnError) {
-          return Result.error(createPipelineError(
-            'chain',
-            `Chain operation ${i} failed: ${error}`,
-            { error, operationIndex: i, results, context: stepContext }
-          ))
+          return Result.Err(
+            createPipelineError(
+              'chain',
+              `Chain operation ${i} failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              { error, operationIndex: i, results, context: stepContext }
+            )
+          )
         }
         // Continue with previous data if not stopping on error
       }
     }
-    
-    return Result.ok(currentData)
-    
-  } catch (error: any) {
-    return Result.error(createPipelineError(
-      'chain',
-      `Chain operation failed: ${error.message}`,
-      { error, results, context }
-    ))
+
+    return Result.Ok(currentData as TOutput)
+  } catch (error: unknown) {
+    return Result.Err(
+      createPipelineError(
+        'chain',
+        `Chain operation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { error, results, context }
+      )
+    )
   }
 }
 
@@ -465,85 +508,109 @@ export const branch = async <TInput, TOutput>(
   branches: BranchMap<TInput, TOutput>,
   options: BranchOptions = {}
 ): Promise<PipelineResult<TOutput>> => {
-  const opts = mergeOptions({
-    cache: false,
-    cacheConditions: false
-  }, options)
-  
+  const opts = mergeOptions(
+    {
+      cache: false,
+      cacheConditions: false,
+    } as BranchOptions,
+    options
+  )
+
   const context = createContext('branch', { branchCount: Object.keys(branches).length })
-  
+
   try {
     // Evaluate condition
     let conditionResult: boolean | string
-    
-    if (condition.constructor.name === 'AsyncFunction' || 
-        (typeof condition === 'function' && condition.toString().includes('async'))) {
+
+    if (
+      condition.constructor.name === 'AsyncFunction' ||
+      (typeof condition === 'function' && condition.toString().includes('async'))
+    ) {
       conditionResult = await condition(data)
     } else {
       conditionResult = condition(data) as boolean | string
     }
-    
+
     // Determine branch key
     let branchKey: string
-    
+
     if (typeof conditionResult === 'boolean') {
       branchKey = conditionResult.toString()
     } else {
       branchKey = conditionResult
     }
-    
+
     // Find operation to execute
     let operation = branches[branchKey]
-    
+
     if (!operation) {
       // Try default branch
       operation = branches['default'] || branches['false']
-      
+
       if (!operation && opts.fallback) {
-        operation = opts.fallback
+        operation = opts.fallback as PipelineOperation<TInput, TOutput>
       }
-      
+
       if (!operation) {
-        return Result.error(createPipelineError(
-          'branch',
-          `No branch found for condition result: ${branchKey}`,
-          { conditionResult, availableBranches: Object.keys(branches), data, context }
-        ))
+        return Result.Err(
+          createPipelineError('branch', `No branch found for condition result: ${branchKey}`, {
+            conditionResult,
+            availableBranches: Object.keys(branches),
+            data,
+            context,
+          })
+        )
       }
     }
-    
+
     // Execute selected operation
     try {
-      let result: any
-      
-      if (operation.constructor.name === 'AsyncFunction' || 
-          (typeof operation === 'function' && operation.toString().includes('async'))) {
+      let result: unknown
+
+      if (
+        operation.constructor.name === 'AsyncFunction' ||
+        (typeof operation === 'function' && operation.toString().includes('async'))
+      ) {
         result = await operation(data)
       } else {
         result = operation(data)
       }
-      
+
       // Handle Result type
-      if (result && typeof result === 'object' && 'isOk' in result) {
-        return result
-      } else {
-        return Result.ok(result)
+      if (result && typeof result === 'object' && 'tag' in result) {
+        const resultObj = result as { tag: string; value?: unknown; error?: unknown }
+        if (resultObj.tag === 'Err') {
+          return Result.Err(
+            createPipelineError('branch', `Branch operation failed`, {
+              error: resultObj.error,
+              branchKey,
+              data,
+              context,
+            })
+          )
+        } else if (resultObj.tag === 'Ok') {
+          return Result.Ok(resultObj.value as TOutput)
+        }
       }
-      
+
+      return Result.Ok(result as TOutput)
     } catch (error) {
-      return Result.error(createPipelineError(
-        'branch',
-        `Branch operation failed: ${error}`,
-        { error, branchKey, data, context }
-      ))
+      return Result.Err(
+        createPipelineError(
+          'branch',
+          `Branch operation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          { error, branchKey, data, context }
+        )
+      )
     }
-    
-  } catch (error: any) {
-    return Result.error(createPipelineError(
-      'branch',
-      `Branch evaluation failed: ${error.message}`,
-      { error, data, context }
-    ))
+  } catch (error: unknown) {
+    return Result.Err(
+      createPipelineError(
+        'branch',
+        `Branch evaluation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { error, data, context }
+      )
+    )
   }
 }
 
@@ -552,49 +619,58 @@ export const branch = async <TInput, TOutput>(
  */
 export const parallel = async <TInput, TOutput>(
   data: TInput,
-  operations: ParallelOperation<TInput, any>[],
+  operations: ParallelOperation<TInput, unknown>[],
   options: ParallelOptions = {}
 ): Promise<PipelineResult<TOutput>> => {
-  const opts = mergeOptions({
-    maxConcurrency: operations.length,
-    failFast: false,
-    preserveOrder: true
-  }, options)
-  
+  const opts = mergeOptions(
+    {
+      maxConcurrency: operations.length,
+      failFast: false,
+      preserveOrder: true,
+    } as ParallelOptions,
+    options
+  )
+
   const context = createContext('parallel', { operationCount: operations.length })
-  
+
   try {
     // Create promises for all operations
     const promises = operations.map(async (operation, index) => {
       try {
-        const stepContext = addTrace(context, `parallel-${index}`)
-        
-        let result: any
-        
-        if (operation.constructor.name === 'AsyncFunction' || 
-            (typeof operation === 'function' && operation.toString().includes('async'))) {
+        // const stepContext = addTrace(context, `parallel-${index}`) // Unused for now
+
+        let result: unknown
+
+        if (
+          operation.constructor.name === 'AsyncFunction' ||
+          (typeof operation === 'function' && operation.toString().includes('async'))
+        ) {
           result = await operation(data)
         } else {
           result = operation(data)
         }
-        
+
         return { index, result, error: null }
       } catch (error) {
-        return { index, result: null, error }
+        return {
+          index,
+          result: null,
+          error: error instanceof Error ? error : new Error('Unknown error'),
+        }
       }
     })
-    
+
     // Execute with concurrency control
-    let results: any[]
-    
-    if (opts.maxConcurrency && opts.maxConcurrency < operations.length) {
+    let results: Array<{ index: number; result: unknown; error: Error | null }>
+
+    if (opts.maxConcurrency && opts.maxConcurrency > 0 && opts.maxConcurrency < operations.length) {
       // Batch execution with concurrency limit
-      const batches: Promise<any>[][] = []
-      for (let i = 0; i < promises.length; i += opts.maxConcurrency) {
-        batches.push(promises.slice(i, i + opts.maxConcurrency))
+      const batches: Array<Promise<{ index: number; result: unknown; error: Error | null }>[]> = []
+      for (let i = 0; i < promises.length; i += opts.maxConcurrency || 10) {
+        batches.push(promises.slice(i, i + (opts.maxConcurrency || 10)))
       }
-      
-      const batchResults: any[] = []
+
+      const batchResults: Array<{ index: number; result: unknown; error: Error | null }> = []
       for (const batch of batches) {
         const batchResult = await Promise.all(batch)
         batchResults.push(...batchResult)
@@ -604,41 +680,41 @@ export const parallel = async <TInput, TOutput>(
       // Execute all at once
       results = await Promise.all(promises)
     }
-    
+
     // Check for errors
     const errors = results.filter(r => r.error !== null)
-    
+
     if (errors.length > 0 && opts.failFast) {
-      return Result.error(createPipelineError(
-        'parallel',
-        `${errors.length} parallel operation(s) failed`,
-        { errors: errors.map(e => e.error), context }
-      ))
+      return Result.Err(
+        createPipelineError('parallel', `${errors.length} parallel operation(s) failed`, {
+          errors: errors.map(e => e.error),
+          context,
+        })
+      )
     }
-    
+
     // Extract successful results
-    const successfulResults = results
-      .filter(r => r.error === null)
-      .map(r => r.result)
-    
+    const successfulResults = results.filter(r => r.error === null).map(r => r.result)
+
     // Combine results
     let finalResult: TOutput
-    
+
     if (opts.combiner) {
-      finalResult = opts.combiner(data, successfulResults)
+      finalResult = opts.combiner(data, successfulResults) as TOutput
     } else {
       // Default behavior: return array of results
       finalResult = successfulResults as TOutput
     }
-    
-    return Result.ok(finalResult)
-    
-  } catch (error: any) {
-    return Result.error(createPipelineError(
-      'parallel',
-      `Parallel execution failed: ${error.message}`,
-      { error, data, context }
-    ))
+
+    return Result.Ok(finalResult)
+  } catch (error: unknown) {
+    return Result.Err(
+      createPipelineError(
+        'parallel',
+        `Parallel execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { error, data, context }
+      )
+    )
   }
 }
 
@@ -650,68 +726,79 @@ export const validate = async <T>(
   schema: Schema<T> | ValidationRule<T>[],
   options: ValidateOptions = {}
 ): Promise<PipelineResult<T>> => {
-  const opts = mergeOptions({
-    stopOnFirst: false,
-    collectErrors: true,
-    strict: true,
-    coerce: false
-  }, options)
-  
+  const opts = mergeOptions(
+    {
+      stopOnFirst: false,
+      collectErrors: true,
+      strict: true,
+      coerce: false,
+    } as ValidateOptions,
+    options
+  )
+
   const context = createContext('validate', { dataType: typeof data })
-  
+
   try {
     // Schema validation
-    if ('validate' in schema && typeof schema.validate === 'function') {
+    if ('parse' in schema && typeof schema.parse === 'function') {
       try {
-        const result = (schema as Schema<T>).validate(data)
-        
-        if (Result.isError(result)) {
-          return Result.error(createPipelineError(
-            'validate',
-            'Schema validation failed',
-            { validationError: result.error, data, context }
-          ))
+        const result = schema.parse(data)
+
+        if (Result.isErr(result)) {
+          return Result.Err(
+            createPipelineError('validate', 'Schema validation failed', {
+              validationError: result.error,
+              data,
+              context,
+            })
+          )
         }
-        
-        return Result.ok(result.value)
+
+        return Result.Ok(result.value)
       } catch (error) {
-        return Result.error(createPipelineError(
-          'validate',
-          `Schema validation error: ${error}`,
-          { error, data, context }
-        ))
+        return Result.Err(
+          createPipelineError(
+            'validate',
+            `Schema validation error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            { error, data, context }
+          )
+        )
       }
     }
-    
+
     // Rule-based validation
     if (Array.isArray(schema)) {
-      const rules = schema as ValidationRule<T>[]
-      const errors: any[] = []
-      
+      const rules = schema
+      const errors: Array<{ rule: string; message: string; error?: unknown; data: T }> = []
+
       for (let i = 0; i < rules.length; i++) {
         const rule = rules[i]
-        
+        if (!rule) continue
+
         try {
           let isValid: boolean
-          
-          if (rule.validate.constructor.name === 'AsyncFunction' || 
-              rule.validate.toString().includes('async')) {
+
+          if (
+            rule.validate.constructor.name === 'AsyncFunction' ||
+            rule.validate.toString().includes('async')
+          ) {
             isValid = await rule.validate(data)
           } else {
             isValid = rule.validate(data) as boolean
           }
-          
+
           if (!isValid) {
-            const errorMessage = typeof rule.message === 'function' 
-              ? rule.message(data)
-              : rule.message || `Rule '${rule.name}' failed`
-              
+            const errorMessage =
+              typeof rule.message === 'function'
+                ? rule.message(data)
+                : rule.message || `Rule '${rule.name}' failed`
+
             errors.push({
               rule: rule.name,
               message: errorMessage,
-              data
+              data,
             })
-            
+
             if (opts.stopOnFirst) {
               break
             }
@@ -719,40 +806,45 @@ export const validate = async <T>(
         } catch (error) {
           errors.push({
             rule: rule.name,
-            message: `Rule execution failed: ${error}`,
+            message: `Rule execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
             error,
-            data
+            data,
           })
-          
+
           if (opts.stopOnFirst) {
             break
           }
         }
       }
-      
+
       if (errors.length > 0) {
-        return Result.error(createPipelineError(
-          'validate',
-          `${errors.length} validation rule(s) failed`,
-          { validationErrors: errors, data, context }
-        ))
+        return Result.Err(
+          createPipelineError('validate', `${errors.length} validation rule(s) failed`, {
+            validationErrors: errors,
+            data,
+            context,
+          })
+        )
       }
-      
-      return Result.ok(data)
+
+      return Result.Ok(data)
     }
-    
+
     // Invalid schema type
-    return Result.error(createPipelineError(
-      'validate',
-      'Invalid schema type: must be Schema or ValidationRule array',
-      { schema, data, context }
-    ))
-    
-  } catch (error: any) {
-    return Result.error(createPipelineError(
-      'validate',
-      `Validation failed: ${error.message}`,
-      { error, data, context }
-    ))
+    return Result.Err(
+      createPipelineError(
+        'validate',
+        'Invalid schema type: must be Schema or ValidationRule array',
+        { schema, data, context }
+      )
+    )
+  } catch (error: unknown) {
+    return Result.Err(
+      createPipelineError(
+        'validate',
+        `Validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { error, data, context }
+      )
+    )
   }
 }

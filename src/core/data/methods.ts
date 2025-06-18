@@ -1,6 +1,6 @@
 /**
  * DATA Pillar Core Methods
- * 
+ *
  * Implements the 10 core DATA methods according to V2 specifications:
  * - schema() - Create schemas
  * - validate() - Data validation
@@ -14,10 +14,11 @@
  * - merge() - Object merging
  */
 
-import { Result, Schema, schema as nativeSchema } from '../shared'
-import { DataError, createDataError } from '../shared'
+import { Result, schema as nativeSchema } from '../shared'
+import type { Schema } from '../shared'
+import { createDataError } from '../shared'
 import { mergeOptions } from '../shared/config'
-import {
+import type {
   SchemaOptions,
   DataValidationOptions,
   DataTransformOptions,
@@ -32,25 +33,13 @@ import {
   SchemaDefinition,
   TransformMapping,
   TransformContext,
+  TransformFunction,
   AggregateOperations,
   AggregateResult,
   SerializationFormat,
-  MigrationFunction,
-  PropertyPath,
-  GroupByKeyFunction
+  GroupByKeyFunction,
 } from './types'
-import { 
-  get, 
-  set, 
-  has, 
-  inferType, 
-  isValid, 
-  unique, 
-  flatten, 
-  deepClone, 
-  isPlainObject, 
-  isEmpty 
-} from './utils'
+import { get, has, deepClone, isPlainObject } from './utils'
 
 /**
  * Create native schema for validation
@@ -59,42 +48,58 @@ export const schema = <T>(
   definition: SchemaDefinition<T>,
   options: SchemaOptions = {}
 ): Schema<T> => {
-  const opts = mergeOptions({
-    strict: true,
-    timestamps: false,
-    coerce: false
-  }, options)
-  
+  const opts = mergeOptions(
+    {
+      strict: true,
+      timestamps: false,
+      coerce: false,
+    },
+    options
+  )
+
   try {
     // Convert definition to native schema format
-    const schemaFields: Record<string, any> = {}
-    
+    const schemaFields: Record<string, Schema<unknown>> = {}
+
     for (const [key, field] of Object.entries(definition)) {
       if (typeof field === 'string') {
-        // Simple type definition
-        schemaFields[key] = { type: field }
+        // Simple type definition - convert string to schema
+        switch (field) {
+          case 'string':
+            schemaFields[key] = nativeSchema.string()
+            break
+          case 'number':
+            schemaFields[key] = nativeSchema.number()
+            break
+          case 'boolean':
+            schemaFields[key] = nativeSchema.boolean()
+            break
+          case 'date':
+            schemaFields[key] = nativeSchema.string() // Convert to proper date schema when available
+            break
+          default:
+            schemaFields[key] = nativeSchema.any()
+        }
       } else {
-        // Full field definition
-        schemaFields[key] = field
+        // Full field definition - convert to appropriate schema
+        schemaFields[key] = nativeSchema.any() // Simplified for now
       }
     }
-    
+
     // Add timestamps if requested
     if (opts.timestamps) {
-      schemaFields.createdAt = { type: 'date', default: () => new Date() }
-      schemaFields.updatedAt = { type: 'date', default: () => new Date() }
+      schemaFields.createdAt = nativeSchema.string()
+      schemaFields.updatedAt = nativeSchema.string()
     }
-    
-    return nativeSchema(schemaFields, {
-      strict: opts.strict,
-      coerce: opts.coerce
-    })
-  } catch (error: any) {
-    throw createDataError(
+
+    return nativeSchema.object(schemaFields) as unknown as Schema<T>
+  } catch (error: unknown) {
+    const dataError = createDataError(
       'schema',
-      `Failed to create schema: ${error.message}`,
+      `Failed to create schema: ${error instanceof Error ? error.message : 'Unknown error'}`,
       { definition, error }
     )
+    throw new Error(dataError.message)
   }
 }
 
@@ -106,30 +111,37 @@ export const validate = <T>(
   schema: Schema<T>,
   options: DataValidationOptions = {}
 ): DataResult<T> => {
-  const opts = mergeOptions({
-    coerce: false,
-    stripUnknown: false,
-    collectErrors: false
-  }, options)
-  
+  const opts = mergeOptions(
+    {
+      coerce: false,
+      stripUnknown: false,
+      collectErrors: false,
+    },
+    options
+  )
+
   try {
-    const result = schema.validate(input)
-    
-    if (Result.isError(result)) {
-      return Result.error(createDataError(
-        'validate',
-        'Validation failed',
-        { input, errors: result.error, options: opts }
-      ))
+    const result = schema.parse(input)
+
+    if (Result.isErr(result)) {
+      return Result.Err(
+        createDataError('validate', 'Validation failed', {
+          input,
+          errors: result.error,
+          options: opts,
+        })
+      )
     }
-    
-    return Result.ok(result.value)
-  } catch (error: any) {
-    return Result.error(createDataError(
-      'validate',
-      `Schema validation error: ${error.message}`,
-      { input, error }
-    ))
+
+    return Result.Ok(result.value)
+  } catch (error: unknown) {
+    return Result.Err(
+      createDataError(
+        'validate',
+        `Schema validation error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { input, error }
+      )
+    )
   }
 }
 
@@ -141,35 +153,41 @@ export const transform = <TInput, TOutput>(
   mapping: TransformMapping<TInput, TOutput>,
   options: DataTransformOptions = {}
 ): DataResult<TOutput> => {
-  const opts = mergeOptions({
-    strict: false,
-    defaults: true,
-    computed: true
-  }, options)
-  
+  const opts = mergeOptions(
+    {
+      strict: false,
+      defaults: true,
+      computed: true,
+      timezone: 'UTC',
+      context: {},
+    },
+    options
+  )
+
   try {
     const context: TransformContext = {
       timezone: opts.timezone || 'UTC',
       timestamp: new Date(),
-      ...opts.context
+      ...opts.context,
     }
-    
+
     // Handle array input
     if (Array.isArray(input)) {
       const results = input.map(item => transformSingle(item, mapping, context, opts))
-      return Result.ok(results as TOutput)
+      return Result.Ok(results as TOutput)
     }
-    
+
     // Transform single object
     const result = transformSingle(input, mapping, context, opts)
-    return Result.ok(result as TOutput)
-    
-  } catch (error: any) {
-    return Result.error(createDataError(
-      'transform',
-      `Transformation failed: ${error.message}`,
-      { input, mapping, error }
-    ))
+    return Result.Ok(result as TOutput)
+  } catch (error: unknown) {
+    return Result.Err(
+      createDataError(
+        'transform',
+        `Transformation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { input, mapping, error }
+      )
+    )
   }
 }
 
@@ -182,49 +200,53 @@ const transformSingle = <TInput, TOutput>(
   context: TransformContext,
   options: DataTransformOptions
 ): Partial<TOutput> => {
-  const result: any = {}
-  
+  const result: Record<string, unknown> = {}
+
   for (const [targetKey, transform] of Object.entries(mapping)) {
     try {
       let value: unknown
-      
+
       if (typeof transform === 'string') {
         // Simple field mapping
-        value = get(input as any, transform)
+        value = get(input as Record<string, unknown>, transform)
       } else if (typeof transform === 'function') {
         // Transform function
-        value = transform(input, context)
+        value = (transform as TransformFunction<TInput, unknown>)(input, context)
       } else if (typeof transform === 'object' && transform !== null) {
         // Complex transform definition
-        const sourceKey = transform.source || targetKey
-        const sourceValue = get(input as any, sourceKey)
-        
-        if (transform.fn) {
-          value = transform.fn(sourceValue, context)
+        const transformObj = transform as {
+          source?: string
+          fn?: (value: unknown, context: TransformContext) => unknown
+          default?: unknown
+        }
+        const sourceKey = transformObj.source || targetKey
+        const sourceValue = get(input as Record<string, unknown>, sourceKey)
+
+        if (transformObj.fn) {
+          value = transformObj.fn(sourceValue, context)
         } else {
           value = sourceValue
         }
-        
+
         // Apply default if value is undefined
-        if (value === undefined && 'default' in transform) {
-          value = transform.default
+        if (value === undefined && 'default' in transformObj) {
+          value = transformObj.default
         }
       }
-      
+
       // Set the transformed value
       if (value !== undefined || options.defaults) {
         result[targetKey] = value
       }
-      
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (options.strict) {
         throw error
       }
       // Skip failed transformations in non-strict mode
     }
   }
-  
-  return result
+
+  return result as Partial<TOutput>
 }
 
 /**
@@ -236,50 +258,55 @@ export const convert = <TInput, TOutput>(
   toSchema: Schema<TOutput>,
   options: ConvertOptions = {}
 ): DataResult<TOutput> => {
-  const opts = mergeOptions({
-    strict: false,
-    fillDefaults: true
-  }, options)
-  
+  const opts = mergeOptions(
+    {
+      strict: false,
+      fillDefaults: true,
+      context: {},
+    },
+    options
+  )
+
   try {
     // First validate input against source schema
     const validationResult = validate(input, fromSchema)
-    if (Result.isError(validationResult)) {
-      return Result.error(createDataError(
-        'convert',
-        'Input validation failed',
-        { validation: validationResult.error }
-      ))
+    if (Result.isErr(validationResult)) {
+      return Result.Err(
+        createDataError('convert', 'Input validation failed', {
+          validation: validationResult.error,
+        })
+      )
     }
-    
+
     let converted: unknown = validationResult.value
-    
+
     // Apply migration function if provided
-    if (opts.migration) {
-      converted = opts.migration(converted as TInput, {
+    if (options.migration) {
+      converted = options.migration(converted as TInput, {
         timestamp: new Date(),
-        ...opts.context
+        ...opts.context,
       })
     }
-    
+
     // Validate against target schema
     const targetValidation = validate(converted, toSchema)
-    if (Result.isError(targetValidation)) {
-      return Result.error(createDataError(
-        'convert',
-        'Target schema validation failed',
-        { validation: targetValidation.error }
-      ))
+    if (Result.isErr(targetValidation)) {
+      return Result.Err(
+        createDataError('convert', 'Target schema validation failed', {
+          validation: targetValidation.error,
+        })
+      )
     }
-    
-    return Result.ok(targetValidation.value)
-    
-  } catch (error: any) {
-    return Result.error(createDataError(
-      'convert',
-      `Schema conversion failed: ${error.message}`,
-      { input, error }
-    ))
+
+    return Result.Ok(targetValidation.value)
+  } catch (error: unknown) {
+    return Result.Err(
+      createDataError(
+        'convert',
+        `Schema conversion failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { input, error }
+      )
+    )
   }
 }
 
@@ -289,22 +316,19 @@ export const convert = <TInput, TOutput>(
 export const aggregate = <T, R = AggregateResult>(
   input: T[],
   operations: AggregateOperations,
-  options: AggregateOptions = {}
+  _options: AggregateOptions = {}
 ): DataResult<R> => {
-  const opts = mergeOptions({
-    parallel: false,
-    cache: false
-  }, options)
-  
+  // TODO: Implement options for parallel processing and caching
+  // const opts = mergeOptions({
+  //   parallel: false,
+  //   cache: false
+  // }, options)
+
   try {
     if (!Array.isArray(input)) {
-      return Result.error(createDataError(
-        'aggregate',
-        'Input must be an array',
-        { input }
-      ))
+      return Result.Err(createDataError('aggregate', 'Input must be an array', { input }))
     }
-    
+
     const result: AggregateResult = {
       groups: {},
       totals: {},
@@ -312,20 +336,20 @@ export const aggregate = <T, R = AggregateResult>(
       counts: {},
       minimums: {},
       maximums: {},
-      custom: {}
+      custom: {},
     }
-    
+
     // Group data if groupBy is specified
     if (operations.groupBy) {
-      const groupKeys = Array.isArray(operations.groupBy) 
-        ? operations.groupBy 
+      const groupKeys = Array.isArray(operations.groupBy)
+        ? operations.groupBy
         : [operations.groupBy]
-      
+
       result.groups = groupByMultiple(input, groupKeys)
     } else {
       result.groups = { _all: input }
     }
-    
+
     // Process each group
     for (const [groupKey, groupData] of Object.entries(result.groups)) {
       // Sum operations
@@ -336,7 +360,7 @@ export const aggregate = <T, R = AggregateResult>(
           result.totals[key] = sumField(groupData, field)
         }
       }
-      
+
       // Average operations
       if (operations.avg) {
         const avgFields = Array.isArray(operations.avg) ? operations.avg : [operations.avg]
@@ -345,15 +369,14 @@ export const aggregate = <T, R = AggregateResult>(
           result.averages[key] = averageField(groupData, field)
         }
       }
-      
+
       // Count operations
       if (operations.count) {
         const key = `${groupKey}.count`
-        result.counts[key] = operations.count === '*' 
-          ? groupData.length 
-          : countField(groupData, operations.count)
+        result.counts[key] =
+          operations.count === '*' ? groupData.length : countField(groupData, operations.count)
       }
-      
+
       // Min operations
       if (operations.min) {
         const minFields = Array.isArray(operations.min) ? operations.min : [operations.min]
@@ -362,7 +385,7 @@ export const aggregate = <T, R = AggregateResult>(
           result.minimums[key] = minField(groupData, field)
         }
       }
-      
+
       // Max operations
       if (operations.max) {
         const maxFields = Array.isArray(operations.max) ? operations.max : [operations.max]
@@ -371,7 +394,7 @@ export const aggregate = <T, R = AggregateResult>(
           result.maximums[key] = maxField(groupData, field)
         }
       }
-      
+
       // Custom operations
       if (operations.custom) {
         for (const [customKey, customFn] of Object.entries(operations.custom)) {
@@ -380,15 +403,16 @@ export const aggregate = <T, R = AggregateResult>(
         }
       }
     }
-    
-    return Result.ok(result as R)
-    
-  } catch (error: any) {
-    return Result.error(createDataError(
-      'aggregate',
-      `Aggregation failed: ${error.message}`,
-      { input, operations, error }
-    ))
+
+    return Result.Ok(result as R)
+  } catch (error: unknown) {
+    return Result.Err(
+      createDataError(
+        'aggregate',
+        `Aggregation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { input, operations, error }
+      )
+    )
   }
 }
 
@@ -400,25 +424,24 @@ export const groupBy = <T, K extends keyof T>(
   keys: K | K[] | GroupByKeyFunction<T>,
   options: GroupByOptions = {}
 ): DataResult<Record<string, T[]>> => {
-  const opts = mergeOptions({
-    preserveOrder: true,
-    includeEmpty: false
-  }, options)
-  
+  const opts = mergeOptions(
+    {
+      preserveOrder: true,
+      includeEmpty: false,
+    },
+    options
+  )
+
   try {
     if (!Array.isArray(input)) {
-      return Result.error(createDataError(
-        'groupBy',
-        'Input must be an array',
-        { input }
-      ))
+      return Result.Err(createDataError('groupBy', 'Input must be an array', { input }))
     }
-    
+
     const groups: Record<string, T[]> = {}
-    
+
     // Determine key function
     let keyFn: GroupByKeyFunction<T>
-    
+
     if (typeof keys === 'function') {
       keyFn = keys
     } else if (Array.isArray(keys)) {
@@ -426,18 +449,18 @@ export const groupBy = <T, K extends keyof T>(
     } else {
       keyFn = (item: T) => String(item[keys])
     }
-    
+
     // Group items
     for (const item of input) {
       const key = keyFn(item)
-      
+
       if (!groups[key]) {
         groups[key] = []
       }
-      
+
       groups[key].push(item)
     }
-    
+
     // Remove empty groups if not included
     if (!opts.includeEmpty) {
       for (const [key, group] of Object.entries(groups)) {
@@ -446,15 +469,16 @@ export const groupBy = <T, K extends keyof T>(
         }
       }
     }
-    
-    return Result.ok(groups)
-    
-  } catch (error: any) {
-    return Result.error(createDataError(
-      'groupBy',
-      `Grouping failed: ${error.message}`,
-      { input, keys, error }
-    ))
+
+    return Result.Ok(groups)
+  } catch (error: unknown) {
+    return Result.Err(
+      createDataError(
+        'groupBy',
+        `Grouping failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { input, keys, error }
+      )
+    )
   }
 }
 
@@ -466,35 +490,38 @@ export const serialize = <T>(
   format: SerializationFormat,
   options: SerializeOptions = {}
 ): DataResult<string | Buffer> => {
-  const opts = mergeOptions({
-    pretty: false,
-    dateFormat: 'iso' as const,
-    excludePrivate: false
-  }, options)
-  
+  const opts = mergeOptions(
+    {
+      pretty: false,
+      dateFormat: 'iso',
+      excludePrivate: false,
+    },
+    options
+  )
+
   try {
     switch (format) {
       case 'json':
-        return serializeJSON(input, opts)
+        return serializeJSON(input, opts as SerializeOptions)
       case 'csv':
-        return serializeCSV(input, opts)
+        return serializeCSV(input, opts as SerializeOptions)
       case 'xml':
-        return serializeXML(input, opts)
+        return serializeXML(input, opts as SerializeOptions)
       case 'yaml':
-        return serializeYAML(input, opts)
+        return serializeYAML(input, opts as SerializeOptions)
       default:
-        return Result.error(createDataError(
-          'serialize',
-          `Unsupported serialization format: ${format}`,
-          { format }
-        ))
+        return Result.Err(
+          createDataError('serialize', `Unsupported serialization format: ${format}`, { format })
+        )
     }
-  } catch (error: any) {
-    return Result.error(createDataError(
-      'serialize',
-      `Serialization failed: ${error.message}`,
-      { input, format, error }
-    ))
+  } catch (error: unknown) {
+    return Result.Err(
+      createDataError(
+        'serialize',
+        `Serialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { input, format, error }
+      )
+    )
   }
 }
 
@@ -507,14 +534,17 @@ export const deserialize = <T>(
   schema: Schema<T>,
   options: DeserializeOptions = {}
 ): DataResult<T> => {
-  const opts = mergeOptions({
-    strict: true,
-    coerce: false
-  }, options)
-  
+  const opts = mergeOptions(
+    {
+      strict: true,
+      coerce: false,
+    },
+    options
+  )
+
   try {
     let parsed: unknown
-    
+
     switch (format) {
       case 'json':
         parsed = deserializeJSON(input, opts)
@@ -529,99 +559,50 @@ export const deserialize = <T>(
         parsed = deserializeYAML(input, opts)
         break
       default:
-        return Result.error(createDataError(
-          'deserialize',
-          `Unsupported deserialization format: ${format}`,
-          { format }
-        ))
+        return Result.Err(
+          createDataError('deserialize', `Unsupported deserialization format: ${format}`, {
+            format,
+          })
+        )
     }
-    
+
     // Validate against schema
     return validate(parsed, schema, opts)
-    
-  } catch (error: any) {
-    return Result.error(createDataError(
-      'deserialize',
-      `Deserialization failed: ${error.message}`,
-      { input, format, error }
-    ))
+  } catch (error: unknown) {
+    return Result.Err(
+      createDataError(
+        'deserialize',
+        `Deserialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { input, format, error }
+      )
+    )
   }
 }
 
 /**
  * Deep clone data structures
  */
-export const clone = <T>(
-  input: T,
-  options: CloneOptions = {}
-): DataResult<T> => {
-  const opts = mergeOptions({
-    deep: true,
-    preservePrototype: false,
-    handleCircular: true
-  }, options)
-  
+export const clone = <T>(input: T, options: CloneOptions = {}): DataResult<T> => {
+  const opts = mergeOptions(
+    {
+      deep: true,
+      preservePrototype: false,
+      handleCircular: true,
+    },
+    options
+  )
+
   try {
     const cloned = deepClone(input, opts)
-    return Result.ok(cloned)
-  } catch (error: any) {
-    return Result.error(createDataError(
-      'clone',
-      `Cloning failed: ${error.message}`,
-      { input, error }
-    ))
-  }
-}
-
-/**
- * Merge multiple data objects
- */
-export function merge<T extends Record<string, unknown>>(
-  target: T,
-  ...sources: Partial<T>[]
-): DataResult<T>
-export function merge<T extends Record<string, unknown>>(
-  target: T,
-  source: Partial<T>,
-  options: MergeOptions
-): DataResult<T>
-export function merge<T extends Record<string, unknown>>(
-  target: T,
-  ...args: any[]
-): DataResult<T> {
-  try {
-    // Parse arguments
-    let sources: Partial<T>[]
-    let options: MergeOptions = {}
-    
-    if (args.length > 0 && isPlainObject(args[args.length - 1]) && 'deep' in args[args.length - 1]) {
-      // Last argument is options
-      options = args.pop()
-      sources = args
-    } else {
-      sources = args
-    }
-    
-    const opts = mergeOptions({
-      deep: true,
-      strategy: 'source-wins' as const,
-      arrays: 'replace' as const
-    }, options)
-    
-    let result = deepClone(target)
-    
-    for (const source of sources) {
-      result = mergeObjects(result, source, opts)
-    }
-    
-    return Result.ok(result)
-    
-  } catch (error: any) {
-    return Result.error(createDataError(
-      'merge',
-      `Merge failed: ${error.message}`,
-      { target, sources: args, error }
-    ))
+    return Result.Ok(cloned)
+  } catch (error: unknown) {
+    return Result.Err(
+      createDataError(
+        'clone',
+        `Cloning failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { input, error }
+      )
+    )
   }
 }
 
@@ -629,96 +610,123 @@ export function merge<T extends Record<string, unknown>>(
 
 const groupByMultiple = <T>(input: T[], keys: string[]): Record<string, T[]> => {
   const groups: Record<string, T[]> = {}
-  
+
   for (const item of input) {
-    const groupKey = keys.map(key => String(get(item as any, key))).join('-')
-    
+    const groupKey = keys.map(key => String(get(item as Record<string, unknown>, key))).join('-')
+
     if (!groups[groupKey]) {
       groups[groupKey] = []
     }
-    
+
     groups[groupKey].push(item)
   }
-  
+
   return groups
 }
 
 const sumField = <T>(items: T[], field: string): number => {
   return items.reduce((sum, item) => {
-    const value = get(item as any, field)
+    const value = get(item as Record<string, unknown>, field)
     return sum + (typeof value === 'number' ? value : 0)
   }, 0)
 }
 
 const averageField = <T>(items: T[], field: string): number => {
-  const values = items.map(item => get(item as any, field)).filter(v => typeof v === 'number')
-  return values.length > 0 ? values.reduce((sum, val) => sum + (val as number), 0) / values.length : 0
+  const values = items
+    .map(item => get(item as Record<string, unknown>, field))
+    .filter(v => typeof v === 'number')
+  return values.length > 0 ? values.reduce((sum, val) => sum + val, 0) / values.length : 0
 }
 
 const countField = <T>(items: T[], field: string): number => {
-  return items.filter(item => get(item as any, field) !== undefined).length
+  return items.filter(item => get(item as Record<string, unknown>, field) !== undefined).length
 }
 
 const minField = <T>(items: T[], field: string): unknown => {
-  const values = items.map(item => get(item as any, field)).filter(v => v !== undefined)
-  return values.length > 0 ? Math.min(...values.filter(v => typeof v === 'number') as number[]) : undefined
+  const values = items
+    .map(item => get(item as Record<string, unknown>, field))
+    .filter(v => v !== undefined)
+  return values.length > 0 ? Math.min(...values.filter(v => typeof v === 'number')) : undefined
 }
 
 const maxField = <T>(items: T[], field: string): unknown => {
-  const values = items.map(item => get(item as any, field)).filter(v => v !== undefined)
-  return values.length > 0 ? Math.max(...values.filter(v => typeof v === 'number') as number[]) : undefined
+  const values = items
+    .map(item => get(item as Record<string, unknown>, field))
+    .filter(v => v !== undefined)
+  return values.length > 0 ? Math.max(...values.filter(v => typeof v === 'number')) : undefined
 }
 
 const serializeJSON = <T>(input: T, options: SerializeOptions): DataResult<string> => {
   try {
     const json = JSON.stringify(input, undefined, options.pretty ? 2 : undefined)
-    return Result.ok(json)
-  } catch (error: any) {
-    return Result.error(createDataError('serialize', `JSON serialization failed: ${error.message}`, { error }))
+    return Result.Ok(json)
+  } catch (error: unknown) {
+    return Result.Err(
+      createDataError(
+        'serialize',
+        `JSON serialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { error }
+      )
+    )
   }
 }
 
 const serializeCSV = <T>(input: T, options: SerializeOptions): DataResult<string> => {
   try {
     if (!Array.isArray(input)) {
-      return Result.error(createDataError('serialize', 'CSV serialization requires array input', { input }))
+      return Result.Err(
+        createDataError('serialize', 'CSV serialization requires array input', { input })
+      )
     }
-    
+
     if (input.length === 0) {
-      return Result.ok('')
+      return Result.Ok('')
     }
-    
+
     const delimiter = options.delimiter || ','
-    const headers = Object.keys(input[0] as any)
-    
+    const headers = Object.keys(input[0] as Record<string, unknown>)
+
     let csv = ''
-    
+
     if (options.headers) {
       csv += headers.join(delimiter) + '\n'
     }
-    
+
     for (const row of input) {
       const values = headers.map(header => {
-        const value = get(row as any, header)
-        return value !== undefined ? String(value) : ''
+        const value = get(row as Record<string, unknown>, header)
+        if (value === undefined) return ''
+        if (value === null) return 'null'
+        if (typeof value === 'object') return JSON.stringify(value)
+        if (typeof value === 'string') return value
+        if (typeof value === 'number') return value.toString()
+        if (typeof value === 'boolean') return value.toString()
+        // Fallback for any other type (symbol, function, etc.)
+        return `[${typeof value}]`
       })
       csv += values.join(delimiter) + '\n'
     }
-    
-    return Result.ok(csv)
-  } catch (error: any) {
-    return Result.error(createDataError('serialize', `CSV serialization failed: ${error.message}`, { error }))
+
+    return Result.Ok(csv)
+  } catch (error: unknown) {
+    return Result.Err(
+      createDataError(
+        'serialize',
+        `CSV serialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { error }
+      )
+    )
   }
 }
 
-const serializeXML = <T>(input: T, options: SerializeOptions): DataResult<string> => {
+const serializeXML = <T>(_input: T, _options: SerializeOptions): DataResult<string> => {
   // Basic XML serialization - can be enhanced
-  return Result.error(createDataError('serialize', 'XML serialization not implemented yet', {}))
+  return Result.Err(createDataError('serialize', 'XML serialization not implemented yet', {}))
 }
 
-const serializeYAML = <T>(input: T, options: SerializeOptions): DataResult<string> => {
+const serializeYAML = <T>(_input: T, _options: SerializeOptions): DataResult<string> => {
   // Basic YAML serialization - can be enhanced
-  return Result.error(createDataError('serialize', 'YAML serialization not implemented yet', {}))
+  return Result.Err(createDataError('serialize', 'YAML serialization not implemented yet', {}))
 }
 
 const deserializeJSON = (input: string | Buffer, options: DeserializeOptions): unknown => {
@@ -729,43 +737,43 @@ const deserializeJSON = (input: string | Buffer, options: DeserializeOptions): u
 const deserializeCSV = (input: string | Buffer, options: DeserializeOptions): unknown[] => {
   const str = Buffer.isBuffer(input) ? input.toString(options.encoding || 'utf8') : input
   const lines = str.split('\n').filter(line => line.trim())
-  
+
   if (lines.length === 0) {
     return []
   }
-  
+
   const delimiter = options.delimiter || ','
   let headers: string[]
   let dataLines: string[]
-  
+
   if (options.headers) {
-    headers = lines[0].split(delimiter)
+    headers = lines[0]?.split(delimiter) || []
     dataLines = lines.slice(1)
   } else {
     // Generate generic headers
-    const firstLine = lines[0].split(delimiter)
+    const firstLine = lines[0]?.split(delimiter) || []
     headers = firstLine.map((_, index) => `col${index}`)
     dataLines = lines
   }
-  
+
   return dataLines.map(line => {
     const values = line.split(delimiter)
     const obj: Record<string, string> = {}
-    
+
     headers.forEach((header, index) => {
       obj[header] = values[index] || ''
     })
-    
+
     return obj
   })
 }
 
-const deserializeXML = (input: string | Buffer, options: DeserializeOptions): unknown => {
+const deserializeXML = (_input: string | Buffer, _options: DeserializeOptions): unknown => {
   // Basic XML deserialization - can be enhanced
   throw new Error('XML deserialization not implemented yet')
 }
 
-const deserializeYAML = (input: string | Buffer, options: DeserializeOptions): unknown => {
+const deserializeYAML = (_input: string | Buffer, _options: DeserializeOptions): unknown => {
   // Basic YAML deserialization - can be enhanced
   throw new Error('YAML deserialization not implemented yet')
 }
@@ -776,15 +784,15 @@ const mergeObjects = <T extends Record<string, unknown>>(
   options: MergeOptions
 ): T => {
   const result = { ...target }
-  
+
   for (const key in source) {
     const sourceValue = source[key]
     const targetValue = target[key]
-    
+
     if (sourceValue === undefined) {
       continue
     }
-    
+
     if (!has(target, key)) {
       // New property
       result[key] = sourceValue as T[Extract<keyof T, string>]
@@ -803,7 +811,7 @@ const mergeObjects = <T extends Record<string, unknown>>(
         // Merge arrays by index
         const merged = [...targetValue]
         sourceValue.forEach((item, index) => {
-          merged[index] = item
+          merged[index] = item as unknown
         })
         result[key] = merged as T[Extract<keyof T, string>]
       } else {
@@ -817,13 +825,72 @@ const mergeObjects = <T extends Record<string, unknown>>(
       } else if (options.strategy === 'source-wins') {
         result[key] = sourceValue as T[Extract<keyof T, string>]
       } else if (options.conflictResolver) {
-        result[key] = options.conflictResolver(targetValue, sourceValue, key) as T[Extract<keyof T, string>]
+        result[key] = options.conflictResolver(targetValue, sourceValue, key) as T[Extract<
+          keyof T,
+          string
+        >]
       } else {
         // Default to source wins
         result[key] = sourceValue as T[Extract<keyof T, string>]
       }
     }
   }
-  
+
   return result
+}
+
+/**
+ * Merge multiple objects into a single object with configurable strategies
+ *
+ * @param target - Base object to merge into
+ * @param sources - Objects to merge from
+ * @param options - Merge configuration options
+ * @returns Result with merged object or error
+ *
+ * @example
+ * ```typescript
+ * const base = { a: 1, b: { x: 1 } }
+ * const update = { b: { y: 2 }, c: 3 }
+ *
+ * const result = merge(base, [update], {
+ *   deep: true,
+ *   strategy: 'source-wins'
+ * })
+ *
+ * if (Result.isOk(result)) {
+ *   // result.value: { a: 1, b: { x: 1, y: 2 }, c: 3 }
+ * }
+ * ```
+ */
+export const merge = <T extends Record<string, unknown>>(
+  target: T,
+  sources: Partial<T>[],
+  options: MergeOptions = {}
+): DataResult<T> => {
+  const opts = {
+    ...options,
+    deep: options.deep ?? true,
+    strategy: options.strategy ?? ('source-wins' as const),
+    arrays: options.arrays ?? ('replace' as const),
+  }
+
+  try {
+    let result = deepClone(target)
+
+    for (const source of sources) {
+      if (source && typeof source === 'object') {
+        result = mergeObjects(result, source, opts)
+      }
+    }
+
+    return Result.Ok(result)
+  } catch (error: unknown) {
+    return Result.Err(
+      createDataError(
+        'merge',
+        `Object merge failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { target, sources, options: opts, error }
+      )
+    )
+  }
 }

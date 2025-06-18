@@ -1,6 +1,6 @@
 /**
  * Core Shared Utilities
- * 
+ *
  * Cross-cutting utilities used across all three pillars (SERVICE, DATA, PIPELINE):
  * - Result pattern for error handling
  * - Schema system for validation
@@ -14,36 +14,36 @@ export type { OkResult, ErrResult } from './result'
 
 // Schema System - High-performance validation
 export { nativeSchema as schema } from './schema'
-export type { 
-  Schema, 
-  ValidationError, 
-  SchemaShape, 
+export type {
+  Schema,
+  ValidationError,
+  SchemaShape,
   InferSchema,
   StringSchema,
   NumberSchema,
   BooleanSchema,
   ObjectSchema,
-  ArraySchema
+  ArraySchema,
 } from './schema'
 
 // Error Handling Foundation & V2 Error Types
-export { 
-  createError, 
-  chainError, 
-  isKairoError, 
-  getErrorChain, 
-  serializeError, 
-  findErrorByCode, 
+export {
+  createError,
+  chainError,
+  isKairoError,
+  getErrorChain,
+  serializeError,
+  findErrorByCode,
   hasErrorCode,
   createServiceError,
   createServiceHttpError,
   createDataError,
   createDataValidationError,
   createPipelineError,
-  createPipelineCompositionError
+  createPipelineCompositionError,
 } from './errors'
-export type { 
-  KairoError, 
+export type {
+  KairoError,
   ErrorWithCause,
   ServiceError,
   ServiceHttpError,
@@ -55,7 +55,7 @@ export type {
   PipelineError,
   PipelineCompositionError,
   PipelineValidationError,
-  V2Error
+  V2Error,
 } from './errors'
 
 // Configuration Types and Utilities
@@ -64,5 +64,5 @@ export type {
   ValidationOptions,
   CacheOptions,
   RetryOptions,
-  TransformOptions
+  TransformOptions,
 } from './config'

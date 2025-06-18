@@ -1,13 +1,19 @@
 /**
  * DATA Pillar Types
- * 
+ *
  * Type definitions for the DATA pillar following V2 specifications.
  * Implements data operations with schema validation, transformation, and aggregation.
  */
 
-import { Result, Schema } from '../shared'
-import { DataError } from '../shared'
-import { BaseOptions, ValidationOptions, TransformOptions, CacheOptions } from '../shared'
+import type { Result } from '../shared'
+import type {
+  Schema,
+  DataError,
+  BaseOptions,
+  ValidationOptions,
+  TransformOptions,
+  CacheOptions,
+} from '../shared'
 
 /**
  * Base options for all DATA methods
@@ -16,11 +22,11 @@ export interface DataBaseOptions extends BaseOptions {
   // Performance options
   cache?: boolean | CacheOptions
   parallel?: boolean
-  
+
   // Error handling
   skipErrors?: boolean
   collectErrors?: boolean
-  
+
   // Context for operations
   context?: Record<string, unknown>
 }
@@ -88,7 +94,7 @@ export interface SerializeOptions extends DataBaseOptions {
   excludePrivate?: boolean
   headers?: boolean
   delimiter?: string
-  encoding?: 'utf8' | 'utf16' | 'base64'
+  encoding?: 'utf8' | 'utf16le' | 'base64'
   schema?: Schema<unknown>
 }
 
@@ -100,7 +106,7 @@ export interface DeserializeOptions extends DataBaseOptions {
   coerce?: boolean
   headers?: boolean
   skipErrors?: boolean
-  encoding?: 'utf8' | 'utf16' | 'base64'
+  encoding?: 'utf8' | 'utf16le' | 'base64'
   delimiter?: string
 }
 
@@ -131,7 +137,15 @@ export type DataResult<T> = Result<DataError, T>
 /**
  * Data types for schema inference
  */
-export type DataType = 'string' | 'number' | 'boolean' | 'array' | 'object' | 'date' | 'null' | 'undefined'
+export type DataType =
+  | 'string'
+  | 'number'
+  | 'boolean'
+  | 'array'
+  | 'object'
+  | 'date'
+  | 'null'
+  | 'undefined'
 
 /**
  * Schema definition types
@@ -164,8 +178,8 @@ export type TransformFunction<TInput = unknown, TOutput = unknown> = (
 ) => TOutput
 
 export type TransformMapping<TInput, TOutput> = {
-  [K in keyof TOutput]: 
-    | keyof TInput 
+  [K in keyof TOutput]:
+    | keyof TInput
     | TransformFunction<TInput, TOutput[K]>
     | {
         source?: keyof TInput
@@ -196,7 +210,7 @@ export interface AggregateOperations {
   groupBy?: string | string[]
   sum?: string | string[]
   avg?: string | string[]
-  count?: string | '*'
+  count?: string
   min?: string | string[]
   max?: string | string[]
   custom?: Record<string, (group: unknown[]) => unknown>
@@ -220,7 +234,7 @@ export type SerializationFormat = 'json' | 'csv' | 'xml' | 'yaml' | 'protobuf' |
 /**
  * Internal utility types
  */
-export interface NormalizedSchema<T> {
+export interface NormalizedSchema {
   fields: Record<string, SchemaFieldDefinition>
   strict: boolean
   metadata: {

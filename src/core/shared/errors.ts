@@ -80,8 +80,8 @@ export const hasErrorCode = (error: KairoError, code: string): boolean =>
 /**
  * Base error type for SERVICE pillar operations
  */
-export interface ServiceError extends KairoError {
-  code: 'SERVICE_ERROR'
+export interface ServiceError<TCode extends string = 'SERVICE_ERROR'> extends KairoError {
+  code: TCode
   pillar: 'SERVICE'
   operation: string
 }
@@ -89,8 +89,7 @@ export interface ServiceError extends KairoError {
 /**
  * HTTP-specific error for SERVICE pillar
  */
-export interface ServiceHttpError extends ServiceError {
-  code: 'SERVICE_HTTP_ERROR'
+export interface ServiceHttpError extends ServiceError<'SERVICE_HTTP_ERROR'> {
   status: number
   statusText: string
   url: string
@@ -99,8 +98,7 @@ export interface ServiceHttpError extends ServiceError {
 /**
  * Network-specific error for SERVICE pillar
  */
-export interface ServiceNetworkError extends ServiceError {
-  code: 'SERVICE_NETWORK_ERROR'
+export interface ServiceNetworkError extends ServiceError<'SERVICE_NETWORK_ERROR'> {
   url: string
   timeout?: number
 }
@@ -108,8 +106,8 @@ export interface ServiceNetworkError extends ServiceError {
 /**
  * Base error type for DATA pillar operations
  */
-export interface DataError extends KairoError {
-  code: 'DATA_ERROR'
+export interface DataError<TCode extends string = 'DATA_ERROR'> extends KairoError {
+  code: TCode
   pillar: 'DATA'
   operation: string
 }
@@ -117,8 +115,7 @@ export interface DataError extends KairoError {
 /**
  * Validation-specific error for DATA pillar
  */
-export interface DataValidationError extends DataError {
-  code: 'DATA_VALIDATION_ERROR'
+export interface DataValidationError extends DataError<'DATA_VALIDATION_ERROR'> {
   field?: string
   value?: unknown
   constraint?: string
@@ -127,8 +124,7 @@ export interface DataValidationError extends DataError {
 /**
  * Transformation-specific error for DATA pillar
  */
-export interface DataTransformError extends DataError {
-  code: 'DATA_TRANSFORM_ERROR'
+export interface DataTransformError extends DataError<'DATA_TRANSFORM_ERROR'> {
   source?: string
   target?: string
 }
@@ -136,16 +132,15 @@ export interface DataTransformError extends DataError {
 /**
  * Aggregation-specific error for DATA pillar
  */
-export interface DataAggregateError extends DataError {
-  code: 'DATA_AGGREGATE_ERROR'
+export interface DataAggregateError extends DataError<'DATA_AGGREGATE_ERROR'> {
   operation: 'sum' | 'avg' | 'count' | 'min' | 'max' | 'groupBy' | 'custom'
 }
 
 /**
  * Base error type for PIPELINE pillar operations
  */
-export interface PipelineError extends KairoError {
-  code: 'PIPELINE_ERROR'
+export interface PipelineError<TCode extends string = 'PIPELINE_ERROR'> extends KairoError {
+  code: TCode
   pillar: 'PIPELINE'
   operation: string
 }
@@ -153,8 +148,7 @@ export interface PipelineError extends KairoError {
 /**
  * Composition-specific error for PIPELINE pillar
  */
-export interface PipelineCompositionError extends PipelineError {
-  code: 'PIPELINE_COMPOSITION_ERROR'
+export interface PipelineCompositionError extends PipelineError<'PIPELINE_COMPOSITION_ERROR'> {
   step?: number
   stepName?: string
 }
@@ -162,8 +156,7 @@ export interface PipelineCompositionError extends PipelineError {
 /**
  * Validation-specific error for PIPELINE pillar
  */
-export interface PipelineValidationError extends PipelineError {
-  code: 'PIPELINE_VALIDATION_ERROR'
+export interface PipelineValidationError extends PipelineError<'PIPELINE_VALIDATION_ERROR'> {
   rule?: string
   value?: unknown
 }
@@ -171,16 +164,16 @@ export interface PipelineValidationError extends PipelineError {
 /**
  * Union type of all V2 pillar errors
  */
-export type V2Error = 
-  | ServiceError 
-  | ServiceHttpError 
+export type V2Error =
+  | ServiceError
+  | ServiceHttpError
   | ServiceNetworkError
-  | DataError 
-  | DataValidationError 
-  | DataTransformError 
+  | DataError
+  | DataValidationError
+  | DataTransformError
   | DataAggregateError
-  | PipelineError 
-  | PipelineCompositionError 
+  | PipelineError
+  | PipelineCompositionError
   | PipelineValidationError
 
 // ============================================================================
@@ -200,7 +193,7 @@ export const createServiceError = (
   operation,
   message,
   timestamp: Date.now(),
-  context
+  context,
 })
 
 export const createServiceHttpError = (
@@ -219,7 +212,7 @@ export const createServiceHttpError = (
   statusText,
   url,
   timestamp: Date.now(),
-  context
+  context,
 })
 
 export const createDataError = (
@@ -232,7 +225,7 @@ export const createDataError = (
   operation,
   message,
   timestamp: Date.now(),
-  context
+  context,
 })
 
 export const createDataValidationError = (
@@ -247,11 +240,11 @@ export const createDataValidationError = (
   pillar: 'DATA',
   operation,
   message,
-  field,
+  field: field || '',
   value,
-  constraint,
+  constraint: constraint || '',
   timestamp: Date.now(),
-  context
+  context,
 })
 
 export const createPipelineError = (
@@ -264,7 +257,7 @@ export const createPipelineError = (
   operation,
   message,
   timestamp: Date.now(),
-  context
+  context,
 })
 
 export const createPipelineCompositionError = (
@@ -278,8 +271,8 @@ export const createPipelineCompositionError = (
   pillar: 'PIPELINE',
   operation,
   message,
-  step,
-  stepName,
+  step: step || 0,
+  stepName: stepName || '',
   timestamp: Date.now(),
-  context
+  context,
 })

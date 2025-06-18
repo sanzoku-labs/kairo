@@ -1,29 +1,25 @@
 /**
  * SERVICE Pillar Utilities
- * 
+ *
  * Public utility functions for SERVICE pillar following V2 specifications.
  * These utilities can be used within SERVICE methods and by users.
  */
 
-import { Result } from '../shared'
-import { ServiceError, ServiceHttpError, createServiceError, createServiceHttpError } from '../shared'
-import { ServiceResponse } from './types'
+import { Result, createServiceError, createServiceHttpError } from '../shared'
+import type { ServiceError, ServiceHttpError, ServiceNetworkError } from '../shared'
+import type { ServiceResponse } from './types'
 
 /**
  * Builds URLs with query parameters
- * 
+ *
  * @param base - Base URL
  * @param path - Optional path to append
  * @param params - Optional query parameters
  * @returns Complete URL with parameters
  */
-export const buildURL = (
-  base: string,
-  path?: string,
-  params?: Record<string, unknown>
-): string => {
+export const buildURL = (base: string, path?: string, params?: Record<string, unknown>): string => {
   let url = base
-  
+
   // Append path if provided
   if (path) {
     // Ensure base doesn't end with / and path doesn't start with /
@@ -31,47 +27,64 @@ export const buildURL = (
     const cleanPath = path.startsWith('/') ? path : `/${path}`
     url = cleanBase + cleanPath
   }
-  
+
   // Append query parameters if provided
   if (params && Object.keys(params).length > 0) {
     const searchParams = new URLSearchParams()
-    
+
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        searchParams.append(key, String(value))
+        let stringValue: string
+        if (typeof value === 'object') {
+          stringValue = JSON.stringify(value)
+        } else if (typeof value === 'string') {
+          stringValue = value
+        } else if (typeof value === 'number' || typeof value === 'boolean') {
+          stringValue = value.toString()
+        } else {
+          // For any other type (symbol, function, etc.), convert safely
+          // eslint-disable-next-line @typescript-eslint/no-base-to-string
+          stringValue = String(value)
+        }
+        searchParams.append(key, stringValue)
       }
     })
-    
+
     const queryString = searchParams.toString()
     if (queryString) {
       url += (url.includes('?') ? '&' : '?') + queryString
     }
   }
-  
+
   return url
 }
 
 /**
  * Parses URLs into components
- * 
+ *
  * @param url - URL to parse
- * @returns URL components
+ * @returns Result with URL components or error
  */
-export const parseURL = (url: string): {
-  base: string
-  path: string
-  params: Record<string, string>
-  hash?: string
-} => {
+export const parseURL = (
+  url: string
+): Result<
+  ServiceError,
+  {
+    base: string
+    path: string
+    params: Record<string, string>
+    hash?: string
+  }
+> => {
   try {
     const parsed = new URL(url)
     const params: Record<string, string> = {}
-    
+
     // Extract query parameters
     parsed.searchParams.forEach((value, key) => {
       params[key] = value
     })
-    
+
     const result: {
       base: string
       path: string
@@ -80,26 +93,22 @@ export const parseURL = (url: string): {
     } = {
       base: `${parsed.protocol}//${parsed.host}`,
       path: parsed.pathname,
-      params
+      params,
     }
-    
+
     if (parsed.hash) {
       result.hash = parsed.hash.slice(1)
     }
-    
-    return result
+
+    return Result.Ok(result)
   } catch (error) {
-    throw createServiceError(
-      'parseURL',
-      `Invalid URL: ${url}`,
-      { url, error }
-    )
+    return Result.Err(createServiceError('parseURL', `Invalid URL: ${url}`, { url, error }))
   }
 }
 
 /**
  * Type guard for service errors
- * 
+ *
  * @param error - Error to check
  * @returns True if error is a ServiceError
  */
@@ -109,107 +118,106 @@ export const isServiceError = (error: unknown): error is ServiceError => {
     error !== null &&
     'code' in error &&
     'pillar' in error &&
-    (error as any).pillar === 'SERVICE'
+    (error as { pillar: unknown }).pillar === 'SERVICE'
   )
 }
 
 /**
  * Determines if an error should trigger retry
- * 
+ *
  * @param error - Error to check
  * @returns True if error is retryable
  */
-export const isRetryable = (error: ServiceError): boolean => {
+export const isRetryable = (
+  error: ServiceError<'SERVICE_ERROR'> | ServiceHttpError | ServiceNetworkError
+): boolean => {
   // Network errors are generally retryable
-  if (error.code === 'SERVICE_NETWORK_ERROR') {
+  if ('url' in error && error.code === 'SERVICE_NETWORK_ERROR') {
     return true
   }
-  
+
   // HTTP errors - only certain status codes are retryable
-  if (error.code === 'SERVICE_HTTP_ERROR') {
-    const httpError = error as ServiceHttpError
+  if ('status' in error && error.code === 'SERVICE_HTTP_ERROR') {
     const retryableStatusCodes = [408, 429, 500, 502, 503, 504]
-    return retryableStatusCodes.includes(httpError.status)
+    return retryableStatusCodes.includes(error.status)
   }
-  
+
   // Other service errors are generally not retryable
   return false
 }
 
 /**
  * Parses and validates HTTP responses
- * 
+ *
  * @param response - Fetch Response object
  * @param expectedSchema - Optional schema for validation
  * @returns Parsed response data
  */
 export const parseResponse = async <T = unknown>(
   response: Response,
-  expectedSchema?: any  // Using any temporarily, will be proper Schema<T> once schema integration is complete
-): Promise<Result<ServiceError, ServiceResponse<T>>> => {
+  _expectedSchema?: unknown // Unused parameter, will be proper Schema<T> once schema integration is complete
+): Promise<Result<ServiceError<'SERVICE_ERROR'>, ServiceResponse<T>>> => {
   try {
     // Check if response is ok
     if (!response.ok) {
-      return Result.error(createServiceHttpError(
+      const httpError = createServiceHttpError(
         'parseResponse',
         `HTTP ${response.status}: ${response.statusText}`,
         response.status,
         response.statusText,
         response.url
-      ))
+      )
+      return Result.Err(httpError as unknown as ServiceError<'SERVICE_ERROR'>)
     }
-    
+
     // Parse response body based on content type
     const contentType = response.headers.get('content-type') || ''
     let data: T
-    
+
     if (contentType.includes('application/json')) {
-      data = await response.json()
+      data = (await response.json()) as T
     } else if (contentType.includes('text/')) {
-      data = await response.text() as T
+      data = (await response.text()) as T
     } else {
       // For binary data, return as blob
-      data = await response.blob() as T
+      data = (await response.blob()) as T
     }
-    
+
     // TODO: Add schema validation when schema integration is complete
     // if (expectedSchema) {
     //   const validation = schema.validate(data, expectedSchema)
     //   if (Result.isError(validation)) {
     //     return Result.error(createServiceError(
-    //       'parseResponse', 
+    //       'parseResponse',
     //       'Response validation failed',
     //       { validation: validation.error }
     //     ))
     //   }
     // }
-    
+
     // Extract headers
     const headers: Record<string, string> = {}
     response.headers.forEach((value, key) => {
       headers[key] = value
     })
-    
-    return Result.ok({
+
+    return Result.Ok({
       data,
       status: response.status,
       statusText: response.statusText,
       headers,
-      url: response.url
+      url: response.url,
     })
-    
   } catch (error) {
-    return Result.error(createServiceError(
-      'parseResponse',
-      'Failed to parse response',
-      { error, url: response.url }
-    ))
+    return Result.Err(
+      createServiceError('parseResponse', 'Failed to parse response', { error, url: response.url })
+    )
   }
 }
 
 /**
  * Extracts specific headers from response
- * 
+ *
  * @param response - ServiceResponse object
  * @param keys - Header keys to extract
  * @returns Extracted headers
@@ -221,7 +229,7 @@ export const extractHeaders = (
   if (!keys) {
     return response.headers
   }
-  
+
   const extracted: Record<string, string> = {}
   keys.forEach(key => {
     const lowerKey = key.toLowerCase()
@@ -230,6 +238,6 @@ export const extractHeaders = (
       extracted[key] = value
     }
   })
-  
+
   return extracted
 }

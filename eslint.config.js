@@ -30,6 +30,7 @@ export default [
         JSON: 'readonly',
         Error: 'readonly',
         process: 'readonly',
+        Buffer: 'readonly',
       },
     },
     rules: {
@@ -74,6 +75,7 @@ export default [
         require: 'readonly',
         module: 'readonly',
         process: 'readonly',
+        Buffer: 'readonly',
       },
     },
     rules: {

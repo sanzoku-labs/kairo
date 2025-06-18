@@ -9,8 +9,9 @@ The PIPELINE pillar handles functional composition, data processing workflows, a
 
 **Implementation Status**: ✅ **All decisions resolved - PIPELINE pillar complete (8 methods + 15 utilities)**
 
-## ✅ **Phase 4 Decision Checkpoint - COMPLETED** 
-*These decisions must be made before starting PIPELINE pillar implementation (Weeks 13-16)*
+## ✅ **Phase 4 Decision Checkpoint - COMPLETED**
+
+_These decisions must be made before starting PIPELINE pillar implementation (Weeks 13-16)_
 
 **Status**: ✅ All decisions resolved and implemented
 
@@ -19,27 +20,26 @@ The PIPELINE pillar handles functional composition, data processing workflows, a
 ## ✅ **1. Composition Strategy - RESOLVED** 🔗
 
 ### **Decision Required**
+
 How should PIPELINE handle function composition and data flow?
 
 ### **Options**
+
 ```typescript
 // Option A: Functional composition (V2 direction)
 const processor = pipeline.compose(
-  (data) => pipeline.map(data, transform),
-  (data) => pipeline.filter(data, predicate),
-  (data) => pipeline.reduce(data, aggregator)
+  data => pipeline.map(data, transform),
+  data => pipeline.filter(data, predicate),
+  data => pipeline.reduce(data, aggregator)
 )
 const result = processor(inputData)
 
 // Option B: Method chaining with immutable data
-const result = pipeline(inputData)
-  .map(transform)
-  .filter(predicate)
-  .reduce(aggregator)
-  .value()
+const result = pipeline(inputData).map(transform).filter(predicate).reduce(aggregator).value()
 
 // Option C: Async pipeline builder
-const processor = pipeline.create()
+const processor = pipeline
+  .create()
   .step('transform', data => pipeline.map(data, transform))
   .step('filter', data => pipeline.filter(data, predicate))
   .step('aggregate', data => pipeline.reduce(data, aggregator))
@@ -48,6 +48,7 @@ const result = await processor.run(inputData)
 ```
 
 ### **Questions to Answer**
+
 - Do you prefer functional composition or method chaining for readability?
 - Should pipelines be reusable/composable across different data sources?
 - How important is async pipeline orchestration vs. simple function composition?
@@ -60,9 +61,11 @@ const result = await processor.run(inputData)
 ## **2. Error Propagation Strategy** ❌
 
 ### **Decision Required**
+
 How should errors propagate through pipeline operations?
 
 ### **Options**
+
 ```typescript
 // Option A: Fail-fast (stop on first error)
 const result = pipeline.compose(
@@ -87,6 +90,7 @@ const result = pipeline.compose(
 ```
 
 ### **Questions to Answer**
+
 - Should pipeline errors stop execution or allow recovery?
 - Do you need error context (which step failed, partial results)?
 - Are fallback values or retry logic important for your workflows?
@@ -99,28 +103,35 @@ const result = pipeline.compose(
 ## **3. Async Operation Handling** ⏱️
 
 ### **Decision Required**
+
 How should PIPELINE handle asynchronous operations and concurrency?
 
 ### **Options**
+
 ```typescript
 // Option A: Explicit async support
-const result = await pipeline.map(urls, async (url) => {
-  return await fetch(url)
-}, { async: true, parallel: true })
+const result = await pipeline.map(
+  urls,
+  async url => {
+    return await fetch(url)
+  },
+  { async: true, parallel: true }
+)
 
 // Option B: Auto-detect async operations
-const result = await pipeline.map(urls, async (url) => {
+const result = await pipeline.map(urls, async url => {
   return await fetch(url)
 }) // Automatically detects Promise return and handles appropriately
 
 // Option C: Separate async pipeline methods
 const result = await pipeline.mapAsync(urls, fetchUrl, {
   concurrency: 5,
-  timeout: 10000
+  timeout: 10000,
 })
 ```
 
 ### **Questions to Answer**
+
 - Do you frequently mix sync and async operations in pipelines?
 - Should parallel execution be opt-in or automatic for async operations?
 - Do you need concurrency limits for resource-intensive operations?
@@ -133,9 +144,11 @@ const result = await pipeline.mapAsync(urls, fetchUrl, {
 ## **4. Data Flow Control Patterns** 🚦
 
 ### **Decision Required**
+
 What control flow patterns should PIPELINE support?
 
 ### **Essential Patterns** (Must Have)
+
 ```typescript
 // Basic transformations
 pipeline.map(data, transform)
@@ -144,28 +157,31 @@ pipeline.reduce(data, aggregator)
 
 // Conditional logic
 pipeline.branch(data, {
-  condition: (item) => item.type === 'user',
+  condition: item => item.type === 'user',
   onTrue: userProcessor,
-  onFalse: adminProcessor
+  onFalse: adminProcessor,
 })
 ```
 
 ### **Advanced Patterns** (Should Have)
+
 ```typescript
 // Parallel processing
 pipeline.parallel(data, processor, { concurrency: 5 })
 
 // Data partitioning
-pipeline.partition(data, (item) => item.category)
+pipeline.partition(data, item => item.category)
 
 // Chunked processing
 pipeline.chunk(data, 1000, processor)
 ```
 
 ### **Complex Patterns** (Could Have)
+
 ```typescript
 // Stream processing
-pipeline.stream(dataSource)
+pipeline
+  .stream(dataSource)
   .window(1000) // Process in windows
   .debounce(500) // Debounce events
   .throttle(100) // Throttle processing
@@ -175,12 +191,13 @@ pipeline.stateMachine(data, {
   initial: 'pending',
   states: {
     pending: { on: { process: 'processing' } },
-    processing: { on: { complete: 'done', error: 'failed' } }
-  }
+    processing: { on: { complete: 'done', error: 'failed' } },
+  },
 })
 ```
 
 ### **Questions to Answer**
+
 - Which control flow patterns do you use most in your applications?
 - Do you need stream processing capabilities in V2.0 or can it wait?
 - Are state machine patterns important for your business logic?
@@ -193,9 +210,11 @@ pipeline.stateMachine(data, {
 ## **5. Integration with Other Pillars** 🤝
 
 ### **Decision Required**
+
 How tightly should PIPELINE integrate with SERVICE and DATA pillars?
 
 ### **Options**
+
 ```typescript
 // Option A: Loose coupling (manual composition)
 const serviceResult = await service.get('/api/users')
@@ -210,7 +229,7 @@ if (Result.isOk(serviceResult)) {
 const result = await pipeline.fetchAndProcess({
   url: '/api/users',
   schema: UserSchema,
-  processor: enrichUser
+  processor: enrichUser,
 })
 
 // Option C: Built-in pillar integration
@@ -222,6 +241,7 @@ const result = await pipeline.compose(
 ```
 
 ### **Questions to Answer**
+
 - Do you frequently chain SERVICE → DATA → PIPELINE operations?
 - Should common patterns have dedicated helper functions?
 - Is tight integration worth the complexity vs. manual composition?
@@ -234,30 +254,33 @@ const result = await pipeline.compose(
 ## **6. Performance Optimization Patterns** ⚡
 
 ### **Decision Required**
+
 What performance optimizations should PIPELINE provide?
 
 ### **Options**
+
 ```typescript
 // Option A: Basic optimizations only
 const result = pipeline.map(largeArray, expensiveTransform) // Basic optimization
 
 // Option B: Built-in performance helpers
 const result = pipeline.map(largeArray, expensiveTransform, {
-  chunk: 1000,        // Process in chunks
-  memoize: true,      // Cache results
-  parallel: true      // Use multiple threads
+  chunk: 1000, // Process in chunks
+  memoize: true, // Cache results
+  parallel: true, // Use multiple threads
 })
 
 // Option C: Advanced performance features
 const result = pipeline.map(largeArray, expensiveTransform, {
-  strategy: 'streaming',  // Stream processing
-  workers: 4,            // Web workers
-  progress: (p) => console.log(`${p}%`), // Progress tracking
-  cancellable: true      // Cancellation support
+  strategy: 'streaming', // Stream processing
+  workers: 4, // Web workers
+  progress: p => console.log(`${p}%`), // Progress tracking
+  cancellable: true, // Cancellation support
 })
 ```
 
 ### **Questions to Answer**
+
 - What size datasets do you typically process with pipelines?
 - Do you need progress tracking for long-running operations?
 - Are Web Workers important for CPU-intensive transformations?
@@ -270,9 +293,11 @@ const result = pipeline.map(largeArray, expensiveTransform, {
 ## **7. Pipeline Debugging and Observability** 🔍
 
 ### **Decision Required**
+
 What debugging capabilities should PIPELINE provide?
 
 ### **Options**
+
 ```typescript
 // Option A: Simple error reporting
 const result = pipeline.map(data, transform)
@@ -280,23 +305,28 @@ const result = pipeline.map(data, transform)
 
 // Option B: Step-by-step debugging
 const result = pipeline.compose(
-  pipeline.tap('input', console.log),      // Log input
+  pipeline.tap('input', console.log), // Log input
   step1,
   pipeline.tap('after-step1', console.log), // Log intermediate
   step2
 )(data)
 
 // Option C: Full pipeline observability
-const result = pipeline.compose(step1, step2, step3)(data, {
-  trace: true,    // Trace execution
-  timing: true,   // Time each step
+const result = pipeline.compose(
+  step1,
+  step2,
+  step3
+)(data, {
+  trace: true, // Trace execution
+  timing: true, // Time each step
   onStep: (step, input, output, duration) => {
     console.log(`${step}: ${duration}ms`)
-  }
+  },
 })
 ```
 
 ### **Questions to Answer**
+
 - How do you typically debug complex data processing workflows?
 - Do you need performance timing for pipeline optimization?
 - Should debugging features be production-safe or development-only?
@@ -309,27 +339,27 @@ const result = pipeline.compose(step1, step2, step3)(data, {
 ## **8. Memory Management for Large Datasets** 💾
 
 ### **Decision Required**
+
 How should PIPELINE handle memory efficiency with large datasets?
 
 ### **Options**
+
 ```typescript
 // Option A: Simple array processing (current approach)
 const result = pipeline.map(largeArray, transform) // Load all in memory
 
 // Option B: Streaming/generator support
-const result = pipeline.stream(dataGenerator)
-  .map(transform)
-  .filter(predicate)
-  .collect() // Convert back to array when needed
+const result = pipeline.stream(dataGenerator).map(transform).filter(predicate).collect() // Convert back to array when needed
 
 // Option C: Chunked processing
 const result = pipeline.mapChunked(largeArray, transform, {
   chunkSize: 1000,
-  processorPool: 4
+  processorPool: 4,
 })
 ```
 
 ### **Questions to Answer**
+
 - What's the largest dataset size you typically process?
 - Do you need streaming/generator support for memory efficiency?
 - Should chunked processing be automatic or explicit?
@@ -342,16 +372,19 @@ const result = pipeline.mapChunked(largeArray, transform, {
 ## **Implementation Impact**
 
 ### **High Impact Decisions** (affect core API)
+
 - Composition strategy
 - Error propagation strategy
 - Data flow control patterns
 
 ### **Medium Impact Decisions** (affect developer experience)
+
 - Async operation handling
 - Integration with other pillars
 - Pipeline debugging and observability
 
 ### **Low Impact Decisions** (affect feature scope)
+
 - Performance optimization patterns
 - Memory management for large datasets
 

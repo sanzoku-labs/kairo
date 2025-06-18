@@ -12,11 +12,12 @@ Kairo V2 uses the Result pattern for all error handling, eliminating exceptions 
 ## ✅ Core Error Handling Principles - IMPLEMENTED
 
 ### **✅ 1. No Exceptions, Only Results - IMPLEMENTED**
+
 ```typescript
 // V2: Everything returns Result<Error, Value>
-const users = await service.get('/users')          // Result<ServiceError, User[]>
-const valid = data.validate(users, UserSchema)     // Result<ValidationError, User[]>  
-const processed = pipeline.map(valid, transform)   // Result<PipelineError, ProcessedUser[]>
+const users = await service.get('/users') // Result<ServiceError, User[]>
+const valid = data.validate(users, UserSchema) // Result<ValidationError, User[]>
+const processed = pipeline.map(valid, transform) // Result<PipelineError, ProcessedUser[]>
 
 // Never throws - always returns Result
 if (Result.isOk(users)) {
@@ -27,6 +28,7 @@ if (Result.isOk(users)) {
 ```
 
 ### **2. Pillar-Specific Error Types**
+
 ```typescript
 // Each pillar has specific error types
 type ServiceError = {
@@ -57,6 +59,7 @@ type PipelineError = {
 ```
 
 ### **3. Error Context and Traceability**
+
 ```typescript
 // Rich error context for debugging
 const error: ServiceError = {
@@ -71,8 +74,8 @@ const error: ServiceError = {
     requestId: 'req_123',
     timestamp: '2024-01-15T10:30:00Z',
     retryAttempt: 2,
-    options: { timeout: 5000, retry: { attempts: 3 } }
-  }
+    options: { timeout: 5000, retry: { attempts: 3 } },
+  },
 }
 ```
 
@@ -81,35 +84,44 @@ const error: ServiceError = {
 ### **SERVICE Pillar Errors**
 
 #### **HTTP Error Categories**
+
 ```typescript
 interface ServiceError extends KairoError {
   code: 'SERVICE_ERROR'
   operation: ServiceOperation
-  
+
   // HTTP-specific context
   httpStatus?: number
   url?: string
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
-  
+
   // Error categories
   timeout?: boolean
   networkError?: boolean
   serverError?: boolean
   clientError?: boolean
-  
+
   // Request context
   requestId?: string
   headers?: Record<string, string>
   body?: unknown
 }
 
-type ServiceOperation = 
-  | 'get' | 'post' | 'put' | 'patch' | 'delete'
-  | 'batch' | 'stream' | 'upload'
-  | 'configure' | 'create'
+type ServiceOperation =
+  | 'get'
+  | 'post'
+  | 'put'
+  | 'patch'
+  | 'delete'
+  | 'batch'
+  | 'stream'
+  | 'upload'
+  | 'configure'
+  | 'create'
 ```
 
 #### **SERVICE Error Examples**
+
 ```typescript
 // Network timeout
 const timeoutError: ServiceError = {
@@ -118,38 +130,39 @@ const timeoutError: ServiceError = {
   message: 'Request timeout after 5000ms',
   timeout: true,
   url: '/api/users',
-  context: { timeoutMs: 5000 }
+  context: { timeoutMs: 5000 },
 }
 
 // HTTP error response
 const httpError: ServiceError = {
-  code: 'SERVICE_ERROR', 
+  code: 'SERVICE_ERROR',
   operation: 'post',
   message: 'Validation failed',
   httpStatus: 400,
   clientError: true,
   url: '/api/users',
-  context: { 
-    responseBody: { errors: ['Email required'] }
-  }
+  context: {
+    responseBody: { errors: ['Email required'] },
+  },
 }
 
 // Network connection error
 const networkError: ServiceError = {
   code: 'SERVICE_ERROR',
-  operation: 'get', 
+  operation: 'get',
   message: 'Network unreachable',
   networkError: true,
   url: '/api/users',
-  context: { 
-    cause: 'ENOTFOUND' 
-  }
+  context: {
+    cause: 'ENOTFOUND',
+  },
 }
 ```
 
 ### **DATA Pillar Errors**
 
 #### **Validation Error Structure**
+
 ```typescript
 interface ValidationError extends KairoError {
   code: 'VALIDATION_ERROR'
@@ -170,6 +183,7 @@ interface ValidationIssue {
 ```
 
 #### **DATA Error Examples**
+
 ```typescript
 // Single field validation error
 const fieldError: ValidationError = {
@@ -179,13 +193,15 @@ const fieldError: ValidationError = {
   expected: 'valid email format',
   actual: 'invalid-email',
   fieldPath: ['user', 'email'],
-  issues: [{
-    path: ['user', 'email'],
-    message: 'Invalid email format',
-    code: 'invalid_email',
-    expected: 'email',
-    received: 'string'
-  }]
+  issues: [
+    {
+      path: ['user', 'email'],
+      message: 'Invalid email format',
+      code: 'invalid_email',
+      expected: 'email',
+      received: 'string',
+    },
+  ],
 }
 
 // Multiple validation errors
@@ -199,16 +215,16 @@ const multipleErrors: ValidationError = {
       message: 'Name is required',
       code: 'required',
       expected: 'string',
-      received: 'undefined'
+      received: 'undefined',
     },
     {
       path: ['age'],
       message: 'Age must be a positive number',
       code: 'min_value',
       expected: 'number >= 0',
-      received: 'number'
-    }
-  ]
+      received: 'number',
+    },
+  ],
 }
 
 // Schema transformation error
@@ -216,19 +232,22 @@ const transformError: ValidationError = {
   code: 'VALIDATION_ERROR',
   message: 'Schema transformation failed',
   fieldPath: ['user'],
-  issues: [{
-    path: ['user', 'birthDate'],
-    message: 'Cannot convert string to Date',
-    code: 'transform_failed',
-    expected: 'Date',
-    received: 'string'
-  }]
+  issues: [
+    {
+      path: ['user', 'birthDate'],
+      message: 'Cannot convert string to Date',
+      code: 'transform_failed',
+      expected: 'Date',
+      received: 'string',
+    },
+  ],
 }
 ```
 
 ### **PIPELINE Pillar Errors**
 
 #### **Pipeline Error Structure**
+
 ```typescript
 interface PipelineError extends KairoError {
   code: 'PIPELINE_ERROR'
@@ -238,15 +257,26 @@ interface PipelineError extends KairoError {
   cause?: unknown
 }
 
-type PipelineOperation = 
-  | 'map' | 'filter' | 'reduce' | 'flatMap'
-  | 'compose' | 'chain' 
-  | 'branch' | 'parallel' | 'retry'
-  | 'validate' | 'guard'
-  | 'tap' | 'delay' | 'chunk' | 'stream'
+type PipelineOperation =
+  | 'map'
+  | 'filter'
+  | 'reduce'
+  | 'flatMap'
+  | 'compose'
+  | 'chain'
+  | 'branch'
+  | 'parallel'
+  | 'retry'
+  | 'validate'
+  | 'guard'
+  | 'tap'
+  | 'delay'
+  | 'chunk'
+  | 'stream'
 ```
 
 #### **PIPELINE Error Examples**
+
 ```typescript
 // Map operation error
 const mapError: PipelineError = {
@@ -258,8 +288,8 @@ const mapError: PipelineError = {
   context: {
     totalItems: 10,
     processedItems: 3,
-    failedItem: { id: 'item_3', value: 0 }
-  }
+    failedItem: { id: 'item_3', value: 0 },
+  },
 }
 
 // Composition step error
@@ -272,8 +302,8 @@ const composeError: PipelineError = {
   context: {
     totalSteps: 4,
     completedSteps: 1,
-    stepName: 'validateUser'
-  }
+    stepName: 'validateUser',
+  },
 }
 
 // Parallel processing error
@@ -288,15 +318,16 @@ const parallelError: PipelineError = {
     failures: [
       { index: 2, error: 'Timeout' },
       { index: 5, error: 'Validation failed' },
-      { index: 8, error: 'Network error' }
-    ]
-  }
+      { index: 8, error: 'Network error' },
+    ],
+  },
 }
 ```
 
 ## Error Propagation Patterns
 
 ### **1. Automatic Error Propagation**
+
 ```typescript
 // Errors propagate automatically through compositions
 const processUser = async (userId: string): Promise<Result<KairoError, ProcessedUser>> => {
@@ -304,48 +335,52 @@ const processUser = async (userId: string): Promise<Result<KairoError, Processed
   if (Result.isErr(userResult)) {
     return userResult // ServiceError propagates
   }
-  
+
   const validatedResult = data.validate(userResult.value, UserSchema)
   if (Result.isErr(validatedResult)) {
     return validatedResult // ValidationError propagates
   }
-  
+
   const processedResult = pipeline.map([validatedResult.value], enrichUser)
   if (Result.isErr(processedResult)) {
     return processedResult // PipelineError propagates
   }
-  
+
   return Result.Ok(processedResult.value[0])
 }
 ```
 
 ### **2. Error Context Enrichment**
+
 ```typescript
 // Add context as errors propagate
 const enrichError = <E extends KairoError>(error: E, context: Record<string, unknown>): E => {
   return {
     ...error,
-    context: { ...error.context, ...context }
+    context: { ...error.context, ...context },
   }
 }
 
 const processWithContext = async (data: unknown) => {
   const result = await service.get('/process', { body: data })
-  
+
   if (Result.isErr(result)) {
     // Enrich with processing context
-    return Result.Err(enrichError(result.error, {
-      operation: 'processWithContext',
-      inputData: data,
-      timestamp: Date.now()
-    }))
+    return Result.Err(
+      enrichError(result.error, {
+        operation: 'processWithContext',
+        inputData: data,
+        timestamp: Date.now(),
+      })
+    )
   }
-  
+
   return result
 }
 ```
 
 ### **3. Error Transformation**
+
 ```typescript
 // Transform errors between contexts
 const transformError = (error: KairoError, newContext: string): KairoError => {
@@ -355,19 +390,19 @@ const transformError = (error: KairoError, newContext: string): KairoError => {
     context: {
       ...error.context,
       transformedIn: newContext,
-      originalError: error
-    }
+      originalError: error,
+    },
   }
 }
 
 const userWorkflow = async (userId: string) => {
   const result = await processUser(userId)
-  
+
   if (Result.isErr(result)) {
     // Transform error for user workflow context
     return Result.Err(transformError(result.error, 'userWorkflow'))
   }
-  
+
   return result
 }
 ```
@@ -375,25 +410,27 @@ const userWorkflow = async (userId: string) => {
 ## Error Recovery Strategies
 
 ### **1. Fallback Values**
+
 ```typescript
 // Provide default values on error
 const getConfigWithFallback = async (): Promise<Result<never, Config>> => {
   const configResult = await service.get('/config')
-  
+
   if (Result.isErr(configResult)) {
     // Use default configuration
     return Result.Ok({
       timeout: 5000,
       retries: 3,
-      cache: true
+      cache: true,
     })
   }
-  
+
   return configResult
 }
 ```
 
 ### **2. Retry Strategies**
+
 ```typescript
 // Automatic retry with exponential backoff
 const retryableOperation = async <T>(
@@ -401,57 +438,57 @@ const retryableOperation = async <T>(
   options: { attempts: number; delay: number }
 ): Promise<Result<KairoError, T>> => {
   let lastError: KairoError
-  
+
   for (let attempt = 1; attempt <= options.attempts; attempt++) {
     const result = await operation()
-    
+
     if (Result.isOk(result)) {
       return result
     }
-    
+
     lastError = result.error
-    
+
     // Don't retry on client errors (4xx)
-    if (result.error.code === 'SERVICE_ERROR' && 
-        (result.error as ServiceError).clientError) {
+    if (result.error.code === 'SERVICE_ERROR' && (result.error as ServiceError).clientError) {
       break
     }
-    
+
     if (attempt < options.attempts) {
       await delay(options.delay * Math.pow(2, attempt - 1))
     }
   }
-  
+
   return Result.Err({
     ...lastError,
     message: `Operation failed after ${options.attempts} attempts: ${lastError.message}`,
     context: {
       ...lastError.context,
       retryAttempts: options.attempts,
-      finalAttempt: true
-    }
+      finalAttempt: true,
+    },
   })
 }
 ```
 
 ### **3. Alternative Strategies**
+
 ```typescript
 // Try multiple strategies until one succeeds
 const tryMultipleStrategies = async <T>(
   strategies: Array<() => Promise<Result<KairoError, T>>>
 ): Promise<Result<KairoError, T>> => {
   const errors: KairoError[] = []
-  
+
   for (const strategy of strategies) {
     const result = await strategy()
-    
+
     if (Result.isOk(result)) {
       return result
     }
-    
+
     errors.push(result.error)
   }
-  
+
   // All strategies failed
   return Result.Err({
     code: 'PIPELINE_ERROR',
@@ -459,23 +496,25 @@ const tryMultipleStrategies = async <T>(
     message: 'All strategies failed',
     context: {
       strategiesAttempted: strategies.length,
-      errors: errors
-    }
+      errors: errors,
+    },
   } as PipelineError)
 }
 
 // Usage
-const getUserData = () => tryMultipleStrategies([
-  () => service.get('/users/current'),           // Try current user endpoint
-  () => service.get('/profile'),                 // Try profile endpoint
-  () => service.get('/users/me'),                // Try alternative endpoint
-  () => Result.fromPromise(getCachedUser())      // Try cached data
-])
+const getUserData = () =>
+  tryMultipleStrategies([
+    () => service.get('/users/current'), // Try current user endpoint
+    () => service.get('/profile'), // Try profile endpoint
+    () => service.get('/users/me'), // Try alternative endpoint
+    () => Result.fromPromise(getCachedUser()), // Try cached data
+  ])
 ```
 
 ## Error Handling Utilities
 
 ### **1. Error Type Guards**
+
 ```typescript
 // Type guards for error discrimination
 export const isServiceError = (error: KairoError): error is ServiceError => {
@@ -503,27 +542,28 @@ const handleError = (error: KairoError) => {
       return 'Authentication required. Please log in.'
     }
   }
-  
+
   if (isValidationError(error)) {
     return `Validation failed: ${error.issues.map(i => i.message).join(', ')}`
   }
-  
+
   if (isPipelineError(error)) {
     return `Processing failed at step ${error.step}: ${error.message}`
   }
-  
+
   return 'An unexpected error occurred.'
 }
 ```
 
 ### **2. Error Aggregation**
+
 ```typescript
 // Collect and aggregate multiple errors
 export const aggregateErrors = (errors: KairoError[]): KairoError => {
   const serviceErrors = errors.filter(isServiceError)
   const validationErrors = errors.filter(isValidationError)
   const pipelineErrors = errors.filter(isPipelineError)
-  
+
   if (validationErrors.length > 0) {
     // Merge validation errors
     const allIssues = validationErrors.flatMap(e => e.issues)
@@ -531,29 +571,30 @@ export const aggregateErrors = (errors: KairoError[]): KairoError => {
       code: 'VALIDATION_ERROR',
       message: `${allIssues.length} validation errors`,
       fieldPath: [],
-      issues: allIssues
+      issues: allIssues,
     } as ValidationError
   }
-  
+
   if (serviceErrors.length > 0) {
     return {
       code: 'SERVICE_ERROR',
       operation: 'batch',
       message: `${serviceErrors.length} service errors`,
-      context: { errors: serviceErrors }
+      context: { errors: serviceErrors },
     } as ServiceError
   }
-  
+
   return {
     code: 'PIPELINE_ERROR',
     operation: 'parallel',
     message: `${errors.length} operation errors`,
-    context: { errors: errors }
+    context: { errors: errors },
   } as PipelineError
 }
 ```
 
 ### **3. Error Reporting**
+
 ```typescript
 // Structured error reporting
 export const reportError = (error: KairoError, context?: Record<string, unknown>) => {
@@ -562,7 +603,7 @@ export const reportError = (error: KairoError, context?: Record<string, unknown>
     errorCode: error.code,
     message: error.message,
     context: { ...error.context, ...context },
-    
+
     // Add pillar-specific details
     ...(isServiceError(error) && {
       service: {
@@ -570,34 +611,34 @@ export const reportError = (error: KairoError, context?: Record<string, unknown>
         url: error.url,
         httpStatus: error.httpStatus,
         timeout: error.timeout,
-        networkError: error.networkError
-      }
+        networkError: error.networkError,
+      },
     }),
-    
+
     ...(isValidationError(error) && {
       validation: {
         field: error.field,
         fieldPath: error.fieldPath,
         issueCount: error.issues.length,
-        issues: error.issues
-      }
+        issues: error.issues,
+      },
     }),
-    
+
     ...(isPipelineError(error) && {
       pipeline: {
         operation: error.operation,
         step: error.step,
-        itemIndex: error.itemIndex
-      }
-    })
+        itemIndex: error.itemIndex,
+      },
+    }),
   }
-  
+
   // Send to logging service
   console.error('Kairo Error:', errorReport)
-  
+
   // Could also send to external error reporting service
   // errorReportingService.report(errorReport)
-  
+
   return errorReport
 }
 ```
@@ -605,31 +646,34 @@ export const reportError = (error: KairoError, context?: Record<string, unknown>
 ## Testing Error Handling
 
 ### **1. Error Scenario Testing**
+
 ```typescript
 // Test all error scenarios
 describe('User processing error handling', () => {
   it('should handle service timeout errors', async () => {
     const mockService = {
-      get: jest.fn().mockResolvedValue(Result.Err({
-        code: 'SERVICE_ERROR',
-        operation: 'get',
-        message: 'Request timeout',
-        timeout: true
-      }))
+      get: jest.fn().mockResolvedValue(
+        Result.Err({
+          code: 'SERVICE_ERROR',
+          operation: 'get',
+          message: 'Request timeout',
+          timeout: true,
+        })
+      ),
     }
-    
+
     const result = await processUser('user123')
-    
+
     expect(Result.isErr(result)).toBe(true)
     expect(isServiceError(result.error)).toBe(true)
     expect(result.error.timeout).toBe(true)
   })
-  
+
   it('should handle validation errors with field details', async () => {
     const invalidUser = { name: '', email: 'invalid' }
-    
+
     const result = data.validate(invalidUser, UserSchema)
-    
+
     expect(Result.isErr(result)).toBe(true)
     expect(isValidationError(result.error)).toBe(true)
     expect(result.error.issues).toHaveLength(2)
@@ -640,18 +684,20 @@ describe('User processing error handling', () => {
 ```
 
 ### **2. Error Recovery Testing**
+
 ```typescript
 // Test error recovery mechanisms
 describe('Error recovery', () => {
   it('should fall back to cached data on service error', async () => {
     const mockService = {
-      get: jest.fn()
+      get: jest
+        .fn()
         .mockResolvedValueOnce(Result.Err({ code: 'SERVICE_ERROR' }))
-        .mockResolvedValueOnce(Result.Ok(cachedData))
+        .mockResolvedValueOnce(Result.Ok(cachedData)),
     }
-    
+
     const result = await getDataWithFallback()
-    
+
     expect(Result.isOk(result)).toBe(true)
     expect(result.value).toEqual(cachedData)
     expect(mockService.get).toHaveBeenCalledTimes(2)
@@ -662,21 +708,25 @@ describe('Error recovery', () => {
 ## Best Practices
 
 ### **1. Error Message Quality**
+
 - Provide clear, actionable error messages
 - Include relevant context for debugging
 - Use consistent terminology across pillars
 
 ### **2. Error Granularity**
+
 - Create specific error types for different failure modes
 - Include enough context for error recovery
 - Don't over-engineer error hierarchies
 
 ### **3. Error Recovery**
+
 - Design for graceful degradation
 - Provide sensible fallbacks where possible
 - Make retry strategies configurable
 
 ### **4. Error Monitoring**
+
 - Log errors with structured context
 - Include correlation IDs for tracing
 - Monitor error patterns and trends

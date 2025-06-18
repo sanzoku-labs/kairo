@@ -9,8 +9,9 @@ The DATA pillar handles validation, transformation, and aggregation of data stru
 
 **Implementation Status**: ✅ **All decisions resolved - DATA pillar complete (10 methods + 12 utilities)**
 
-## ✅ **Phase 3 Decision Checkpoint - COMPLETED** 
-*These decisions must be made before starting DATA pillar implementation (Weeks 9-12)*
+## ✅ **Phase 3 Decision Checkpoint - COMPLETED**
+
+_These decisions must be made before starting DATA pillar implementation (Weeks 9-12)_
 
 **Status**: ✅ All decisions resolved and implemented
 
@@ -19,16 +20,18 @@ The DATA pillar handles validation, transformation, and aggregation of data stru
 ## ✅ **1. Schema Definition Syntax - RESOLVED** 📋
 
 ### **Decision Required**
+
 What schema definition syntax should DATA use for optimal developer experience?
 
 ### **Options**
+
 ```typescript
 // Option A: Method chaining (Zod-like)
 const UserSchema = data.schema({
   name: data.string().min(1).max(100),
   email: data.string().email(),
   age: data.number().min(0).max(150).optional(),
-  tags: data.array(data.string())
+  tags: data.array(data.string()),
 })
 
 // Option B: Configuration objects
@@ -36,7 +39,7 @@ const UserSchema = data.schema({
   name: { type: 'string', min: 1, max: 100, required: true },
   email: { type: 'string', validation: 'email', required: true },
   age: { type: 'number', min: 0, max: 150, required: false },
-  tags: { type: 'array', items: 'string' }
+  tags: { type: 'array', items: 'string' },
 })
 
 // Option C: Hybrid approach
@@ -44,11 +47,12 @@ const UserSchema = data.schema({
   name: data.string({ min: 1, max: 100 }),
   email: data.string({ email: true }),
   age: data.number({ min: 0, max: 150 }).optional(),
-  tags: data.array(data.string())
+  tags: data.array(data.string()),
 })
 ```
 
 ### **Questions to Answer**
+
 - Do you prefer method chaining or configuration objects for validation?
 - Should validation rules be composable/reusable across schemas?
 - How important is schema readability vs. runtime performance?
@@ -61,9 +65,11 @@ const UserSchema = data.schema({
 ## **2. Validation Error Reporting** ⚠️
 
 ### **Decision Required**
+
 What level of detail should validation errors provide?
 
 ### **Options**
+
 ```typescript
 // Option A: Simple error list
 type ValidationError = {
@@ -103,6 +109,7 @@ type ValidationError = {
 ```
 
 ### **Questions to Answer**
+
 - Do you need detailed error paths for nested object validation?
 - Should errors include the actual received values for debugging?
 - Do you display validation errors directly to users or just developers?
@@ -115,9 +122,11 @@ type ValidationError = {
 ## **3. Data Transformation Capabilities** 🔄
 
 ### **Decision Required**
+
 What data transformation features should DATA provide?
 
 ### **Options**
+
 ```typescript
 // Option A: Schema-based transformation only
 const result = data.transform(rawData, TargetSchema)
@@ -125,23 +134,25 @@ const result = data.transform(rawData, TargetSchema)
 // Option B: Field mapping + transformation
 const result = data.transform(rawData, TargetSchema, {
   fieldMap: {
-    'user_name': 'name',
-    'email_address': 'email'
+    user_name: 'name',
+    email_address: 'email',
   },
   transforms: {
-    'created_at': (val) => new Date(val),
-    'tags': (val) => val.split(',')
-  }
+    created_at: val => new Date(val),
+    tags: val => val.split(','),
+  },
 })
 
 // Option C: Pipeline-style transformations
-const result = data.transform(rawData)
-  .mapFields({ 'user_name': 'name' })
-  .convertTypes({ 'created_at': 'date' })
+const result = data
+  .transform(rawData)
+  .mapFields({ user_name: 'name' })
+  .convertTypes({ created_at: 'date' })
   .validate(TargetSchema)
 ```
 
 ### **Questions to Answer**
+
 - Do your APIs frequently require field name mapping?
 - What types of data type conversions do you need most often?
 - Should transformations be reversible for round-trip scenarios?
@@ -154,48 +165,53 @@ const result = data.transform(rawData)
 ## **4. Aggregation Operations Priority** 📊
 
 ### **Decision Required**
+
 Which aggregation operations are most important for V2.0?
 
 ### **Essential Operations** (Must Have)
+
 ```typescript
 const result = data.aggregate(salesData, {
   groupBy: ['region', 'category'],
   sum: ['revenue', 'quantity'],
   count: true,
-  avg: ['price']
+  avg: ['price'],
 })
 ```
 
 ### **Advanced Operations** (Should Have)
+
 ```typescript
 const result = data.aggregate(salesData, {
   groupBy: ['region'],
   percentile: { revenue: [25, 50, 75, 95] },
   distinctCount: ['customer_id'],
   custom: {
-    revenuePerCustomer: (group) => group.revenue / group.distinctCustomers
-  }
+    revenuePerCustomer: group => group.revenue / group.distinctCustomers,
+  },
 })
 ```
 
 ### **Complex Operations** (Could Have)
+
 ```typescript
 const result = data.aggregate(salesData, {
   pivot: {
     rows: ['region'],
     columns: ['category'],
     values: 'revenue',
-    aggregation: 'sum'
+    aggregation: 'sum',
   },
   window: {
     partitionBy: ['region'],
     orderBy: 'date',
-    functions: ['rank', 'lag', 'lead']
-  }
+    functions: ['rank', 'lag', 'lead'],
+  },
 })
 ```
 
 ### **Questions to Answer**
+
 - What aggregation operations do you use most in your applications?
 - Do you need pivot table functionality in V2.0 or can it wait?
 - Are window functions (rank, lag, lead) important for your use cases?
@@ -208,14 +224,16 @@ const result = data.aggregate(salesData, {
 ## **5. Type Inference Strategy** 🔍
 
 ### **Decision Required**
+
 How aggressive should TypeScript type inference be for DATA operations?
 
 ### **Options**
+
 ```typescript
 // Option A: Full type inference
 const UserSchema = data.schema({
   name: data.string(),
-  age: data.number()
+  age: data.number(),
 })
 type User = data.InferType<typeof UserSchema> // { name: string; age: number }
 
@@ -228,18 +246,19 @@ const UserSchema = data.schema<{
   age: number
 }>({
   name: data.string(),
-  age: data.number()
+  age: data.number(),
 })
 
 // Option C: Hybrid (infer with overrides)
 const UserSchema = data.schema({
   name: data.string(),
   age: data.number(),
-  metadata: data.unknown() // escape hatch
+  metadata: data.unknown(), // escape hatch
 })
 ```
 
 ### **Questions to Answer**
+
 - How important is compile-time type safety vs. runtime flexibility?
 - Do you need escape hatches for complex/dynamic data structures?
 - Should transformation operations preserve type information?
@@ -252,9 +271,11 @@ const UserSchema = data.schema({
 ## **6. Serialization/Deserialization Support** 💾
 
 ### **Decision Required**
+
 What serialization formats should DATA support natively?
 
 ### **Options**
+
 ```typescript
 // Option A: JSON only (most common)
 const json = data.serialize(userData, 'json')
@@ -269,11 +290,12 @@ const msgpack = data.serialize(userData, 'msgpack')
 const custom = data.serialize(userData, {
   format: 'custom',
   serializer: customSerializer,
-  options: { compress: true }
+  options: { compress: true },
 })
 ```
 
 ### **Questions to Answer**
+
 - Do you need formats beyond JSON (YAML, MessagePack, etc.)?
 - Are custom date/time serialization formats important?
 - Do you need schema-aware serialization (omit undefined, transform dates)?
@@ -286,9 +308,11 @@ const custom = data.serialize(userData, {
 ## **7. Performance vs. Features Trade-offs** ⚡
 
 ### **Decision Required**
+
 Where should DATA optimize for performance vs. feature richness?
 
 ### **Performance-Critical Areas**
+
 ```typescript
 // Large dataset validation (10K+ records)
 const result = data.validate(largeDataset, ArraySchema)
@@ -297,7 +321,7 @@ const result = data.validate(largeDataset, ArraySchema)
 const result = data.aggregate(salesData, {
   groupBy: ['region', 'category', 'month'],
   sum: ['revenue'],
-  avg: ['price']
+  avg: ['price'],
 })
 
 // Deep object transformation
@@ -305,6 +329,7 @@ const result = data.transform(deeplyNestedData, ComplexSchema)
 ```
 
 ### **Questions to Answer**
+
 - What's the typical size of datasets you work with?
 - Should DATA use streaming/chunked processing for large datasets?
 - Is validation performance more important than aggregation performance?
@@ -317,48 +342,52 @@ const result = data.transform(deeplyNestedData, ComplexSchema)
 ## **8. Schema Composition Patterns** 🧩
 
 ### **Decision Required**
+
 How should schemas be composed and reused across the application?
 
 ### **Options**
+
 ```typescript
 // Option A: Schema inheritance
 const BaseSchema = data.schema({
   id: data.string(),
-  createdAt: data.date()
+  createdAt: data.date(),
 })
 
 const UserSchema = BaseSchema.extend({
   name: data.string(),
-  email: data.string().email()
+  email: data.string().email(),
 })
 
 // Option B: Schema composition
 const TimestampMixin = {
   createdAt: data.date(),
-  updatedAt: data.date()
+  updatedAt: data.date(),
 }
 
 const UserSchema = data.schema({
   id: data.string(),
   name: data.string(),
   email: data.string().email(),
-  ...TimestampMixin
+  ...TimestampMixin,
 })
 
 // Option C: Schema factories
-const createEntitySchema = (fields) => data.schema({
-  id: data.string(),
-  createdAt: data.date(),
-  ...fields
-})
+const createEntitySchema = fields =>
+  data.schema({
+    id: data.string(),
+    createdAt: data.date(),
+    ...fields,
+  })
 
 const UserSchema = createEntitySchema({
   name: data.string(),
-  email: data.string().email()
+  email: data.string().email(),
 })
 ```
 
 ### **Questions to Answer**
+
 - Do you frequently reuse common field patterns across schemas?
 - Should schema composition be built-in or handled by user code?
 - Do you need schema versioning/migration capabilities?
@@ -371,16 +400,19 @@ const UserSchema = createEntitySchema({
 ## **Implementation Impact**
 
 ### **High Impact Decisions** (affect core API)
+
 - Schema definition syntax
 - Type inference strategy
 - Aggregation operations priority
 
 ### **Medium Impact Decisions** (affect developer experience)
+
 - Validation error reporting
 - Data transformation capabilities
 - Schema composition patterns
 
 ### **Low Impact Decisions** (affect feature scope)
+
 - Serialization/deserialization support
 - Performance vs. features trade-offs
 

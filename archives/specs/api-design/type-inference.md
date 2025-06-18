@@ -12,6 +12,7 @@ Kairo V2 leverages advanced TypeScript features for maximum type inference, elim
 ## ✅ Core Type Inference Principles - IMPLEMENTED
 
 ### **✅ 1. Schema-Driven Type Inference - IMPLEMENTED**
+
 ```typescript
 // Types inferred from schema definitions
 const UserSchema = data.schema({
@@ -20,8 +21,8 @@ const UserSchema = data.schema({
   age: data.number().min(0).max(150),
   profile: data.object({
     bio: data.string().optional(),
-    avatar: data.string().url().optional()
-  })
+    avatar: data.string().url().optional(),
+  }),
 })
 
 // TypeScript automatically infers the User type
@@ -29,7 +30,7 @@ type User = InferSchemaType<typeof UserSchema>
 // Equivalent to:
 // type User = {
 //   name: string
-//   email: string  
+//   email: string
 //   age: number
 //   profile: {
 //     bio?: string
@@ -49,13 +50,14 @@ if (Result.isOk(users)) {
 ```
 
 ### **2. Function Signature Inference**
+
 ```typescript
 // Transform functions infer types from input/output
 const enrichUser = (user: User): EnrichedUser => ({
   ...user,
   fullName: `${user.name}`,
   emailDomain: user.email.split('@')[1],
-  isMinor: user.age < 18
+  isMinor: user.age < 18,
 })
 
 // Pipeline operations infer types automatically
@@ -71,6 +73,7 @@ const names = pipeline.map(filtered, user => user.fullName)
 ```
 
 ### **3. Options-Based Type Refinement**
+
 ```typescript
 // Options refine return types
 const basicRequest = service.get('/users')
@@ -79,9 +82,9 @@ const basicRequest = service.get('/users')
 const validatedRequest = service.get('/users', { validate: UserSchema })
 // validatedRequest: Promise<Result<ServiceError | ValidationError, User[]>>
 
-const transformedRequest = service.get('/users', { 
+const transformedRequest = service.get('/users', {
   validate: UserSchema,
-  transform: enrichUser 
+  transform: enrichUser,
 })
 // transformedRequest: Promise<Result<ServiceError | ValidationError, EnrichedUser[]>>
 ```
@@ -89,6 +92,7 @@ const transformedRequest = service.get('/users', {
 ## Advanced Type Inference Patterns
 
 ### **Schema Type Extraction**
+
 ```typescript
 // Extract types from complex schema definitions
 type InferSchemaType<T> = T extends Schema<infer U> ? U : never
@@ -100,15 +104,19 @@ type InferOptionalType<T> = T extends Schema<infer U | undefined> ? U : never
 // Nested schema inference
 const NestedSchema = data.schema({
   user: UserSchema,
-  posts: data.array(data.object({
-    title: data.string(),
-    content: data.string(),
-    tags: data.array(data.string())
-  })),
-  metadata: data.object({
-    createdAt: data.date(),
-    updatedAt: data.date().optional()
-  }).optional()
+  posts: data.array(
+    data.object({
+      title: data.string(),
+      content: data.string(),
+      tags: data.array(data.string()),
+    })
+  ),
+  metadata: data
+    .object({
+      createdAt: data.date(),
+      updatedAt: data.date().optional(),
+    })
+    .optional(),
 })
 
 type NestedType = InferSchemaType<typeof NestedSchema>
@@ -128,33 +136,31 @@ type NestedType = InferSchemaType<typeof NestedSchema>
 ```
 
 ### **Conditional Type Inference**
+
 ```typescript
 // Conditional types based on options
-type ServiceResult<
-  TOptions extends ServiceOptions,
-  TDefault = unknown
-> = TOptions extends { validate: Schema<infer T> }
+type ServiceResult<TOptions extends ServiceOptions, TDefault = unknown> = TOptions extends {
+  validate: Schema<infer T>
+}
   ? Promise<Result<ServiceError | ValidationError, T>>
   : Promise<Result<ServiceError, TDefault>>
 
 // Transform inference
-type TransformResult<
-  TInput,
-  TOptions extends ServiceOptions
-> = TOptions extends { transform: (input: TInput) => infer TOutput }
+type TransformResult<TInput, TOptions extends ServiceOptions> = TOptions extends {
+  transform: (input: TInput) => infer TOutput
+}
   ? TOutput
   : TInput
 
 // Cache inference
-type CacheStrategy<T extends ServiceOptions> = T extends { 
-  cache: { strategy: infer S } 
-} ? S : 'memory'
+type CacheStrategy<T extends ServiceOptions> = T extends {
+  cache: { strategy: infer S }
+}
+  ? S
+  : 'memory'
 
 // Usage with full inference
-declare function typedService<
-  TOptions extends ServiceOptions,
-  TDefault = unknown
->(
+declare function typedService<TOptions extends ServiceOptions, TDefault = unknown>(
   url: string,
   options?: TOptions
 ): ServiceResult<TOptions, TDefault>
@@ -165,24 +171,27 @@ const result1 = typedService('/users')
 const result2 = typedService('/users', { validate: UserSchema })
 // result2: Promise<Result<ServiceError | ValidationError, User[]>>
 
-const result3 = typedService('/users', { 
+const result3 = typedService('/users', {
   validate: UserSchema,
-  transform: enrichUser 
+  transform: enrichUser,
 })
 // result3: Promise<Result<ServiceError | ValidationError, EnrichedUser[]>>
 ```
 
 ### **Pipeline Type Composition**
+
 ```typescript
 // Infer types through pipeline compositions
-type InferPipelineResult<T, TFunctions extends readonly any[]> = 
-  TFunctions extends readonly [infer First, ...infer Rest]
-    ? First extends (input: T) => infer U
-      ? Rest extends readonly []
-        ? U
-        : InferPipelineResult<U, Rest>
-      : never
-    : T
+type InferPipelineResult<T, TFunctions extends readonly any[]> = TFunctions extends readonly [
+  infer First,
+  ...infer Rest,
+]
+  ? First extends (input: T) => infer U
+    ? Rest extends readonly []
+      ? U
+      : InferPipelineResult<U, Rest>
+    : never
+  : T
 
 // Compose with full type inference
 const processUserPipeline = pipeline.compose(
@@ -197,30 +206,29 @@ const result = processUserPipeline(userArray)
 ```
 
 ### **Error Type Union Inference**
+
 ```typescript
 // Automatically infer error unions across pillars
-type InferErrorType<TOperations extends readonly any[]> = 
-  TOperations extends readonly [infer First, ...infer Rest]
-    ? First extends (...args: any[]) => Result<infer E, any>
-      ? Rest extends readonly []
-        ? E
-        : E | InferErrorType<Rest>
-      : never
+type InferErrorType<TOperations extends readonly any[]> = TOperations extends readonly [
+  infer First,
+  ...infer Rest,
+]
+  ? First extends (...args: any[]) => Result<infer E, any>
+    ? Rest extends readonly []
+      ? E
+      : E | InferErrorType<Rest>
     : never
+  : never
 
 // Multi-pillar operation with inferred error types
 const multiPillarOperation = async (data: unknown) => {
   const serviceResult = await service.get('/validate')
   const dataResult = data.validate(data, Schema)
   const pipelineResult = pipeline.map([], transform)
-  
+
   // TypeScript infers: ServiceError | ValidationError | PipelineError
-  type ErrorUnion = InferErrorType<[
-    typeof serviceResult,
-    typeof dataResult, 
-    typeof pipelineResult
-  ]>
-  
+  type ErrorUnion = InferErrorType<[typeof serviceResult, typeof dataResult, typeof pipelineResult]>
+
   return { serviceResult, dataResult, pipelineResult }
 }
 ```
@@ -228,6 +236,7 @@ const multiPillarOperation = async (data: unknown) => {
 ## Pillar-Specific Type Inference
 
 ### **SERVICE Pillar Inference**
+
 ```typescript
 // HTTP method inference
 type HTTPMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
@@ -235,14 +244,14 @@ type HTTPMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 type ServiceMethodResult<
   TMethod extends HTTPMethod,
   TBody,
-  TOptions extends ServiceOptions
+  TOptions extends ServiceOptions,
 > = TMethod extends 'GET' | 'DELETE'
   ? ServiceResult<TOptions>
   : TMethod extends 'POST' | 'PUT' | 'PATCH'
-  ? TBody extends undefined
-    ? ServiceResult<TOptions>
-    : ServiceResult<TOptions, TBody>
-  : never
+    ? TBody extends undefined
+      ? ServiceResult<TOptions>
+      : ServiceResult<TOptions, TBody>
+    : never
 
 // Batch operation inference
 type BatchRequest = {
@@ -252,15 +261,13 @@ type BatchRequest = {
 }
 
 type InferBatchResult<T extends readonly BatchRequest[]> = {
-  [K in keyof T]: T[K] extends BatchRequest
-    ? Result<ServiceError, unknown>
-    : never
+  [K in keyof T]: T[K] extends BatchRequest ? Result<ServiceError, unknown> : never
 }
 
 const batchRequests = [
   { method: 'GET' as const, url: '/users' },
   { method: 'POST' as const, url: '/users', body: newUser },
-  { method: 'DELETE' as const, url: '/users/123' }
+  { method: 'DELETE' as const, url: '/users/123' },
 ] as const
 
 const batchResult = await service.batch(batchRequests)
@@ -268,33 +275,34 @@ const batchResult = await service.batch(batchRequests)
 ```
 
 ### **DATA Pillar Inference**
+
 ```typescript
 // Schema builder with inference
 class SchemaBuilder<T = unknown> {
   constructor(private type: T) {}
-  
+
   string(): SchemaBuilder<string> {
     return new SchemaBuilder<string>('string' as any)
   }
-  
+
   number(): SchemaBuilder<number> {
     return new SchemaBuilder<number>('number' as any)
   }
-  
-  object<U extends Record<string, any>>(
-    shape: { [K in keyof U]: SchemaBuilder<U[K]> }
-  ): SchemaBuilder<U> {
+
+  object<U extends Record<string, any>>(shape: {
+    [K in keyof U]: SchemaBuilder<U[K]>
+  }): SchemaBuilder<U> {
     return new SchemaBuilder<U>('object' as any)
   }
-  
+
   array<U>(item: SchemaBuilder<U>): SchemaBuilder<U[]> {
     return new SchemaBuilder<U[]>('array' as any)
   }
-  
+
   optional(): SchemaBuilder<T | undefined> {
     return new SchemaBuilder<T | undefined>('optional' as any)
   }
-  
+
   build(): Schema<T> {
     return {} as Schema<T>
   }
@@ -306,16 +314,18 @@ const schema = new SchemaBuilder()
     name: new SchemaBuilder().string(),
     age: new SchemaBuilder().number(),
     tags: new SchemaBuilder().array(new SchemaBuilder().string()),
-    profile: new SchemaBuilder().object({
-      bio: new SchemaBuilder().string().optional()
-    }).optional()
+    profile: new SchemaBuilder()
+      .object({
+        bio: new SchemaBuilder().string().optional(),
+      })
+      .optional(),
   })
   .build()
 
 // Type automatically inferred:
 // Schema<{
 //   name: string
-//   age: number  
+//   age: number
 //   tags: string[]
 //   profile?: {
 //     bio?: string
@@ -324,25 +334,23 @@ const schema = new SchemaBuilder()
 ```
 
 ### **PIPELINE Pillar Inference**
+
 ```typescript
 // Transform function inference
 type InferTransformType<T, TFn> = TFn extends (item: T) => infer U ? U : never
 
-type InferReduceType<T, TFn, TInitial> = TFn extends (
-  acc: infer A, 
-  item: T
-) => infer U 
-  ? U extends A 
-    ? U 
+type InferReduceType<T, TFn, TInitial> = TFn extends (acc: infer A, item: T) => infer U
+  ? U extends A
+    ? U
     : never
   : TInitial
 
 // Parallel operation inference
-type InferParallelType<T, TFn> = TFn extends (item: T) => Promise<infer U> 
-  ? U 
-  : TFn extends (item: T) => infer U
+type InferParallelType<T, TFn> = TFn extends (item: T) => Promise<infer U>
   ? U
-  : never
+  : TFn extends (item: T) => infer U
+    ? U
+    : never
 
 // Usage with inference
 const numbers = [1, 2, 3, 4, 5]
@@ -366,6 +374,7 @@ const asyncResults = pipeline.parallel(numbers, async x => {
 ## Generic Constraint Patterns
 
 ### **Utility Type Constraints**
+
 ```typescript
 // Ensure proper types for common patterns
 type EnsureArray<T> = T extends readonly any[] ? T : T[]
@@ -387,11 +396,7 @@ type ValidPredicate<T> = (input: T) => boolean
 type ValidReducer<T, TAcc> = (acc: TAcc, item: T) => TAcc
 
 // Usage with constraints
-function typedMap<
-  TInput,
-  TOutput,
-  TTransform extends ValidTransform<TInput, TOutput>
->(
+function typedMap<TInput, TOutput, TTransform extends ValidTransform<TInput, TOutput>>(
   array: TInput[],
   transform: TTransform
 ): Result<PipelineError, TOutput[]> {
@@ -407,6 +412,7 @@ const validUsage = typedMap([1, 2, 3], x => x.toString())
 ```
 
 ### **Branded Types for Better Inference**
+
 ```typescript
 // Branded types for domain-specific validation
 type Brand<T, TBrand> = T & { __brand: TBrand }
@@ -419,14 +425,14 @@ type URL = Brand<string, 'URL'>
 const createBrandedSchema = {
   userId: (): Schema<UserId> => data.string() as Schema<UserId>,
   email: (): Schema<Email> => data.string().email() as Schema<Email>,
-  url: (): Schema<URL> => data.string().url() as Schema<URL>
+  url: (): Schema<URL> => data.string().url() as Schema<URL>,
 }
 
 // Usage with branded inference
 const UserWithBrandedTypes = data.schema({
   id: createBrandedSchema.userId(),
   email: createBrandedSchema.email(),
-  website: createBrandedSchema.url().optional()
+  website: createBrandedSchema.url().optional(),
 })
 
 type BrandedUser = InferSchemaType<typeof UserWithBrandedTypes>
@@ -440,7 +446,7 @@ type BrandedUser = InferSchemaType<typeof UserWithBrandedTypes>
 const processUser = (user: BrandedUser) => {
   const userId: UserId = user.id // ✅ Type-safe
   const email: Email = user.email // ✅ Type-safe
-  
+
   // const invalidId: UserId = 'plain-string' // ❌ TypeScript error
 }
 ```
@@ -448,12 +454,12 @@ const processUser = (user: BrandedUser) => {
 ## Template Literal Type Inference
 
 ### **URL Pattern Inference**
+
 ```typescript
 // Infer URL parameters from template strings
-type ExtractParams<T extends string> = 
-  T extends `${string}:${infer Param}/${infer Rest}`
-    ? { [K in Param]: string } & ExtractParams<Rest>
-    : T extends `${string}:${infer Param}`
+type ExtractParams<T extends string> = T extends `${string}:${infer Param}/${infer Rest}`
+  ? { [K in Param]: string } & ExtractParams<Rest>
+  : T extends `${string}:${infer Param}`
     ? { [K in Param]: string }
     : {}
 
@@ -472,8 +478,8 @@ function typedGet<T extends string>(
 
 // Usage with inferred parameter types
 const userResult = typedGet('/users/:id/posts/:postId', {
-  id: 'user123',     // ✅ Required parameter
-  postId: 'post456'  // ✅ Required parameter
+  id: 'user123', // ✅ Required parameter
+  postId: 'post456', // ✅ Required parameter
 })
 
 // This would cause a TypeScript error:
@@ -483,9 +489,10 @@ const userResult = typedGet('/users/:id/posts/:postId', {
 ```
 
 ### **Query String Inference**
+
 ```typescript
 // Infer query parameters from options
-type QueryParams<T> = T extends { query: infer Q } 
+type QueryParams<T> = T extends { query: infer Q }
   ? Q extends Record<string, any>
     ? Q
     : never
@@ -502,7 +509,7 @@ function getWithQuery<T extends WithQuery<ServiceOptions>>(
   const queryString = new URLSearchParams(
     Object.entries(options.query).map(([k, v]) => [k, String(v)])
   ).toString()
-  
+
   return service.get(`${url}?${queryString}`, options)
 }
 
@@ -511,18 +518,19 @@ const searchResult = getWithQuery('/users', {
   query: {
     name: 'john',
     age: 25,
-    active: true
+    active: true,
   },
-  cache: true
+  cache: true,
 })
 ```
 
 ## Development-Time Type Checking
 
 ### **Compile-Time Validation**
+
 ```typescript
 // Compile-time tests for type inference
-type TypeTest<T, U> = T extends U ? U extends T ? true : false : false
+type TypeTest<T, U> = T extends U ? (U extends T ? true : false) : false
 
 // Test schema inference
 type UserSchemaTest = TypeTest<
@@ -541,10 +549,7 @@ type UserSchemaTest = TypeTest<
 const userSchemaTest: UserSchemaTest = true // ✅ Passes if types match
 
 // Test service inference
-type ServiceTest = TypeTest<
-  Awaited<ReturnType<typeof service.get>>,
-  Result<ServiceError, unknown>
->
+type ServiceTest = TypeTest<Awaited<ReturnType<typeof service.get>>, Result<ServiceError, unknown>>
 
 const serviceTest: ServiceTest = true // ✅ Passes if types match
 
@@ -558,12 +563,10 @@ const pipelineTest: PipelineTest = true // ✅ Passes if types match
 ```
 
 ### **Runtime Type Validation**
+
 ```typescript
 // Validate inferred types at runtime in development
-const validateInferredType = <T>(
-  schema: Schema<T>,
-  inferredValue: T
-): boolean => {
+const validateInferredType = <T>(schema: Schema<T>, inferredValue: T): boolean => {
   const validationResult = data.validate(inferredValue, schema)
   return Result.isOk(validationResult)
 }
@@ -571,7 +574,7 @@ const validateInferredType = <T>(
 // Development-mode type checking
 if (process.env.NODE_ENV === 'development') {
   const users = await service.get('/users', { validate: UserSchema })
-  
+
   if (Result.isOk(users)) {
     const isValidInference = validateInferredType(UserSchema, users.value)
     if (!isValidInference) {
@@ -584,16 +587,17 @@ if (process.env.NODE_ENV === 'development') {
 ## IDE Integration and Developer Experience
 
 ### **IntelliSense Enhancement**
-```typescript
+
+````typescript
 // JSDoc comments for better IDE support
 /**
  * Get data from a service endpoint with automatic type inference
- * 
+ *
  * @template T - The expected response type (inferred from validation schema)
  * @param url - The endpoint URL
  * @param options - Request options including validation schema
  * @returns Promise resolving to Result with inferred type
- * 
+ *
  * @example
  * ```typescript
  * // Type automatically inferred as User[]
@@ -608,15 +612,16 @@ declare function enhancedGet<T>(
 // Hover tooltips show inferred types
 const result = enhancedGet('/users', { validate: UserSchema })
 //    ^ Hover shows: Promise<Result<ServiceError | ValidationError, User[]>>
-```
+````
 
 ### **Type Error Improvements**
+
 ```typescript
 // Custom error messages for better developer experience
 type RequiresValidation<T> = T extends { validate: Schema<any> }
   ? T
   : {
-      error: "This operation requires a validation schema. Add { validate: YourSchema } to options."
+      error: 'This operation requires a validation schema. Add { validate: YourSchema } to options.'
       suggestion: "Example: service.get('/users', { validate: UserSchema })"
     }
 
@@ -635,24 +640,25 @@ function strictGet<T extends ServiceOptions>(
 ## Performance Considerations
 
 ### **Type Compilation Performance**
+
 ```typescript
 // Optimize complex type operations
-type OptimizedInference<T> = T extends Schema<infer U>
-  ? U
-  : T extends Promise<infer U>
-  ? U
-  : T extends Result<any, infer U>
-  ? U
-  : T
+type OptimizedInference<T> =
+  T extends Schema<infer U>
+    ? U
+    : T extends Promise<infer U>
+      ? U
+      : T extends Result<any, infer U>
+        ? U
+        : T
 
 // Avoid deeply nested conditional types
 type SimpleTransform<T, U> = (input: T) => U
-type ComplexTransform<T, U> = 
-  T extends string 
-    ? U extends number 
-      ? (input: T) => U 
-      : never
-    : T extends number
+type ComplexTransform<T, U> = T extends string
+  ? U extends number
+    ? (input: T) => U
+    : never
+  : T extends number
     ? U extends string
       ? (input: T) => U
       : never
@@ -666,22 +672,25 @@ type ComplexTypes = Record<string, BasicTypes> | BasicTypes[]
 ## Best Practices
 
 ### **1. Favor Type Inference Over Explicit Types**
+
 ```typescript
 // ✅ Good: Let TypeScript infer
 const users = await service.get('/users', { validate: UserSchema })
 const processed = pipeline.map(users, enrichUser)
 
 // ❌ Bad: Explicit types when inference works
-const users: Promise<Result<ServiceError | ValidationError, User[]>> = 
-  await service.get('/users', { validate: UserSchema })
+const users: Promise<Result<ServiceError | ValidationError, User[]>> = await service.get('/users', {
+  validate: UserSchema,
+})
 ```
 
 ### **2. Use Schemas for Type Definition**
+
 ```typescript
 // ✅ Good: Schema-driven types
 const UserSchema = data.schema({
   name: data.string(),
-  email: data.string().email()
+  email: data.string().email(),
 })
 type User = InferSchemaType<typeof UserSchema>
 
@@ -692,11 +701,12 @@ type User = {
 }
 const UserSchema = data.schema({
   name: data.string(),
-  email: data.string().email()
+  email: data.string().email(),
 })
 ```
 
 ### **3. Leverage Generic Constraints**
+
 ```typescript
 // ✅ Good: Constrained generics
 function processArray<T extends Record<string, unknown>>(
@@ -707,10 +717,7 @@ function processArray<T extends Record<string, unknown>>(
 }
 
 // ❌ Bad: Unconstrained generics
-function processArray<T>(
-  items: T[],
-  transform: (item: T) => T
-): Result<PipelineError, T[]> {
+function processArray<T>(items: T[], transform: (item: T) => T): Result<PipelineError, T[]> {
   return pipeline.map(items, transform)
 }
 ```

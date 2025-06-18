@@ -1,35 +1,34 @@
 # Kairo
 
-> **The Three-Pillar Declarative Application Platform**  
-> _Make infrastructure disappear. Make business logic visible._
+> **Clean Three-Pillar TypeScript Library**  
+> _23 methods. Configuration objects. Zero dependencies._
 
 [![Documentation](https://img.shields.io/badge/docs-vitepress-blue)](https://sovanaryththorng.github.io/kairo/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Overview
 
-Kairo is a comprehensive declarative platform that eliminates boilerplate through three foundational pillars:
+Kairo is a clean, focused TypeScript library built around three core pillars with a simple configuration object pattern.
 
-### 🏛️ The Three-Pillar Architecture
+### 🏛️ Three-Pillar Architecture
 
-1. **INTERFACE Pillar** - Declarative external system integration
+**23 core methods across 3 pillars:**
 
-   - **Resources**: Type-safe APIs, databases, queues
-   - **Contracts**: Live verification and mocking
-   - **Zero boilerplate**: No more service classes
+1. **SERVICE Pillar** - HTTP-only API operations
 
-2. **PROCESS Pillar** - Declarative business logic composition
+   - 5 methods: `get()`, `post()`, `put()`, `patch()`, `delete()`
+   - 4 utilities for request handling and response processing
 
-   - **Pipelines**: Functional data transformation
-   - **Business Rules**: Centralized validation
-   - **Workflows**: Complex orchestration
+2. **DATA Pillar** - Data validation, transformation, and aggregation
 
-3. **DATA Pillar** - Declarative data modeling, validation, and access
-   - **Native Schemas**: Zero-dependency validation (3x faster than Zod)
-   - **Transformations**: Declarative data mapping and conversion
-   - **Repositories**: Type-safe data access with relationships
+   - 10 methods: `schema()`, `validate()`, `transform()`, `convert()`, `aggregate()`, `groupBy()`, `serialize()`, `deserialize()`, `clone()`, `merge()`
+   - 6 utilities for data manipulation and type inference
 
-**Framework-agnostic** by design - works with React, Vue, Node, Bun, and any TypeScript environment.
+3. **PIPELINE Pillar** - Logic composition and workflows
+   - 8 methods: `map()`, `filter()`, `reduce()`, `compose()`, `chain()`, `branch()`, `parallel()`, `validate()`
+   - 5 utilities for pipeline orchestration
+
+**Configuration objects everywhere** - No method chaining, predictable APIs, TypeScript-first design.
 
 ## Quick Start
 
@@ -37,321 +36,374 @@ Kairo is a comprehensive declarative platform that eliminates boilerplate throug
 npm install kairo
 ```
 
-### 1. INTERFACE Pillar - Zero-Boilerplate APIs
+### Basic Usage
 
 ```typescript
-import { resource, nativeSchema } from 'kairo'
+import { service, data, pipeline, Result } from 'kairo'
 
-// Define your data with native schemas (3x faster than Zod!)
-const UserSchema = nativeSchema.object({
-  id: nativeSchema.string().uuid(),
-  name: nativeSchema.string().min(2).max(100),
-  email: nativeSchema.string().email(),
-  age: nativeSchema.number().min(0).max(150),
+// SERVICE: HTTP operations with configuration
+const users = await service.get('/api/users', {
+  timeout: 5000,
+  retry: { attempts: 3 },
+  cache: { enabled: true, ttl: 300 },
+  validate: UserSchema,
 })
 
-// Declarative API definition
-const UserAPI = resource('users', {
-  get: {
-    path: '/users/:id',
-    params: nativeSchema.object({ id: nativeSchema.string().uuid() }),
-    response: UserSchema,
-  },
-  create: {
-    path: '/users',
-    method: 'POST',
-    body: UserSchema.omit(['id']),
-    response: UserSchema,
-  },
+// DATA: Schema creation and validation
+const UserSchema = data.schema({
+  id: { type: 'string', format: 'uuid' },
+  name: { type: 'string', min: 2, max: 100 },
+  email: { type: 'string', format: 'email' },
+  age: { type: 'number', min: 0, max: 150 },
 })
 
-// Type-safe usage with Result pattern
-const result = await UserAPI.get.run({ id: '123' })
-result.match({
-  Ok: user => console.log('Found user:', user),
-  Err: error => console.error('API error:', error),
-})
-```
+const validation = data.validate(userData, UserSchema)
 
-### 2. PROCESS Pillar - Declarative Business Logic
+// PIPELINE: Logic composition with configuration
+const processUsers = pipeline.compose([
+  users => pipeline.filter(users, user => user.active, { parallel: true }),
+  users => pipeline.map(users, normalizeUser, { async: true }),
+  users =>
+    data.aggregate(users, {
+      groupBy: ['department'],
+      sum: ['salary'],
+      avg: ['experience'],
+    }),
+])
 
-```typescript
-import { pipeline, rules, rule } from 'kairo'
-
-// Define business rules declaratively
-const orderRules = rules('order-validation', {
-  minimumAmount: rule()
-    .require(order => order.total >= 10)
-    .message('Minimum order is $10'),
-
-  stockAvailable: rule()
-    .async(order => InventoryAPI.check.run({ productId: order.productId }))
-    .require(result => result.match({ Ok: stock => stock.available > 0, Err: () => false }))
-    .message('Product out of stock'),
-})
-
-// Compose business logic declaratively
-const processOrder = pipeline('process-order')
-  .input(OrderSchema)
-  .validateAll(orderRules)
-  .map(calculateDiscounts)
-  .pipeline(InventoryAPI.reserve)
-  .pipeline(PaymentAPI.process)
-  .map(transformOrderResult)
-  .trace('order-processing')
-
-// Execute with automatic error handling
-const result = await processOrder.run(orderData)
-result.match({
-  Ok: processedOrder => handleSuccess(processedOrder),
-  Err: error => handleBusinessError(error),
+// Result pattern for error handling
+const result = await processUsers(userData)
+Result.match(result, {
+  Ok: processed => console.log('Success:', processed),
+  Err: error => console.error('Error:', error.message),
 })
 ```
-
-### 3. DATA Pillar - Complete Data Management
-
-```typescript
-import { nativeSchema, transform, repository, hasMany, hasOne } from 'kairo'
-
-// Native schemas with full type safety (3x faster than Zod)
-const ProductSchema = nativeSchema.object({
-  id: nativeSchema.string().uuid(),
-  name: nativeSchema.string().min(1).max(200),
-  price: nativeSchema.number().positive(),
-  category: nativeSchema.enum(['electronics', 'books', 'clothing'] as const),
-  tags: nativeSchema.array(nativeSchema.string()).optional(),
-  metadata: nativeSchema.record(nativeSchema.string()).optional(),
-})
-
-// Declarative data transformations
-const productTransform = transform('normalize-product', APIProductSchema)
-  .to(ProductSchema)
-  .map('product_name', 'name')
-  .map('product_price', 'price')
-  .compute('slug', source => slugify(source.product_name))
-  .filter(product => product.active === true)
-  .validate()
-
-// Type-safe repository with relationships
-const productRepository = repository('products', {
-  schema: ProductSchema,
-  storage: 'memory', // or custom StorageAdapter
-  timestamps: true,
-  relationships: {
-    reviews: hasMany('reviews', 'productId', ReviewSchema),
-    category: hasOne('category', 'categoryId', CategorySchema),
-  },
-  hooks: {
-    beforeCreate: data => ({ ...data, slug: slugify(data.name) }),
-    afterCreate: product => console.log(`Product ${product.name} created`),
-  },
-})
-
-// Repository usage with type safety
-const result = await productRepository.create(productData)
-result.match({
-  Ok: product => {
-    console.log('Product created:', product.name)
-  },
-  Err: error => {
-    console.error('Repository error:', error.message)
-  },
-})
-
-// Query with relationships
-const productWithReviews = await productRepository.with(['reviews', 'category']).find('product-123')
-
-// Transform pipeline integration
-const processProduct = pipeline('process-product')
-  .input(APIProductSchema)
-  .transform(productTransform)
-  .run(async product => await productRepository.create(product))
-  .trace('product-processing')
-```
-
-## Key Features
-
-### 🏛️ Complete Three-Pillar Architecture
-
-- **INTERFACE** - Zero-boilerplate APIs with contract testing and mocking
-- **PROCESS** - Functional pipelines with business rules and workflow orchestration
-- **DATA** - Complete data layer: schemas, transformations, and repositories
-
-### 🚀 Performance & Developer Experience
-
-- 🔧 **Framework Agnostic** - Works with React, Vue, Node, Bun, and any TypeScript environment
-- ⚡ **High Performance** - Native validation, optimized pipelines, efficient resource caching
-- 🛡️ **Type Safe** - Full TypeScript inference with Result pattern for error handling
-- 🎯 **Developer Joy** - Eliminate boilerplate, improve debugging, declarative patterns
-- 📦 **Lightweight** - Core bundle < 20kb gzipped, zero runtime dependencies
-
-### 🎪 Advanced Capabilities
-
-- 🧪 **Contract Testing** - Live API verification and intelligent mock generation
-- 🎲 **Business Rules Engine** - Centralized, reusable validation logic with async support
-- 🔄 **Workflow Orchestration** - Complex processes with parallel execution and error recovery
-- 🗄️ **Repository System** - Type-safe data access with relationships and lifecycle hooks
-- 🔍 **Built-in Observability** - Tracing, metrics, and debugging throughout the stack
-- 🧩 **Enhanced Testing Integration** - Comprehensive testing utilities for all three pillars
 
 ## Core Concepts
 
-### Result Pattern - Error Handling Without Exceptions
+### Configuration Object Pattern
+
+Every method uses configuration objects instead of method chaining:
+
+```typescript
+// ✅ Configuration objects
+service.get('/api/data', {
+  timeout: 5000,
+  retry: true,
+  cache: { enabled: true },
+})
+
+pipeline.map(items, transform, {
+  parallel: true,
+  async: true,
+  batchSize: 100,
+})
+
+data.aggregate(sales, {
+  groupBy: ['region', 'quarter'],
+  sum: ['revenue', 'profit'],
+  avg: ['satisfaction'],
+})
+```
+
+### Result Pattern
+
+All operations return `Result<Error, Data>` for safe error handling:
 
 ```typescript
 type Result<E, T> = { tag: 'Ok'; value: T } | { tag: 'Err'; error: E }
 
-// Pattern matching for clean error handling
+// Pattern matching
+const result = await service.get('/api/users')
 Result.match(result, {
-  Ok: user => console.log('Success:', user),
-  Err: error => console.error('Error:', error),
+  Ok: users => handleSuccess(users),
+  Err: error => handleError(error),
+})
+
+// Utility methods
+if (Result.isOk(result)) {
+  console.log('Data:', result.value)
+}
+
+if (Result.isErr(result)) {
+  console.error('Error:', result.error)
+}
+```
+
+## SERVICE Pillar
+
+HTTP-only operations with rich configuration:
+
+```typescript
+// GET with validation and caching
+const users = await service.get('/api/users', {
+  headers: { Authorization: 'Bearer token' },
+  timeout: 5000,
+  retry: { attempts: 3, delay: 1000 },
+  cache: { enabled: true, ttl: 300 },
+  validate: UserArraySchema,
+})
+
+// POST with request transformation
+const newUser = await service.post('/api/users', {
+  body: userData,
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 10000,
+  transform: response => normalizeUser(response),
+  validate: UserSchema,
+})
+
+// PUT with conditional headers
+const updated = await service.put('/api/users/:id', {
+  params: { id: userId },
+  body: updateData,
+  headers: { 'If-Match': etag },
+  merge: true, // Merge with existing data
 })
 ```
 
-### Resources - Declarative API Definitions
+## DATA Pillar
+
+Data operations with schema validation and aggregation:
 
 ```typescript
-const api = resource('api', {
-  getUser: {
-    path: '/users/:id',
-    params: UserParamsSchema,
-    response: UserSchema,
-  },
-  createUser: {
-    path: '/users',
-    method: 'POST',
-    body: CreateUserSchema,
-    response: UserSchema,
-  },
+// Schema creation
+const ProductSchema = data.schema({
+  id: { type: 'string', format: 'uuid' },
+  name: { type: 'string', min: 1, max: 200 },
+  price: { type: 'number', min: 0 },
+  category: { type: 'string', enum: ['electronics', 'books', 'clothing'] },
+  tags: { type: 'array', items: { type: 'string' }, optional: true },
 })
-```
 
-### Pipelines - Business Logic Composition
+// Data validation
+const validation = data.validate(productData, ProductSchema)
 
-```typescript
-const businessWorkflow = pipeline('workflow')
-  .input(InputSchema)
-  .validate(businessRules)
-  .fetch('/api/process')
-  .map(transformData)
-  .trace('completed')
-```
-
-### Repositories - Declarative Data Access
-
-```typescript
-const userRepo = repository('users', {
-  schema: UserSchema,
-  storage: 'memory',
-  relationships: {
-    posts: hasMany('posts', 'userId', PostSchema),
-    profile: hasOne('profile', 'userId', ProfileSchema),
+// Data transformation
+const transformed = data.transform(rawData, {
+  mapping: {
+    product_name: 'name',
+    product_price: 'price',
+    product_category: 'category',
   },
-  hooks: {
-    beforeCreate: data => ({ ...data, createdAt: new Date() }),
+  compute: {
+    slug: item => slugify(item.name),
+    priceRange: item => getPriceRange(item.price),
   },
 })
 
-// Type-safe operations
-const user = await userRepo.create(userData)
-const userWithPosts = await userRepo.with('posts').find(1)
-```
-
-### Workflows - Process Orchestration
-
-```typescript
-const complexWorkflow = workflow<Input, Output>('complex-process', {
-  steps: {
-    validate: workflowUtils.step('validate', validationPipeline),
-    process: workflowUtils.step('process', processingPipeline),
-    notify: workflowUtils.step('notify', notificationPipeline),
-    cleanup: workflowUtils.step('cleanup', cleanupPipeline),
-  },
-
-  flow: [
-    'validate',
-    'process',
-    {
-      if: workflowUtils.condition(context => shouldNotify(context)),
-      then: 'notify',
-    },
-    'cleanup',
-  ],
-
-  options: {
-    timeout: 60000,
-    onError: {
-      process: workflowUtils.customErrorHandler(async (error, context) => {
-        await logError(error, context)
-        await rollbackChanges(context)
-      }),
-    },
+// Data aggregation
+const analytics = data.aggregate(salesData, {
+  groupBy: ['region', 'quarter'],
+  sum: ['revenue', 'units'],
+  avg: ['satisfaction', 'deliveryTime'],
+  count: ['orders'],
+  custom: {
+    growthRate: group => calculateGrowth(group),
   },
 })
+
+// Serialization
+const csv = data.serialize(products, { format: 'csv', headers: true })
+const json = data.serialize(products, { format: 'json', pretty: true })
 ```
 
-### Enhanced Testing Integration
+## PIPELINE Pillar
+
+Logic composition with configuration objects:
 
 ```typescript
-import {
-  pipelineTesting,
-  resourceTesting,
-  schemaTesting,
-  transformTesting,
-  integrationTesting,
-} from 'kairo/testing'
-
-// Pipeline testing with fluent assertions
-await pipelineTesting
-  .expect(userPipeline, inputData)
-  .shouldSucceed()
-  .shouldReturnValue(expectedOutput)
-  .shouldCompleteWithin(100)
-
-// Resource testing with mock scenarios
-const tester = resourceTesting.createTester(UserAPI)
-const scenarios = [
-  resourceTesting.mockScenario(
-    'success',
-    { method: 'GET', path: '/users/1' },
-    resourceTesting.mockResponses.success({ id: 1, name: 'John' })
-  ),
-]
-
-// Schema testing with property-based testing
-const schemaTester = schemaTesting.createTester(UserSchema)
-const propertyResults = schemaTester.propertyTest(
-  () => ({
-    name: schemaTesting.generators.randomString(10),
-    email: `test@example.com`,
-    age: schemaTesting.generators.randomNumber(18, 65),
-  }),
-  1000
+// Map with parallel processing
+const processed = pipeline.map(
+  items,
+  async item => {
+    return await processItem(item)
+  },
+  {
+    parallel: true,
+    concurrency: 5,
+    batchSize: 100,
+  }
 )
 
-// Transform testing with field mapping validation
-const transformTester = transformTesting.createTester(userTransform)
-const mappingResults = await transformTester.testFieldMappings([
-  transformTesting.fieldMappingTest('user_name', 'name', 'John', 'John'),
+// Filter with validation
+const valid = pipeline.filter(
+  users,
+  user => {
+    return user.active && user.verified
+  },
+  {
+    parallel: true,
+    errorHandling: 'continue',
+  }
+)
+
+// Complex composition
+const dataProcessor = pipeline.compose([
+  // Step 1: Validate input
+  data => pipeline.validate(data, InputSchema),
+
+  // Step 2: Transform data
+  data =>
+    pipeline.map(
+      data,
+      item => ({
+        ...item,
+        processed: true,
+        timestamp: Date.now(),
+      }),
+      { parallel: true }
+    ),
+
+  // Step 3: Filter valid items
+  data => pipeline.filter(data, item => item.isValid),
+
+  // Step 4: Aggregate results
+  data =>
+    data.aggregate(data, {
+      groupBy: ['type'],
+      sum: ['amount'],
+      count: ['items'],
+    }),
 ])
 
-// Integration testing across pillars
-const integrationTest = integrationTesting
-  .createTest('full-flow')
-  .withPipeline('processor', userPipeline)
-  .withResource('api', UserAPI)
-  .withTransform('normalizer', userTransform)
-  .scenario('complete flow', async context => {
-    const result = await context.runFullFlow(testData)
-    context.expect(result).toBeOk()
+// Branch execution based on conditions
+const result = pipeline.branch(
+  inputData,
+  [
+    {
+      condition: data => data.type === 'premium',
+      pipeline: premiumProcessor,
+    },
+    {
+      condition: data => data.type === 'standard',
+      pipeline: standardProcessor,
+    },
+  ],
+  {
+    fallback: defaultProcessor,
+    parallel: false,
+  }
+)
+```
+
+## Cross-Pillar Integration
+
+Combine all three pillars for complete workflows:
+
+```typescript
+// Fetch, validate, process, and aggregate
+const analyzeUserData = async () => {
+  // SERVICE: Fetch user data
+  const usersResult = await service.get('/api/users', {
+    timeout: 5000,
+    validate: data.schema({
+      users: { type: 'array', items: UserSchema },
+    }),
   })
 
-// Contract testing for live APIs
-await UserAPI.contract().verify('https://api.staging.com')
+  if (Result.isErr(usersResult)) {
+    return usersResult
+  }
 
-// Performance and load testing
-const performanceResults = await transformTester.performanceTest(testData, 10000)
-console.log(`Throughput: ${performanceResults.throughputPerSecond} ops/sec`)
+  // PIPELINE: Process users
+  const processed = pipeline.compose([
+    // Filter active users
+    users => pipeline.filter(users, user => user.active),
+
+    // Enhance with additional data
+    users =>
+      pipeline.map(
+        users,
+        async user => {
+          const profileResult = await service.get(`/api/profiles/${user.id}`)
+          return Result.isOk(profileResult) ? { ...user, profile: profileResult.value } : user
+        },
+        { parallel: true, async: true }
+      ),
+
+    // DATA: Aggregate analytics
+    users =>
+      data.aggregate(users, {
+        groupBy: ['department', 'level'],
+        sum: ['salary'],
+        avg: ['experience', 'satisfaction'],
+        count: ['total'],
+      }),
+  ])
+
+  return processed(usersResult.value.users)
+}
+```
+
+## Key Features
+
+### 🎯 **Simple & Predictable**
+
+- 23 core methods across 3 pillars
+- Configuration objects everywhere
+- No method chaining, no magic
+- TypeScript-first with full type inference
+
+### ⚡ **High Performance**
+
+- Zero external dependencies
+- Native validation (faster than schema libraries)
+- Optimized for modern JavaScript engines
+- Tree-shakable design
+
+### 🛡️ **Type Safe**
+
+- Full TypeScript inference
+- Result pattern for error handling
+- Schema validation with type generation
+- Compile-time safety
+
+### 🏗️ **Well Architected**
+
+- Four-layer design: Core Methods → Configuration → Utilities → Internal
+- Clean separation of concerns
+- Composable by design
+- Framework agnostic
+
+## Error Handling
+
+Comprehensive error handling with the Result pattern:
+
+```typescript
+// Service errors
+const result = await service.get('/api/data')
+if (Result.isErr(result)) {
+  switch (result.error.code) {
+    case 'SERVICE_HTTP_ERROR':
+      console.log('HTTP Error:', result.error.status)
+      break
+    case 'SERVICE_NETWORK_ERROR':
+      console.log('Network Error:', result.error.message)
+      break
+    case 'SERVICE_ERROR':
+      console.log('Service Error:', result.error.message)
+      break
+  }
+}
+
+// Data validation errors
+const validation = data.validate(input, schema)
+if (Result.isErr(validation)) {
+  if (validation.error.code === 'DATA_VALIDATION_ERROR') {
+    console.log('Field:', validation.error.field)
+    console.log('Value:', validation.error.value)
+    console.log('Constraint:', validation.error.constraint)
+  }
+}
+
+// Pipeline errors
+const processed = pipeline.map(items, transform)
+if (Result.isErr(processed)) {
+  if (processed.error.code === 'PIPELINE_ERROR') {
+    console.log('Pipeline failed:', processed.error.message)
+  }
+}
 ```
 
 ## Documentation
@@ -371,6 +423,9 @@ bun install
 # Run tests
 bun run test
 
+# Type checking
+bun run typecheck
+
 # Build the library
 bun run build
 
@@ -378,30 +433,16 @@ bun run build
 bun run docs:dev
 ```
 
-## Future Improvements
+## Architecture
 
-### Migration Tools (Planned)
+Kairo follows a clean four-layer architecture:
 
-To achieve the "Irresistible Quality" standard for developer experience, automated migration tools are planned for seamless adoption:
+1. **Core Methods** - 23 essential methods across 3 pillars
+2. **Configuration Objects** - Rich, typed configuration for every method
+3. **Public Utilities** - Helper functions for common operations
+4. **Internal Utilities** - Private implementation details
 
-```typescript
-// Planned: One-command migration from existing codebases
-npx kairo migrate ./src
-
-// Expected output:
-// ✅ 847 lines of boilerplate eliminated
-// ✅ 12 potential bugs prevented
-// ✅ Type safety improved in 23 locations
-// ✅ Performance gains: 3x faster validation, 50% smaller bundle
-
-// Automatic refactoring patterns:
-// - Convert Zod schemas → Native Kairo schemas
-// - Transform fetch/axios calls → Resource definitions
-// - Extract business logic → Pipeline compositions
-// - Generate type-safe mocks from existing APIs
-```
-
-These migration utilities will provide before/after comparisons, automated refactoring suggestions, and ensure zero breaking changes during adoption.
+This design ensures predictability, type safety, and maintainability while keeping the API surface minimal and focused.
 
 ## License
 

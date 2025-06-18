@@ -1,13 +1,13 @@
 /**
  * PIPELINE Pillar Types
- * 
+ *
  * Type definitions for the PIPELINE pillar following V2 specifications.
  * Implements logic composition with functional programming patterns.
  */
 
-import { Result, Schema } from '../foundation'
-import { PipelineError } from '../errors'
-import { BaseOptions, CacheOptions, RetryOptions } from '../config'
+import type { Result } from '../shared'
+import type { PipelineError } from '../shared'
+import type { BaseOptions, CacheOptions, RetryOptions } from '../shared/config'
 
 /**
  * Base options for all PIPELINE methods
@@ -18,19 +18,17 @@ export interface PipelineBaseOptions extends BaseOptions {
   parallel?: boolean
   batchSize?: number
   maxConcurrency?: number
-  
+
   // Error handling
   stopOnError?: boolean
-  fallback?: (error: any, data: any) => any
-  onError?: (error: any, data: any) => void
-  
+  onError?: (error: unknown, data: unknown) => void
+
   // Performance options
   cache?: boolean | CacheOptions
   retry?: boolean | RetryOptions
-  
+
   // Debugging
   debug?: boolean
-  trace?: boolean
 }
 
 /**
@@ -41,22 +39,22 @@ export interface MapOptions extends PipelineBaseOptions {
   async?: boolean
   parallel?: boolean
   batchSize?: number
-  
+
   // Error handling
   keepErrors?: boolean
-  fallback?: (error: any, item: any, index: number) => any
+  fallback?: (error: unknown, item: unknown, index: number) => unknown
 }
 
 /**
  * Filter operation options
  */
-export interface FilterOptions extends PipelineBaseOptions {
+export interface FilterOptions extends BaseOptions {
   // Execution strategy
   async?: boolean
-  
+
   // Error handling
   keepErrors?: boolean
-  onError?: (error: any, item: any, index: number) => void
+  onError?: (error: unknown, item: unknown, index: number) => void
 }
 
 /**
@@ -65,8 +63,8 @@ export interface FilterOptions extends PipelineBaseOptions {
 export interface ReduceOptions extends PipelineBaseOptions {
   // Execution strategy
   async?: boolean
-  parallel?: boolean  // Generally false for reduce, but can be true for some cases
-  
+  parallel?: boolean // Generally false for reduce, but can be true for some cases
+
   // Checkpointing
   checkpoints?: boolean
   checkpointInterval?: number
@@ -79,7 +77,7 @@ export interface ComposeOptions extends PipelineBaseOptions {
   // Error handling
   stopOnError?: boolean
   rollback?: boolean
-  
+
   // Optimization
   optimize?: boolean
   memoize?: boolean
@@ -91,7 +89,7 @@ export interface ComposeOptions extends PipelineBaseOptions {
 export interface ChainOptions extends PipelineBaseOptions {
   // Error handling
   stopOnError?: boolean
-  
+
   // Execution tracking
   collectResults?: boolean
 }
@@ -101,8 +99,8 @@ export interface ChainOptions extends PipelineBaseOptions {
  */
 export interface BranchOptions extends PipelineBaseOptions {
   // Fallback handling
-  fallback?: PipelineOperation<any, any>
-  
+  fallback?: PipelineOperation<unknown, unknown>
+
   // Caching
   cache?: boolean
   cacheConditions?: boolean
@@ -115,9 +113,9 @@ export interface ParallelOptions extends PipelineBaseOptions {
   // Execution control
   maxConcurrency?: number
   failFast?: boolean
-  
+
   // Result combination
-  combiner?: (input: any, results: any[]) => any
+  combiner?: (input: unknown, results: unknown[]) => unknown
   preserveOrder?: boolean
 }
 
@@ -128,7 +126,7 @@ export interface ValidateOptions extends PipelineBaseOptions {
   // Validation behavior
   stopOnFirst?: boolean
   collectErrors?: boolean
-  
+
   // Schema options
   strict?: boolean
   coerce?: boolean
@@ -142,7 +140,7 @@ export type PipelineResult<T> = Result<PipelineError, T>
 /**
  * Pipeline operation function type
  */
-export type PipelineOperation<TInput, TOutput = TInput> = 
+export type PipelineOperation<TInput, TOutput = TInput> =
   | ((data: TInput) => TOutput)
   | ((data: TInput) => Promise<TOutput>)
   | ((data: TInput) => PipelineResult<TOutput>)
@@ -152,8 +150,8 @@ export type PipelineOperation<TInput, TOutput = TInput> =
  * Transform function for map operations
  */
 export type TransformFunction<TInput, TOutput> = (
-  item: TInput, 
-  index: number, 
+  item: TInput,
+  index: number,
   array: TInput[]
 ) => TOutput | Promise<TOutput>
 
@@ -161,8 +159,8 @@ export type TransformFunction<TInput, TOutput> = (
  * Predicate function for filter operations
  */
 export type PredicateFunction<T> = (
-  item: T, 
-  index: number, 
+  item: T,
+  index: number,
   array: T[]
 ) => boolean | Promise<boolean>
 
@@ -184,10 +182,7 @@ export type BranchCondition<T> = (data: T) => boolean | string | Promise<boolean
 /**
  * Branch map for conditional execution
  */
-export type BranchMap<TInput, TOutput = TInput> = Record<
-  string | 'true' | 'false' | 'default',
-  PipelineOperation<TInput, TOutput>
->
+export type BranchMap<TInput, TOutput = TInput> = Record<string, PipelineOperation<TInput, TOutput>>
 
 /**
  * Chain operation type
@@ -197,7 +192,7 @@ export type ChainOperation<TInput, TOutput = TInput> = PipelineOperation<TInput,
 /**
  * Parallel operation type
  */
-export type ParallelOperation<TInput, TOutput = any> = (data: TInput) => TOutput | Promise<TOutput>
+export type ParallelOperation<TInput, TOutput = unknown> = (data: TInput) => TOutput | Promise<TOutput>
 
 /**
  * Validation rule type
@@ -211,18 +206,19 @@ export interface ValidationRule<T> {
 /**
  * Curried function type
  */
-export type CurriedFunction<TArgs extends any[], TReturn> = 
-  TArgs extends [infer Head, ...infer Tail]
-    ? (arg: Head) => Tail extends []
-        ? TReturn
-        : CurriedFunction<Tail, TReturn>
-    : () => TReturn
+export type CurriedFunction<TArgs extends unknown[], TReturn> = TArgs extends [
+  infer Head,
+  ...infer Tail,
+]
+  ? (arg: Head) => Tail extends [] ? TReturn : CurriedFunction<Tail, TReturn>
+  : () => TReturn
 
 /**
  * Partial application type
  */
-export type PartialApplication<TArgs extends any[], TReturn> = 
-  (...args: Partial<TArgs>) => (...remainingArgs: any[]) => TReturn
+export type PartialApplication<TArgs extends unknown[], TReturn> = (
+  ...args: Partial<TArgs>
+) => (...remainingArgs: unknown[]) => TReturn
 
 /**
  * Conditional function type
@@ -319,12 +315,12 @@ export type ValidatorFunction<T> = (data: T) => PipelineResult<T>
 /**
  * Error handler function type
  */
-export type ErrorHandler<T> = (error: any, data: T, context?: PipelineContext) => T | never
+export type ErrorHandler<T> = (error: unknown, data: T, context?: PipelineContext) => T | never
 
 /**
  * Fallback function type
  */
-export type FallbackFunction<T> = (error: any, data: T) => T
+export type FallbackFunction<T> = (error: unknown, data: T) => T
 
 /**
  * Progress callback type
@@ -356,7 +352,7 @@ export interface PipelineMetrics {
 /**
  * Optimization hint type
  */
-export type OptimizationHint = 
+export type OptimizationHint =
   | 'cpu-intensive'
   | 'io-intensive'
   | 'memory-intensive'

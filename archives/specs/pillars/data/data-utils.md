@@ -19,6 +19,7 @@ DATA function utils provide convenience functions for data manipulation, validat
 ### **Data Access & Manipulation**
 
 #### **`data.get()`**
+
 ```typescript
 data.get<T>(
   obj: Record<string, unknown>,
@@ -39,6 +40,7 @@ const nested = data.get(response, 'data.items.0.name')
 ```
 
 #### **`data.set()`**
+
 ```typescript
 data.set<T>(
   obj: Record<string, unknown>,
@@ -59,6 +61,7 @@ const newData = data.set(originalData, ['settings', 'theme'], 'dark')
 ```
 
 #### **`data.has()`**
+
 ```typescript
 data.has(
   obj: Record<string, unknown>,
@@ -76,18 +79,17 @@ if (data.has(input, 'user.preferences.notifications')) {
 }
 
 // Guard clauses in transformations
-const transform = (item) => ({
+const transform = item => ({
   id: data.get(item, 'id'),
   name: data.get(item, 'name'),
-  email: data.has(item, 'contact.email') 
-    ? data.get(item, 'contact.email')
-    : null
+  email: data.has(item, 'contact.email') ? data.get(item, 'contact.email') : null,
 })
 ```
 
 ### **Type & Schema Operations**
 
 #### **`data.inferType()`**
+
 ```typescript
 data.inferType(value: unknown): DataType
 ```
@@ -107,6 +109,7 @@ const validateField = (value: unknown, expectedType: DataType) => {
 ```
 
 #### **`data.isValid()`**
+
 ```typescript
 data.isValid<T>(
   value: unknown,
@@ -130,6 +133,7 @@ const validItems = items.filter(item => data.isValid(item, ItemSchema))
 ### **Collection Operations**
 
 #### **`data.flatten()`**
+
 ```typescript
 data.flatten<T>(
   array: (T | T[])[],
@@ -150,6 +154,7 @@ const deeply = data.flatten(nestedArray, 2) // Flatten 2 levels deep
 ```
 
 #### **`data.unique()`**
+
 ```typescript
 data.unique<T>(
   array: T[],
@@ -176,6 +181,7 @@ These functions are used internally by DATA methods but not exposed to users:
 ### **Schema Processing**
 
 #### **`normalizeSchema()`**
+
 ```typescript
 normalizeSchema<T>(definition: SchemaDefinition<T>): NormalizedSchema<T>
 ```
@@ -184,6 +190,7 @@ normalizeSchema<T>(definition: SchemaDefinition<T>): NormalizedSchema<T>
 **Usage**: Schema compilation
 
 #### **`compileValidator()`**
+
 ```typescript
 compileValidator<T>(schema: NormalizedSchema<T>): ValidatorFunction<T>
 ```
@@ -192,6 +199,7 @@ compileValidator<T>(schema: NormalizedSchema<T>): ValidatorFunction<T>
 **Usage**: Performance optimization
 
 #### **`createTypeGuard()`**
+
 ```typescript
 createTypeGuard<T>(schema: Schema<T>): (value: unknown) => value is T
 ```
@@ -202,6 +210,7 @@ createTypeGuard<T>(schema: Schema<T>): (value: unknown) => value is T
 ### **Transformation Engine**
 
 #### **`mapObject()`**
+
 ```typescript
 mapObject<TInput, TOutput>(
   obj: TInput,
@@ -214,6 +223,7 @@ mapObject<TInput, TOutput>(
 **Usage**: Core transformation logic
 
 #### **`resolveTransform()`**
+
 ```typescript
 resolveTransform(
   transform: TransformFunction | string,
@@ -227,6 +237,7 @@ resolveTransform(
 ### **Aggregation Engine**
 
 #### **`createAggregator()`**
+
 ```typescript
 createAggregator(operation: AggregateOperation): AggregatorFunction
 ```
@@ -235,6 +246,7 @@ createAggregator(operation: AggregateOperation): AggregatorFunction
 **Usage**: Aggregation processing
 
 #### **`groupByKey()`**
+
 ```typescript
 groupByKey<T>(
   items: T[],
@@ -249,6 +261,7 @@ groupByKey<T>(
 ### **Serialization Support**
 
 #### **`detectFormat()`**
+
 ```typescript
 detectFormat(input: string | Buffer): SerializationFormat
 ```
@@ -257,6 +270,7 @@ detectFormat(input: string | Buffer): SerializationFormat
 **Usage**: Smart deserialization
 
 #### **`createSerializer()`**
+
 ```typescript
 createSerializer(format: SerializationFormat): SerializerFunction
 ```
@@ -279,26 +293,28 @@ function transform<TInput, TOutput>(
     // Use internal utils
     const normalizedMapping = normalizeMapping(mapping)
     const context = createTransformContext(options)
-    
+
     if (Array.isArray(input)) {
-      return Result.ok(input.map(item => 
-        // Use internal mapObject util
-        mapObject(item, normalizedMapping, context)
-      ))
+      return Result.ok(
+        input.map(item =>
+          // Use internal mapObject util
+          mapObject(item, normalizedMapping, context)
+        )
+      )
     }
-    
+
     // Use public utils for property access
     const result = Object.keys(normalizedMapping).reduce((acc, key) => {
       const transform = normalizedMapping[key]
       const sourceValue = data.get(input, transform.source || key)
-      
+
       // Apply transformation
       const transformedValue = resolveTransform(transform.fn, context)(sourceValue)
-      
+
       // Use data.set for nested properties
       return data.set(acc, key, transformedValue)
     }, {})
-    
+
     return Result.ok(result as TOutput)
   } catch (error) {
     return Result.error(new TransformError(error.message))
@@ -312,26 +328,23 @@ function transform<TInput, TOutput>(
 // User leverages public utils for custom data processing
 const processUserData = (users: User[]) => {
   // Use data utils for safe property access
-  const activeUsers = users.filter(user => 
-    data.has(user, 'profile.isActive') && 
-    data.get(user, 'profile.isActive') === true
+  const activeUsers = users.filter(
+    user => data.has(user, 'profile.isActive') && data.get(user, 'profile.isActive') === true
   )
-  
+
   // Use unique() for deduplication
   const uniqueEmails = data.unique(
     activeUsers.map(user => data.get(user, 'contact.email')),
     email => email?.toLowerCase()
   )
-  
+
   // Use flatten() for nested data
-  const allPermissions = data.flatten(
-    activeUsers.map(user => data.get(user, 'permissions') || [])
-  )
-  
+  const allPermissions = data.flatten(activeUsers.map(user => data.get(user, 'permissions') || []))
+
   return {
     activeUsers,
     uniqueEmails,
-    allPermissions: data.unique(allPermissions)
+    allPermissions: data.unique(allPermissions),
   }
 }
 ```
@@ -342,32 +355,28 @@ const processUserData = (users: User[]) => {
 // Dynamic schema creation using utils
 const createDynamicSchema = (sampleData: unknown[]) => {
   const fields = {}
-  
+
   // Sample first few items
   const sample = sampleData.slice(0, 100)
-  
+
   // Infer field types
-  const allKeys = data.unique(
-    data.flatten(sample.map(item => Object.keys(item as any)))
-  )
-  
+  const allKeys = data.unique(data.flatten(sample.map(item => Object.keys(item as any))))
+
   allKeys.forEach(key => {
-    const values = sample
-      .map(item => data.get(item as any, key))
-      .filter(val => val !== undefined)
-    
+    const values = sample.map(item => data.get(item as any, key)).filter(val => val !== undefined)
+
     if (values.length > 0) {
       const type = data.inferType(values[0])
       const isRequired = values.length === sample.length
-      
+
       fields[key] = {
         type,
         required: isRequired,
-        nullable: values.some(v => v === null)
+        nullable: values.some(v => v === null),
       }
     }
   })
-  
+
   return data.schema(fields)
 }
 ```
@@ -387,20 +396,20 @@ const transformHelpers = {
       return acc
     }, {} as any)
   },
-  
+
   // Merge objects with conflict resolution
   mergeWithDefaults: (target: any, defaults: any) => {
     const result = { ...defaults }
-    
+
     Object.keys(target).forEach(key => {
       if (data.has(target, key)) {
         result[key] = data.get(target, key)
       }
     })
-    
+
     return result
   },
-  
+
   // Validate and transform arrays
   processArray: <T>(items: unknown[], schema: Schema<T>) => {
     return items
@@ -408,25 +417,28 @@ const transformHelpers = {
       .map(item => data.validate(item, schema))
       .filter(result => Result.isOk(result))
       .map(result => result.value)
-  }
+  },
 }
 ```
 
 ## Benefits
 
 ### **For METHOD Implementation**
+
 - Consistent property access patterns
 - Reusable type inference logic
 - Safe data manipulation utilities
 - Shared transformation helpers
 
 ### **For USER Code**
+
 - Safe nested property access
 - Reliable type checking utilities
 - Collection manipulation helpers
 - Schema building tools
 
 ### **For FRAMEWORK Design**
+
 - Composable data operations
 - Testable utility functions
 - Performance optimizations
@@ -435,14 +447,17 @@ const transformHelpers = {
 ## Implementation Priority
 
 ### **Phase 1: Core Utils**
+
 - `get()`, `set()`, `has()`, `isValid()`
 - Essential for safe data access
 
 ### **Phase 2: Collection Utils**
+
 - `flatten()`, `unique()`, `inferType()`
 - Enhanced data processing
 
 ### **Phase 3: Internal Utils**
+
 - All internal utilities for method implementation
 - Performance and optimization features
 

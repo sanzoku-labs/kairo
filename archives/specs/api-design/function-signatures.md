@@ -6,6 +6,7 @@
 ## Design Philosophy ✅ Fully Implemented
 
 All Kairo V2 functions follow **consistent signature patterns** that prioritize:
+
 - ✅ **Predictability** - Same patterns everywhere - **IMPLEMENTED**
 - ✅ **TypeScript inference** - Minimal type annotations needed - **IMPLEMENTED**
 - ✅ **Progressive enhancement** - Simple by default, configurable when needed - **IMPLEMENTED**
@@ -14,6 +15,7 @@ All Kairo V2 functions follow **consistent signature patterns** that prioritize:
 ## Universal Signature Pattern
 
 ### **✅ Standard Function Signature - IMPLEMENTED**
+
 ```typescript
 // IMPLEMENTED PATTERN - Working across all 23 methods
 pillar.method<TInput, TOutput>(
@@ -28,30 +30,34 @@ pillar.method<TInput, TOutput>(
 ### **Signature Components**
 
 #### **1. Generic Type Parameters**
+
 ```typescript
 // Input and output types for full inference
-service.get<User>('/users/123')           // User inferred for response
-pipeline.map<User, UserView>(users, transform)  // Both types explicit
-data.validate<User>(input, UserSchema)    // User inferred from schema
+service.get<User>('/users/123') // User inferred for response
+pipeline.map<User, UserView>(users, transform) // Both types explicit
+data.validate<User>(input, UserSchema) // User inferred from schema
 ```
 
 #### **2. Required Parameters**
+
 ```typescript
 // Always first parameter(s) - never optional
-service.get(url)           // URL is required
-pipeline.map(data, fn)     // Data and function required  
+service.get(url) // URL is required
+pipeline.map(data, fn) // Data and function required
 data.validate(input, schema) // Input and schema required
 ```
 
 #### **3. Optional Data Parameters**
+
 ```typescript
 // Data parameters that may be optional for some methods
-service.post(url, data)         // Data required for POST
-service.get(url)                // No data for GET
+service.post(url, data) // Data required for POST
+service.get(url) // No data for GET
 pipeline.reduce(data, fn, initial) // Initial value required for reduce
 ```
 
 #### **4. Options Parameter**
+
 ```typescript
 // Always last parameter, always optional
 service.get(url, options)
@@ -64,6 +70,7 @@ data.validate(input, schema, options)
 ### **SERVICE Pillar Signatures**
 
 #### **Basic CRUD Operations**
+
 ```typescript
 // GET - No data parameter
 service.get<TResponse>(
@@ -86,6 +93,7 @@ service.delete<TResponse = void>(
 ```
 
 #### **Advanced Operations**
+
 ```typescript
 // Batch operations
 service.batch<TResponse>(
@@ -110,6 +118,7 @@ service.upload<TResponse>(
 ### **PIPELINE Pillar Signatures**
 
 #### **Collection Operations**
+
 ```typescript
 // Map transformation
 pipeline.map<TInput, TOutput>(
@@ -135,6 +144,7 @@ pipeline.reduce<TInput, TOutput>(
 ```
 
 #### **Composition Operations**
+
 ```typescript
 // Function composition
 pipeline.compose<TInput, TOutput>(
@@ -151,6 +161,7 @@ pipeline.chain<TInput, TOutput>(
 ```
 
 #### **Control Flow Operations**
+
 ```typescript
 // Branching logic
 pipeline.branch<TInput, TOutput>(
@@ -171,6 +182,7 @@ pipeline.parallel<TInput, TOutput>(
 ### **DATA Pillar Signatures**
 
 #### **Schema Operations**
+
 ```typescript
 // Schema creation
 data.schema<T>(
@@ -194,6 +206,7 @@ data.partial<T>(
 ```
 
 #### **Transformation Operations**
+
 ```typescript
 // Data transformation
 data.transform<TInput, TOutput>(
@@ -211,6 +224,7 @@ data.normalize<T>(
 ```
 
 #### **Aggregation Operations**
+
 ```typescript
 // Statistical aggregation
 data.aggregate<T, R = AggregateResult>(
@@ -230,17 +244,19 @@ data.groupBy<T, K extends keyof T>(
 ## Async vs Sync Patterns
 
 ### **Synchronous Operations**
+
 ```typescript
 // Pure data operations (DATA and PIPELINE)
-const result = data.validate(input, schema)         // Sync
-const transformed = pipeline.map(data, transform)   // Sync
-const filtered = pipeline.filter(data, predicate)   // Sync
+const result = data.validate(input, schema) // Sync
+const transformed = pipeline.map(data, transform) // Sync
+const filtered = pipeline.filter(data, predicate) // Sync
 ```
 
 ### **Asynchronous Operations**
+
 ```typescript
 // External operations (SERVICE)
-const response = await service.get('/api/data')     // Always async
+const response = await service.get('/api/data') // Always async
 const created = await service.post('/api/users', userData) // Always async
 
 // Pipeline operations with async functions
@@ -249,23 +265,23 @@ const validated = await pipeline.validate(data, asyncValidator)
 ```
 
 ### **Mixed Async Support**
+
 ```typescript
 // Operations that can be both sync/async based on usage
-pipeline.map(data, syncTransform)      // Sync when transform is sync
+pipeline.map(data, syncTransform) // Sync when transform is sync
 pipeline.map(data, asyncTransform, { async: true }) // Async when needed
 
-data.transform(input, syncMapping)     // Sync transformation
+data.transform(input, syncMapping) // Sync transformation
 data.transform(input, asyncMapping, { async: true }) // Async transformation
 ```
 
 ## Error Handling Patterns
 
 ### **Result Type Returns**
+
 ```typescript
 // All functions return Result<Error, Data>
-type Result<E, T> = 
-  | { success: true, value: T }
-  | { success: false, error: E }
+type Result<E, T> = { success: true; value: T } | { success: false; error: E }
 
 // Usage pattern
 const result = data.validate(input, schema)
@@ -277,6 +293,7 @@ if (result.success) {
 ```
 
 ### **Error Type Hierarchy**
+
 ```typescript
 // Base error for each pillar
 interface ServiceError extends KairoError {
@@ -304,6 +321,7 @@ interface DataError extends KairoError {
 ## Type Inference Guidelines
 
 ### **Automatic Inference**
+
 ```typescript
 // TypeScript should infer types without explicit annotations
 const users = await service.get('/users') // Type inferred from response
@@ -312,6 +330,7 @@ const valid = data.validate(userData, UserSchema) // Type from schema
 ```
 
 ### **Explicit Type Annotations**
+
 ```typescript
 // When inference needs help or for clarity
 const response = await service.get<User[]>('/users')
@@ -320,11 +339,12 @@ const validated = data.validate<CreateUserRequest>(input, CreateUserSchema)
 ```
 
 ### **Generic Constraints**
+
 ```typescript
 // Constrain generics for type safety
 interface TransformMapping<TInput, TOutput> {
-  [K in keyof TOutput]: 
-    | keyof TInput 
+  [K in keyof TOutput]:
+    | keyof TInput
     | ((input: TInput) => TOutput[K])
 }
 
@@ -339,6 +359,7 @@ const mapping: TransformMapping<ApiUser, DomainUser> = {
 ## Options Parameter Patterns
 
 ### **Consistent Options Structure**
+
 ```typescript
 // Base options for all methods
 interface BaseOptions {
@@ -368,6 +389,7 @@ interface DataOptions extends BaseOptions {
 ```
 
 ### **Option Type Patterns**
+
 ```typescript
 // Boolean flags with object alternatives
 cache?: boolean | CacheConfig           // true = default config
@@ -383,34 +405,36 @@ method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 ## Validation and Runtime Checks
 
 ### **Parameter Validation**
+
 ```typescript
 // Runtime validation for development
 function validateParameters(url: string, options?: ServiceOptions) {
   if (!url || typeof url !== 'string') {
     throw new Error('URL parameter is required and must be a string')
   }
-  
+
   if (options?.timeout && options.timeout < 0) {
     throw new Error('Timeout must be positive')
   }
-  
+
   // Additional validations...
 }
 ```
 
 ### **TypeScript Compile-Time Checks**
+
 ```typescript
 // Ensure proper typing at compile time
-type ValidateMapping<TInput, TOutput> = {
-  [K in keyof TOutput]: 
-    K extends keyof TInput 
-      ? TInput[K] extends TOutput[K] 
-        ? K 
+type ValidateMapping<TInput, TOutput> =
+  {
+    [K in keyof TOutput]: K extends keyof TInput
+      ? TInput[K] extends TOutput[K]
+        ? K
         : never
       : never
-} extends Record<keyof TOutput, never> 
-  ? never 
-  : TransformMapping<TInput, TOutput>
+  } extends Record<keyof TOutput, never>
+    ? never
+    : TransformMapping<TInput, TOutput>
 ```
 
 ---

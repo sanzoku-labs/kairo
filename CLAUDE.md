@@ -4,22 +4,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Kairo is undergoing a **complete V2 refactoring** to create a simplified, predictable three-pillar TypeScript platform.
+Kairo is a clean, focused TypeScript library built around three core pillars with a simple configuration object pattern.
 
-### **Current Status: V2 Development**
-- **V1**: Complex platform with 340+ functions (being completely replaced)
-- **V2**: Simplified three-pillar architecture with 45 functions
-- **Branch**: `develop` (all V2 work happens here)
-- **Strategy**: Complete replacement, no V1 maintenance
+### **Current Architecture**
 
-### **V2 Three-Pillar Architecture**
-1. **SERVICE** - HTTP-only API integration (14 methods)
-2. **PIPELINE** - Logic composition (15 methods) 
-3. **DATA** - Data operations + aggregation (16 methods)
+- **SERVICE Pillar** - HTTP-only API operations (5 methods + 4 utilities)
+- **DATA Pillar** - Data validation, transformation, aggregation (10 methods + 6 utilities)
+- **PIPELINE Pillar** - Logic composition (8 methods + 5 utilities)
+- **Total**: 23 core methods with configuration objects
+
+### **Project Structure**
+
+```
+src/
+├── core/
+│   ├── shared/          # Cross-cutting utilities (Result, schema, errors, config)
+│   ├── service/         # SERVICE pillar implementation
+│   ├── data/            # DATA pillar implementation
+│   ├── pipeline/        # PIPELINE pillar implementation
+│   └── index.ts         # Core exports
+├── fp-utils/            # Functional programming utilities
+└── index.ts             # Main library export
+```
 
 ## Development Commands
 
 ### Essential Commands
+
 - **Build**: `bun run build` - Build using tsup
 - **Development**: `bun run dev` - Watch mode building
 - **Test**: `bun run test` - Run tests with Vitest
@@ -30,193 +41,344 @@ Kairo is undergoing a **complete V2 refactoring** to create a simplified, predic
 - **Formatting**: `bun run format` - Format with Prettier
 
 ### Documentation Commands
+
 - **Docs (dev)**: `bun run docs:dev` - Local documentation server
 - **Docs (build)**: `bun run docs:build` - Build documentation site
 - **API docs**: `bun run docs:api` - Generate TypeDoc API documentation
 
-## V2 Implementation Strategy
+## Immediate Priorities
 
-### **Hybrid Approach: Reuse + Rebuild**
+**CRITICAL ISSUES TO FIX:**
 
-#### **REUSE from V1** (15K+ lines of proven code)
-- ✅ **Result Pattern** (`src/core/result.ts`) - Excellent error handling foundation
-- ✅ **Native Schemas** (`src/core/native-schema.ts`) - 3x faster than Zod, zero deps
-- ✅ **FP Utilities** (`src/utils/fp/`) - Comprehensive functional programming tools
+1. **TypeScript Compilation Errors** (100+ current errors)
 
-#### **BUILD NEW for V2**
-- 🔵 **SERVICE Pillar** - HTTP-only (V1 resource() was too broad)
-- ⚡ **PIPELINE Pillar** - Config objects (V1 used method chaining)
-- 📊 **DATA Pillar** - Enhanced with aggregation (major V1 gap)
+   - Missing function implementations in data pillar
+   - Type configuration mismatches in service layer
+   - Interface inheritance conflicts in error types
+   - Missing required properties in factory functions
 
-## V2 Specifications (Source of Truth)
+2. **Missing Function Bodies**
 
-All V2 development follows specifications in `src/v2/specs/`:
+   - Data pillar methods are stubs/incomplete
+   - Service utilities need proper implementation
+   - Pipeline methods need FP-based implementations
 
-### **Architecture Specs**
-- [Three-Pillar Overview](./src/v2/specs/architecture/three-pillar-overview.md)
-- [Data Flow Patterns](./src/v2/specs/architecture/data-flow-patterns.md)
+3. **Lint Issues Across Codebase**
 
-### **Pillar Specifications**
-- [SERVICE Methods](./src/v2/specs/pillars/service/service-methods.md) - HTTP-only operations
-- [PIPELINE Methods](./src/v2/specs/pillars/pipeline/pipeline-methods.md) - Logic composition
-- [DATA Methods](./src/v2/specs/pillars/data/data-methods.md) - Data operations + aggregation
+   - Unused variables and imports
+   - Type assertion issues
+   - Property access violations
 
-### **API Design Standards**
-- [Function Signatures](./src/v2/specs/api-design/function-signatures.md) - Consistent patterns
-- [Implementation Strategy](./src/v2/specs/implementation/implementation-strategy.md) - Development roadmap
+4. **Missing Tests**
 
-## V2 Core Design Principles
+   - No test coverage for core functionality
+   - Need colocated `.test.ts` files
 
-### **1. Predictable Over Clever**
+5. **Incomplete Documentation**
+   - Missing JSDoc comments throughout
+   - No examples in documentation
+
+## Strict Code Quality Rules
+
+### **ABSOLUTE REQUIREMENTS - NO EXCEPTIONS:**
+
+- ❌ **NO workarounds for TypeScript errors** - Fix the root cause, never ignore
+- ❌ **NO eslint-disable statements** - Address the underlying issue properly
+- ❌ **NO `any` types** - Proper typing for everything, use unknown if needed
+- ❌ **NO ignoring lint rules** - Address all warnings and errors completely
+- ❌ **NO shortcuts or quick fixes** - Write proper, maintainable code
+
+### **Quality Standards:**
+
+- ✅ **100% TypeScript compliance** - `bun run typecheck` must pass without errors
+- ✅ **100% ESLint compliance** - `bun run lint` must pass without warnings
+- ✅ **Result pattern everywhere** - No throwing exceptions, use Result<E,T>
+- ✅ **Configuration objects only** - No method chaining patterns
+- ✅ **Complete JSDoc coverage** - Every public function documented
+- ✅ **Comprehensive tests** - Colocated `.test.ts` files with good coverage
+
+## JSDoc Documentation Standards
+
+### **Required for ALL public functions:**
+
+````typescript
+/**
+ * Brief description of what the function does.
+ *
+ * Longer description explaining the purpose, behavior, and any important
+ * implementation details or gotchas.
+ *
+ * @param paramName - Description of parameter purpose and expected values
+ * @param options - Configuration object with detailed property descriptions
+ * @returns Description of return value and its structure
+ *
+ * @example
+ * ```typescript
+ * const result = await service.get('/api/users', {
+ *   timeout: 5000,
+ *   retry: { attempts: 3 }
+ * })
+ *
+ * Result.match(result, {
+ *   Ok: users => console.log('Users:', users),
+ *   Err: error => console.error('Error:', error.message)
+ * })
+ * ```
+ */
+````
+
+### **Documentation Requirements:**
+
+- **All public functions/methods** must have complete JSDoc
+- **Configuration objects** - Document every property with types and examples
+- **Error types** - Document when each error code is returned
+- **FP utilities** - Explain functional programming concepts and composition patterns
+- **Examples** - Real, working code examples for complex functions
+- **Cross-references** - Link related functions and concepts
+
+## FP Utilities Integration Guidelines
+
+### **When to Use FP Utilities from `src/fp-utils/`:**
+
+Use functional programming patterns when they provide significant value in:
+
+1. **Flexibility** - Composable, reusable patterns
+
+   ```typescript
+   // ✅ Good: Composable data processing
+   const processUsers = pipe(
+     users => filter(users, user => user.active),
+     users => map(users, normalizeUser),
+     users => groupBy(users, 'department')
+   )
+   ```
+
+2. **Scalability** - Performance with large datasets
+
+   ```typescript
+   // ✅ Good: Efficient async processing
+   const results = await asyncSequence(users.map(user => processUser(user)))
+   ```
+
+3. **Readability** - Cleaner, more expressive code
+   ```typescript
+   // ✅ Good: Clear error handling
+   const safeParseJson = tryCatch(
+     () => JSON.parse(data),
+     error => new DataError('PARSE_ERROR', error.message)
+   )
+   ```
+
+### **Available FP Utilities:**
+
+- **Composition**: `pipe()`, `compose()`, `identity()`, `constant()`
+- **Array operations**: `map()`, `filter()`, `reduce()`, `flatMap()`, `uniq()`
+- **Async operations**: `asyncPipe()`, `asyncMap()`, `asyncSequence()`
+- **Error handling**: `tryCatch()`, `recover()`, `chainResult()`
+- **Logic utilities**: `when()`, `unless()`, `cond()`, `guard()`
+- **Object utilities**: `pick()`, `omit()`, `merge()`, `deepClone()`
+
+### **FP Implementation Guidelines:**
+
+- Use FP patterns for complex data transformations
+- Leverage FP for error handling chains
+- Apply FP for async operation orchestration
+- Document FP usage with clear examples in JSDoc
+- Prefer FP over imperative loops where it improves readability
+
+## Implementation Standards
+
+### **Result Pattern Usage:**
+
 ```typescript
-// V2 Pattern: Simple, predictable functions
-const users = await service.get('/users', { 
-  cache: true, 
-  retry: true, 
-  validate: UserSchema 
-})
+// ✅ Correct: All operations return Result
+export const validateUser = (data: unknown, schema: Schema): Result<DataValidationError, User> => {
+  // Implementation using Result pattern
+}
 
-// NOT: Magic context-awareness or method chaining
-```
-
-### **2. Configuration Objects Only**
-```typescript
-// V2: Configuration objects
-pipeline.map(data, transform, { async: true, parallel: true })
-data.aggregate(sales, { groupBy: ['region'], sum: ['revenue'] })
-
-// NOT: Method chaining or fluent APIs
-```
-
-### **3. Three Clear Pillars**
-```typescript
-// SERVICE: HTTP APIs only
-service.get() | service.post() | service.put() | service.patch() | service.delete()
-
-// PIPELINE: Logic composition
-pipeline.map() | pipeline.filter() | pipeline.reduce() | pipeline.compose()
-
-// DATA: Complete data operations
-data.schema() | data.validate() | data.transform() | data.aggregate()
-```
-
-### **4. Universal TypeScript Patterns**
-- Works everywhere: browser, Node.js, Bun, Deno, edge functions
-- Framework-agnostic: React, Vue, Node, any TypeScript environment
-- Zero external dependencies
-
-## Development Guidelines
-
-### **V2 Implementation Rules**
-1. **Follow specifications exactly** - No deviations from `src/v2/specs/`
-2. **Use Result pattern** - All operations return `Result<Error, Data>`
-3. **Configuration objects** - No method chaining or fluent APIs
-4. **TypeScript strict mode** - Full type safety
-5. **Zero external deps** - Native implementations only
-
-### **Code Quality Standards**
-- **Result pattern** for all error handling
-- **Native schemas** for validation (not Zod)
-- **FP utilities** from `src/utils/fp/` for composition
-- **TypeScript inference** - minimal type annotations needed
-- **Predictable behavior** - no magic, no surprises
-
-### **File Structure**
-```
-src/
-├── core/           # V1 components (reusable: result, native-schema, etc.)
-├── utils/fp/       # V1 FP utilities (reuse directly)
-├── v2/             # V2 development
-│   ├── specs/      # Complete V2 specifications
-│   ├── core/       # V2 implementation (coming)
-│   └── README.md   # V2 overview
-└── extensions/     # V1 extensions (evaluate per extension)
-```
-
-## Implementation Priorities
-
-### **Current Phase: Foundation Setup**
-- [x] Complete V2 specifications
-- [ ] Set up V2 build system
-- [ ] Implement base infrastructure (Result, errors, types)
-- [ ] Create method signature framework
-
-### **Phase Sequence**
-1. **Foundation** (Weeks 1-4) - Core infrastructure
-2. **SERVICE Pillar** (Weeks 5-8) - HTTP-only methods
-3. **DATA Pillar** (Weeks 9-12) - Schemas + aggregation
-4. **PIPELINE Pillar** (Weeks 13-16) - Logic composition
-5. **Integration** (Weeks 17-20) - Cross-pillar composition
-6. **Release** (Weeks 21-24) - Documentation + migration
-
-[View detailed status →](./src/v2/specs/status.md)
-
-## Key V2 Improvements
-
-### **Massive Simplification**
-- **API Surface**: 340+ functions → 45 functions (87% reduction)
-- **Learning Curve**: Many concepts → 3 pillars
-- **Mental Model**: Complex patterns → Simple configuration
-
-### **Major New Capabilities**
-- **Data Aggregation**: sum, avg, groupBy, pivot (major V1 gap)
-- **Native HTTP Client**: Optimized for Kairo patterns
-- **Enhanced Pipelines**: branch, parallel, retry with config objects
-
-### **Better Developer Experience**
-- **Predictable APIs**: Same patterns everywhere
-- **Zero Magic**: No context-awareness or surprising behavior
-- **Universal**: Same abstractions across TypeScript ecosystem
-
-## Testing Requirements
-
-### **V2 Testing Standards**
-- **Unit tests**: 90% coverage target
-- **Integration tests**: Cross-pillar composition
-- **Performance tests**: Benchmark against V1 equivalents
-- **Type tests**: Validate TypeScript inference
-
-### **Test Structure**
-```typescript
-// V2 test pattern using Result assertions
-test('service.get returns Result with data', async () => {
-  const result = await service.get('/users')
-  expect(Result.isOk(result)).toBe(true)
-  if (Result.isOk(result)) {
-    expect(result.value).toBeDefined()
+// ❌ Wrong: Never throw exceptions
+export const validateUser = (data: unknown, schema: Schema): User => {
+  if (!isValid(data)) {
+    throw new Error('Invalid data') // ❌ Never do this
   }
+}
+```
+
+### **Configuration Object Pattern:**
+
+```typescript
+// ✅ Correct: Configuration objects
+export const service = {
+  get: (url: string, options: GetOptions = {}) => {
+    const config = { timeout: 5000, ...options }
+    // Implementation
+  },
+}
+
+// ❌ Wrong: Method chaining
+export const service = {
+  timeout: (ms: number) => service,
+  retry: (attempts: number) => service,
+  get: (url: string) => {
+    /* */
+  },
+}
+```
+
+### **Type Safety Requirements:**
+
+```typescript
+// ✅ Correct: Proper typing
+export interface GetOptions {
+  timeout?: number
+  retry?: RetryOptions
+  headers?: Record<string, string>
+}
+
+// ❌ Wrong: Using any
+export interface GetOptions {
+  [key: string]: any // ❌ Never use any
+}
+```
+
+## Development Workflow
+
+### **Step-by-Step Process:**
+
+1. **Fix TypeScript Errors First**
+
+   - Run `bun run typecheck`
+   - Address each error properly (no workarounds)
+   - Implement missing function bodies
+   - Fix type conflicts and inheritance issues
+
+2. **Implement Missing Methods**
+
+   - Use FP utilities when they provide value
+   - Follow configuration object pattern
+   - Return Result types for all operations
+   - Add comprehensive JSDoc documentation
+
+3. **Add Comprehensive Tests**
+
+   - Create colocated `.test.ts` files
+   - Test happy paths and error cases
+   - Test configuration options
+   - Aim for high coverage
+
+4. **Address Lint Issues**
+
+   - Run `bun run lint`
+   - Fix all warnings and errors
+   - Remove unused imports/variables
+   - Never use eslint-disable
+
+5. **Verify Quality**
+   - `bun run typecheck` must pass 100%
+   - `bun run lint` must pass 100%
+   - `bun run test` must pass 100%
+   - All public APIs must have JSDoc
+
+### **Quality Gates:**
+
+- **Before committing**: All commands must pass without errors
+- **Before reviewing**: Complete JSDoc coverage
+- **Before merging**: 100% test coverage for new code
+
+## Error Handling Strategy
+
+### **Error Type Hierarchy:**
+
+```typescript
+// Base error types in src/core/shared/errors.ts
+interface KairoError {
+  code: string
+  message: string
+  timestamp: number
+  context: Record<string, unknown>
+}
+
+// Pillar-specific errors
+interface ServiceError extends KairoError {
+  pillar: 'SERVICE'
+  operation: string
+}
+
+interface DataError extends KairoError {
+  pillar: 'DATA'
+  operation: string
+}
+```
+
+### **Error Creation Patterns:**
+
+```typescript
+// ✅ Use factory functions
+const error = createServiceError('GET', 'Request timeout', { url, timeout: 5000 })
+
+// ✅ Use Result pattern
+return Result.Err(error)
+```
+
+## Testing Strategy
+
+### **Test Organization:**
+
+- **Colocated tests**: `feature.ts` + `feature.test.ts`
+- **Test by pillar**: Service tests, Data tests, Pipeline tests
+- **Integration tests**: Cross-pillar functionality
+- **FP utility tests**: Functional composition patterns
+
+### **Test Requirements:**
+
+```typescript
+// ✅ Test structure example
+describe('service.get', () => {
+  it('should return Result.Ok with valid response', async () => {
+    const result = await service.get('/api/users')
+    expect(Result.isOk(result)).toBe(true)
+    if (Result.isOk(result)) {
+      expect(result.value).toBeDefined()
+    }
+  })
+
+  it('should return Result.Err on network failure', async () => {
+    // Test error cases
+  })
+
+  it('should respect timeout configuration', async () => {
+    // Test configuration options
+  })
 })
 ```
 
-## Working with V2
+## Working with This Codebase
 
-### **Before Making Changes**
-1. **Read specifications** in `src/v2/specs/`
-2. **Check current status** in `src/v2/specs/status.md`
-3. **Follow API patterns** in `src/v2/specs/api-design/`
-4. **Understand phase priorities** in implementation strategy
+### **Before Starting Work:**
 
-### **Development Workflow**
-1. Work in `develop` branch
-2. Follow V2 specifications exactly
-3. Reuse V1 components where specified (Result, schemas, FP utils)
-4. Build new architecture for SERVICE, PIPELINE, DATA pillars
-5. Maintain predictable function patterns
+1. Run `bun run typecheck` to see current errors
+2. Run `bun run lint` to see current warnings
+3. Review the pillar you're working on in `src/core/`
+4. Check available FP utilities in `src/fp-utils/`
 
-### **When to Reuse V1 Code**
-- ✅ `src/core/result.ts` - Proven Result pattern
-- ✅ `src/core/native-schema.ts` - High-performance schemas
-- ✅ `src/utils/fp/` - Mature functional utilities
-- ❌ `src/core/resource.ts` - Too broad for V2 SERVICE pillar
-- ❌ `src/core/repository.ts` - Replaced by enhanced DATA pillar
+### **While Developing:**
 
-## Questions or Issues
+- Write JSDoc first, then implementation
+- Use FP utilities when they improve code quality
+- Test each function as you implement it
+- Fix lint/type errors immediately (no accumulation)
 
-For V2 development questions:
-1. Check [V2 specifications](./src/v2/specs/README.md)
-2. Review [implementation strategy](./src/v2/specs/implementation/implementation-strategy.md)
-3. Verify [current status](./src/v2/specs/status.md)
+### **Quality Checklist:**
+
+- [ ] Function has complete JSDoc documentation
+- [ ] Implementation uses appropriate FP utilities
+- [ ] Returns Result type for error handling
+- [ ] Uses configuration object pattern
+- [ ] Has colocated test file with good coverage
+- [ ] Passes TypeScript compilation
+- [ ] Passes ESLint without warnings
+- [ ] No `any` types or workarounds
 
 ---
 
-**Remember**: V2 is a complete replacement focused on simplicity, predictability, and focused functionality. Every decision should align with the three-pillar architecture and configuration-over-composition principles.
+**Remember**: Quality is non-negotiable. Fix issues properly, leverage FP utilities effectively, and document everything comprehensively. The goal is a clean, maintainable, well-documented codebase that exemplifies TypeScript and functional programming best practices.

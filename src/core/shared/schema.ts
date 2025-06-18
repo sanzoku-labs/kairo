@@ -19,8 +19,14 @@ const perf = {
   now: () => Date.now(),
   mark: () => {},
   measure: () => {},
-  startSpan: () => ({ id: 'span' }),
-  endSpan: () => {},
+  startSpan: (name: string) => ({
+    id: 'span',
+    name,
+    metadata: {} as Record<string, unknown>,
+    endTime: undefined as number | undefined,
+    startTime: Date.now(),
+  }),
+  endSpan: (_span: unknown, _result?: unknown) => {},
 }
 // Removed unused FP imports
 
@@ -433,10 +439,7 @@ abstract class BaseSchema<T> implements Schema<T> {
   }
 
   parse(input: unknown): Result<ValidationError, T> {
-    const span = perf.startSpan(`schema:${this.type}:parse`, {
-      schemaType: this.type,
-      hasDefault: this.defaultValue !== undefined,
-    })
+    const span = perf.startSpan(`schema:${this.type}:parse`)
 
     try {
       // Handle default values
@@ -455,7 +458,7 @@ abstract class BaseSchema<T> implements Schema<T> {
 
       return result
     } finally {
-      perf.endSpan(span)
+      perf.endSpan(span, undefined)
     }
   }
 
