@@ -23,6 +23,6 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true
   },
-  "include": ["src/**/*", "tests/**/*", "examples/**/*", "*.config.ts"],
+  "include": ["src/**/*", "*.config.ts", "archives/specs"],
   "exclude": ["node_modules", "dist"]
 }

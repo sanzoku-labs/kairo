@@ -12,13 +12,13 @@
  */
 
 // Shared Utilities - Used across all pillars
-export { Result } from './core/shared'
-export type { OkResult, ErrResult } from './core/shared'
-export { schema } from './core/shared'
-export type { Schema, ValidationError, SchemaShape, InferSchema } from './core/shared'
+export { Result } from './shared'
+export type { OkResult, ErrResult } from './shared'
+export { schema } from './shared'
+export type { Schema, ValidationError, SchemaShape, InferSchema } from './shared'
 
 // SERVICE Pillar - HTTP-only API Integration (5 methods + 4 utilities)
-export { service } from './core/service'
+export { service } from './service'
 export type {
   GetOptions,
   PostOptions,
@@ -29,10 +29,10 @@ export type {
   ServiceError,
   ServiceHttpError,
   ServiceNetworkError
-} from './core/service'
+} from './service'
 
 // DATA Pillar - Data Operations + Aggregation (10 methods + 6 utilities)
-export { data } from './core/data'
+export { data } from './data'
 export type {
   DataBaseOptions,
   SchemaOptions,
@@ -52,10 +52,10 @@ export type {
   AggregateOperations,
   AggregateResult,
   SerializationFormat
-} from './core/data'
+} from './data'
 
 // PIPELINE Pillar - Logic Composition (8 methods + 5 utilities)
-export { pipeline } from './core/pipeline'
+export { pipeline } from './pipeline'
 export type {
   PipelineBaseOptions,
   MapOptions,
@@ -73,7 +73,7 @@ export type {
   ReducerFunction,
   ValidationRule,
   ComposedPipeline
-} from './core/pipeline'
+} from './pipeline'
 
 // V2 Error Types
 export type {
@@ -81,7 +81,7 @@ export type {
   DataError,
   PipelineError,
   V2Error
-} from './core/shared'
+} from './shared'
 
 // Core Configuration Types
 export type {
@@ -90,7 +90,7 @@ export type {
   CacheOptions,
   RetryOptions,
   TransformOptions
-} from './core/shared'
+} from './shared'
 
 /**
  * Kairo V2 API
@@ -102,7 +102,7 @@ export type {
  * 
  * @example
  * ```typescript
- * import { service, data, pipeline, Result } from 'kairo'
+ * import { service, data, pipeline, Result } from 'kairo/v2'
  * 
  * // HTTP API requests
  * const users = await service.get('/users')
@@ -144,6 +144,6 @@ export const V2_STATUS = {
     DATA: 'IMPLEMENTED',       // 10 methods + 6 utilities ✅
     PIPELINE: 'IMPLEMENTED'    // 8 methods + 5 utilities ✅
   },
-  foundation: 'COMPLETE',     // Strategic V1 reuse ✅
+  shared: 'COMPLETE',         // Shared utilities ✅
   architecture: 'COMPLETE'    // Four-layer design ✅
 } as const

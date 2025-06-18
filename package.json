@@ -1,7 +1,7 @@
 {
   "name": "kairo",
   "version": "0.1.0",
-  "description": "A functional, composable TypeScript library that eliminates glue code",
+  "description": "Kairo V2 - Three-pillar TypeScript library with 93% API reduction (SERVICE, DATA, PIPELINE)",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -11,46 +11,6 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
-    },
-    "./extensions": {
-      "types": "./dist/extensions.d.ts",
-      "import": "./dist/extensions.mjs",
-      "require": "./dist/extensions.js"
-    },
-    "./extensions/events": {
-      "types": "./dist/extensions/events.d.ts",
-      "import": "./dist/extensions/events.mjs",
-      "require": "./dist/extensions/events.js"
-    },
-    "./extensions/transactions": {
-      "types": "./dist/extensions/transactions.d.ts",
-      "import": "./dist/extensions/transactions.mjs",
-      "require": "./dist/extensions/transactions.js"
-    },
-    "./extensions/caching": {
-      "types": "./dist/extensions/caching.d.ts",
-      "import": "./dist/extensions/caching.mjs",
-      "require": "./dist/extensions/caching.js"
-    },
-    "./extensions/plugins": {
-      "types": "./dist/extensions/plugins.d.ts",
-      "import": "./dist/extensions/plugins.mjs",
-      "require": "./dist/extensions/plugins.js"
-    },
-    "./extensions/workflows": {
-      "types": "./dist/extensions/workflows.d.ts",
-      "import": "./dist/extensions/workflows.mjs",
-      "require": "./dist/extensions/workflows.js"
-    },
-    "./extensions/performance": {
-      "types": "./dist/extensions/performance.d.ts",
-      "import": "./dist/extensions/performance.mjs",
-      "require": "./dist/extensions/performance.js"
-    },
-    "./extensions/contracts": {
-      "types": "./dist/extensions/contracts.d.ts",
-      "import": "./dist/extensions/contracts.mjs",
-      "require": "./dist/extensions/contracts.js"
     }
   },
   "sideEffects": false,
@@ -75,10 +35,14 @@
   "keywords": [
     "typescript",
     "functional",
-    "composable",
-    "pipeline",
+    "service",
+    "data",
+    "pipeline", 
     "result",
-    "error-handling"
+    "error-handling",
+    "validation",
+    "aggregation",
+    "three-pillar"
   ],
   "author": "Sovanaryth THORNG",
   "license": "MIT",
