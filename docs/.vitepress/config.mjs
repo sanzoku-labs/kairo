@@ -28,14 +28,52 @@ export default defineConfig({
 
   themeConfig: {
     nav: [
-      { text: 'Guide', link: '/guide/' },
-      { text: 'API', link: '/api/' },
-      { text: 'API Reference', link: '/api-reference/' },
+      { text: 'Get Started', link: '/getting-started/' },
+      { text: 'Learning Paths', link: '/learning-paths/' },
       { text: 'Examples', link: '/examples/' },
+      { text: 'API Reference', link: '/api-reference/' },
       { text: 'GitHub', link: 'https://github.com/sovanaryththorng/sanzoku-labs/kairo' },
     ],
 
     sidebar: {
+      '/getting-started/': [
+        {
+          text: 'Getting Started',
+          items: [
+            { text: 'Choose Your Path', link: '/getting-started/' },
+            { text: 'Your First App', link: '/getting-started/your-first-app' },
+            { text: 'Building APIs', link: '/getting-started/building-apis' },
+            { text: 'Managing Data', link: '/getting-started/managing-data' },
+            { text: 'Processing Data', link: '/getting-started/processing-data' },
+          ],
+        },
+        {
+          text: 'Quick Solutions',
+          items: [
+            { text: 'Common Patterns', link: '/examples/common-patterns' },
+            { text: 'Decision Tree', link: '/examples/decision-tree' },
+            { text: 'Troubleshooting', link: '/troubleshooting/' },
+          ],
+        },
+      ],
+      '/learning-paths/': [
+        {
+          text: 'Learning Paths',
+          items: [
+            { text: 'Overview', link: '/learning-paths/' },
+            { text: 'Foundation Path', link: '/learning-paths/foundation-path' },
+            { text: 'Application Path', link: '/learning-paths/application-path' },
+          ],
+        },
+        {
+          text: 'Progress & Assessment',
+          items: [
+            { text: 'Advancement Criteria', link: '/learning-paths/advancement-criteria' },
+            { text: 'Interactive Exercises', link: '/learning-paths/interactive-exercises' },
+            { text: 'Progress Tracking', link: '/learning-paths/progress-tracking' },
+          ],
+        },
+      ],
       '/guide/': [
         {
           text: 'Introduction',
@@ -105,10 +143,21 @@ export default defineConfig({
           text: 'Examples',
           items: [
             { text: 'Overview', link: '/examples/' },
+            { text: 'Common Patterns', link: '/examples/common-patterns' },
+            { text: 'Decision Tree', link: '/examples/decision-tree' },
             { text: 'Basic Pipeline', link: '/examples/basic-pipeline' },
             { text: 'Data Fetching', link: '/examples/data-fetching' },
             { text: 'Contract Testing', link: '/examples/contract-testing' },
             { text: 'Business Rules', link: '/examples/business-rules' },
+          ],
+        },
+      ],
+      '/troubleshooting/': [
+        {
+          text: 'Troubleshooting',
+          items: [
+            { text: 'Common Issues', link: '/troubleshooting/' },
+            { text: 'Error Enhancement', link: '/troubleshooting/error-enhancement' },
           ],
         },
       ],

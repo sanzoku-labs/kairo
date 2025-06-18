@@ -11,7 +11,10 @@ hero:
   actions:
     - theme: brand
       text: Get Started
-      link: /guide/getting-started
+      link: /getting-started/
+    - theme: alt
+      text: View Examples
+      link: /examples/common-patterns
     - theme: alt
       text: View on GitHub
       link: https://github.com/sovanaryththorng/sanzoku-labs/kairo
@@ -41,6 +44,28 @@ features:
   - icon: 🚀
     title: Enterprise-Ready
     details: Production-grade performance, testing framework, and zero technical debt
+---
+
+## 🚀 Start Learning Kairo
+
+Choose your learning path based on your experience:
+
+### 🌱 New to Kairo?
+**[Your First App →](/getting-started/your-first-app)**  
+Build a working application in 30 minutes using just 5 essential functions.
+
+### ⚡ Ready to Build?
+**[Common Patterns →](/examples/common-patterns)**  
+Copy-paste solutions for everyday development challenges.
+
+### 🎯 Need Help Choosing?
+**[Decision Tree →](/examples/decision-tree)**  
+Find the right Kairo pattern for your specific situation.
+
+### 📚 Structured Learning?
+**[Learning Paths →](/learning-paths/)**  
+Progressive tiers from Foundation (5 functions) to Expert (285+ functions).
+
 ---
 
 ## Quick Start
