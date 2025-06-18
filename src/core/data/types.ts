@@ -96,6 +96,8 @@ export interface SerializeOptions extends DataBaseOptions {
   delimiter?: string
   encoding?: 'utf8' | 'utf16le' | 'base64'
   schema?: Schema<unknown>
+  handleCircular?: boolean
+  escapeUnicode?: boolean
 }
 
 /**
@@ -108,6 +110,7 @@ export interface DeserializeOptions extends DataBaseOptions {
   skipErrors?: boolean
   encoding?: 'utf8' | 'utf16le' | 'base64'
   delimiter?: string
+  coerceTypes?: boolean
 }
 
 /**

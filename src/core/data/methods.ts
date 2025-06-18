@@ -256,6 +256,7 @@ export const convert = <TInput, TOutput>(
   input: TInput,
   fromSchema: Schema<TInput>,
   toSchema: Schema<TOutput>,
+  mapping: Record<string, string | ((data: TInput) => unknown)>,
   options: ConvertOptions = {}
 ): DataResult<TOutput> => {
   const opts = mergeOptions(
@@ -278,7 +279,20 @@ export const convert = <TInput, TOutput>(
       )
     }
 
-    let converted: unknown = validationResult.value
+    // Apply mapping transformation
+    const convertedData: Record<string, unknown> = {}
+    
+    for (const [targetKey, sourceKey] of Object.entries(mapping)) {
+      if (typeof sourceKey === 'function') {
+        // Function mapping
+        convertedData[targetKey] = sourceKey(validationResult.value)
+      } else {
+        // String mapping - get value from source
+        convertedData[targetKey] = get(validationResult.value as Record<string, unknown>, sourceKey)
+      }
+    }
+
+    let converted: unknown = convertedData
 
     // Apply migration function if provided
     if (options.migration) {
@@ -531,7 +545,7 @@ export const serialize = <T>(
 export const deserialize = <T>(
   input: string | Buffer,
   format: SerializationFormat,
-  schema: Schema<T>,
+  schema?: Schema<T>,
   options: DeserializeOptions = {}
 ): DataResult<T> => {
   const opts = mergeOptions(
@@ -566,8 +580,12 @@ export const deserialize = <T>(
         )
     }
 
-    // Validate against schema
-    return validate(parsed, schema, opts)
+    // Validate against schema if provided
+    if (schema) {
+      return validate(parsed, schema, opts)
+    }
+    
+    return Result.Ok(parsed as T)
   } catch (error: unknown) {
     return Result.Err(
       createDataError(
@@ -593,7 +611,7 @@ export const clone = <T>(input: T, options: CloneOptions = {}): DataResult<T> =>
   )
 
   try {
-    const cloned = deepClone(input, opts)
+    const cloned = opts.deep ? deepClone(input, opts) : shallowClone(input)
     return Result.Ok(cloned)
   } catch (error: unknown) {
     return Result.Err(
@@ -658,9 +676,44 @@ const maxField = <T>(items: T[], field: string): unknown => {
 
 const serializeJSON = <T>(input: T, options: SerializeOptions): DataResult<string> => {
   try {
-    const json = JSON.stringify(input, undefined, options.pretty ? 2 : undefined)
+    // Handle circular references
+    const seen = new WeakSet()
+    let hasCircular = false
+    
+    const json = JSON.stringify(input, (_key, value) => {
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value as object)) {
+          hasCircular = true
+          if (options.handleCircular === false) {
+            throw new Error('Converting circular structure to JSON')
+          }
+          return '[Circular]'
+        }
+        seen.add(value as object)
+      }
+      
+      // Handle encoding options
+      if (options.escapeUnicode === false && typeof value === 'string') {
+        return value
+      }
+      
+      return value as unknown
+    }, options.pretty ? 2 : undefined)
+    
+    // If circular reference found and not handled, throw error
+    if (hasCircular && options.handleCircular !== true) {
+      return Result.Err(
+        createDataError('serialize', 'JSON serialization failed: circular reference detected', {})
+      )
+    }
+    
     return Result.Ok(json)
   } catch (error: unknown) {
+    if (error instanceof Error && error.message.includes('circular')) {
+      return Result.Err(
+        createDataError('serialize', 'JSON serialization failed: circular reference detected', { error })
+      )
+    }
     return Result.Err(
       createDataError(
         'serialize',
@@ -719,19 +772,40 @@ const serializeCSV = <T>(input: T, options: SerializeOptions): DataResult<string
   }
 }
 
-const serializeXML = <T>(_input: T, _options: SerializeOptions): DataResult<string> => {
-  // Basic XML serialization - can be enhanced
-  return Result.Err(createDataError('serialize', 'XML serialization not implemented yet', {}))
+const serializeXML = <T>(input: T, options: SerializeOptions): DataResult<string> => {
+  try {
+    const xmlString = convertToXML(input, '', options.pretty || false)
+    return Result.Ok(xmlString)
+  } catch (error: unknown) {
+    return Result.Err(
+      createDataError('serialize', `XML serialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { input, error })
+    )
+  }
 }
 
-const serializeYAML = <T>(_input: T, _options: SerializeOptions): DataResult<string> => {
-  // Basic YAML serialization - can be enhanced
-  return Result.Err(createDataError('serialize', 'YAML serialization not implemented yet', {}))
+const serializeYAML = <T>(input: T, options: SerializeOptions): DataResult<string> => {
+  try {
+    const yamlString = convertToYAML(input, 0, options.pretty || false)
+    return Result.Ok(yamlString)
+  } catch (error: unknown) {
+    return Result.Err(
+      createDataError('serialize', `YAML serialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { input, error })
+    )
+  }
 }
 
 const deserializeJSON = (input: string | Buffer, options: DeserializeOptions): unknown => {
   const str = Buffer.isBuffer(input) ? input.toString(options.encoding || 'utf8') : input
-  return JSON.parse(str)
+  
+  if (!str.trim()) {
+    throw new Error('Empty input')
+  }
+  
+  try {
+    return JSON.parse(str)
+  } catch (error: unknown) {
+    throw new Error(`Invalid JSON: ${error instanceof Error ? error.message : 'Parse error'}`)
+  }
 }
 
 const deserializeCSV = (input: string | Buffer, options: DeserializeOptions): unknown[] => {
@@ -758,24 +832,41 @@ const deserializeCSV = (input: string | Buffer, options: DeserializeOptions): un
 
   return dataLines.map(line => {
     const values = line.split(delimiter)
-    const obj: Record<string, string> = {}
+    const obj: Record<string, unknown> = {}
 
     headers.forEach((header, index) => {
-      obj[header] = values[index] || ''
+      const rawValue = values[index] || ''
+      
+      if (options.coerceTypes) {
+        // Try to coerce to appropriate type
+        obj[header] = coerceValue(rawValue)
+      } else {
+        obj[header] = rawValue
+      }
     })
 
     return obj
   })
 }
 
-const deserializeXML = (_input: string | Buffer, _options: DeserializeOptions): unknown => {
-  // Basic XML deserialization - can be enhanced
-  throw new Error('XML deserialization not implemented yet')
+const deserializeXML = (input: string | Buffer, options: DeserializeOptions): unknown => {
+  const str = Buffer.isBuffer(input) ? input.toString(options.encoding || 'utf8') : input
+  
+  if (!str.trim()) {
+    throw new Error('Empty input')
+  }
+  
+  return parseXMLToObject(str)
 }
 
-const deserializeYAML = (_input: string | Buffer, _options: DeserializeOptions): unknown => {
-  // Basic YAML deserialization - can be enhanced
-  throw new Error('YAML deserialization not implemented yet')
+const deserializeYAML = (input: string | Buffer, options: DeserializeOptions): unknown => {
+  const str = Buffer.isBuffer(input) ? input.toString(options.encoding || 'utf8') : input
+  
+  if (!str.trim()) {
+    throw new Error('Empty input')
+  }
+  
+  return parseYAMLToObject(str)
 }
 
 const mergeObjects = <T extends Record<string, unknown>>(
@@ -893,4 +984,378 @@ export const merge = <T extends Record<string, unknown>>(
       )
     )
   }
+}
+
+// Helper functions for serialization
+
+/**
+ * Convert object to XML string
+ */
+const convertToXML = (obj: unknown, rootTag = 'root', pretty = false): string => {
+  const indent = pretty ? '  ' : ''
+  const newline = pretty ? '\n' : ''
+  
+  const escapeXML = (str: string): string => {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;')
+  }
+  
+  const convertValue = (value: unknown, tag: string, depth = 0): string => {
+    const currentIndent = pretty ? indent.repeat(depth) : ''
+    
+    if (value === null || value === undefined) {
+      return `${currentIndent}<${tag} />${newline}`
+    }
+    
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      return `${currentIndent}<${tag}>${escapeXML(String(value))}</${tag}>${newline}`
+    }
+    
+    if (Array.isArray(value)) {
+      const items = value.map(item => convertValue(item, 'item', depth + 1)).join('')
+      return `${currentIndent}<${tag}>${newline}${items}${currentIndent}</${tag}>${newline}`
+    }
+    
+    if (typeof value === 'object') {
+      const entries = Object.entries(value as Record<string, unknown>)
+      const items = entries.map(([key, val]) => convertValue(val, key, depth + 1)).join('')
+      return `${currentIndent}<${tag}>${newline}${items}${currentIndent}</${tag}>${newline}`
+    }
+    
+    const stringValue = typeof value === 'string' ? value : typeof value === 'number' ? value.toString() : JSON.stringify(value)
+    return `${currentIndent}<${tag}>${escapeXML(stringValue)}</${tag}>${newline}`
+  }
+  
+  if (rootTag) {
+    return `<?xml version="1.0" encoding="UTF-8"?>${newline}${convertValue(obj, rootTag)}`
+  }
+  
+  return convertValue(obj, 'root')
+}
+
+/**
+ * Convert object to YAML string
+ */
+const convertToYAML = (obj: unknown, depth = 0, pretty = false): string => {
+  const indent = '  '
+  const currentIndent = indent.repeat(depth)
+  
+  if (obj === null || obj === undefined) {
+    return 'null'
+  }
+  
+  if (typeof obj === 'string') {
+    // Check if string needs quoting
+    if (obj.includes('\n') || obj.includes(':') || obj.includes('"') || obj.includes("'")) {
+      return `"${obj.replace(/"/g, '\\"')}"`
+    }
+    return obj
+  }
+  
+  if (typeof obj === 'number' || typeof obj === 'boolean') {
+    return String(obj)
+  }
+  
+  if (Array.isArray(obj)) {
+    if (obj.length === 0) return '[]'
+    return obj.map(item => `${currentIndent}- ${convertToYAML(item, depth + 1, pretty)}`).join('\n')
+  }
+  
+  if (typeof obj === 'object') {
+    const entries = Object.entries(obj as Record<string, unknown>)
+    if (entries.length === 0) return '{}'
+    
+    return entries.map(([key, value]) => {
+      const yamlValue = convertToYAML(value, depth + 1, pretty)
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        return `${currentIndent}${key}:\n${yamlValue}`
+      } else if (Array.isArray(value) && value.length > 0) {
+        return `${currentIndent}${key}:\n${yamlValue}`
+      } else {
+        return `${currentIndent}${key}: ${yamlValue}`
+      }
+    }).join('\n')
+  }
+  
+  return typeof obj === 'string' ? obj : JSON.stringify(obj)
+}
+
+/**
+ * Parse XML string to object
+ */
+const parseXMLToObject = (xmlString: string): unknown => {
+  // Remove XML declaration and comments
+  const cleanXml = xmlString
+    .replace(/<\?xml[^>]*\?>/i, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .trim()
+  
+  // Simple XML parser for basic structures
+  const parseElement = (str: string): unknown => {
+    // Handle self-closing tags
+    if (str.includes('/>')) {
+      const tagMatch = str.match(/<(\w+)([^>]*)\s*\/>/)
+      if (tagMatch) {
+        return null
+      }
+    }
+    
+    // Handle regular tags
+    const tagMatch = str.match(/<(\w+)([^>]*)>([\s\S]*?)<\/\1>/)
+    if (!tagMatch) {
+      return str.trim()
+    }
+    
+    const [, , , content] = tagMatch
+    
+    // Check if content has nested tags
+    if (content && content.includes('<')) {
+      const result: Record<string, unknown> = {}
+      let remaining = content
+      
+      while (remaining && remaining.trim()) {
+        const nextTagMatch = remaining.match(/<(\w+)([^>]*)>([\s\S]*?)<\/\1>/)
+        if (!nextTagMatch) {
+          // No more tags, treat as text content
+          const textContent = remaining.trim()
+          if (textContent) {
+            if (Object.keys(result).length === 0) {
+              return textContent
+            }
+            result['_text'] = textContent
+          }
+          break
+        }
+        
+        const [fullMatch, childTagName] = nextTagMatch
+        if (!childTagName) continue
+        
+        const childValue = parseElement(fullMatch)
+        
+        if (result[childTagName]) {
+          if (Array.isArray(result[childTagName])) {
+            ;(result[childTagName] as unknown[]).push(childValue)
+          } else {
+            result[childTagName] = [result[childTagName], childValue]
+          }
+        } else {
+          result[childTagName] = childValue
+        }
+        
+        remaining = remaining.replace(fullMatch, '')
+      }
+      
+      return result
+    } else {
+      // Plain text content
+      const trimmed = content ? content.trim() : ''
+      if (!isNaN(Number(trimmed)) && trimmed !== '') {
+        return Number(trimmed)
+      }
+      if (trimmed === 'true' || trimmed === 'false') {
+        return trimmed === 'true'
+      }
+      return trimmed
+    }
+  }
+  
+  return parseElement(cleanXml)
+}
+
+/**
+ * Parse YAML string to object
+ */
+const parseYAMLToObject = (yamlString: string): unknown => {
+  const lines = yamlString.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'))
+  
+  const parseValue = (value: string): unknown => {
+    const trimmed = value.trim()
+    
+    // Handle quoted strings
+    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || 
+        (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+      return trimmed.slice(1, -1)
+    }
+    
+    // Handle arrays
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      const items = trimmed.slice(1, -1).split(',').map(item => parseValue(item))
+      return items
+    }
+    
+    // Handle objects
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      const obj: Record<string, unknown> = {}
+      const pairs = trimmed.slice(1, -1).split(',')
+      for (const pair of pairs) {
+        const [k, v] = pair.split(':')
+        if (k && v) {
+          obj[k.trim()] = parseValue(v)
+        }
+      }
+      return obj
+    }
+    
+    // Handle null
+    if (trimmed === 'null' || trimmed === '~') {
+      return null
+    }
+    
+    // Handle booleans
+    if (trimmed === 'true') return true
+    if (trimmed === 'false') return false
+    
+    // Handle numbers
+    if (!isNaN(Number(trimmed)) && trimmed !== '') {
+      return Number(trimmed)
+    }
+    
+    return trimmed
+  }
+  
+  const parseLines = (lines: string[], startIndex = 0, parentIndent = -1): [unknown, number] => {
+    const result: Record<string, unknown> = {}
+    let i = startIndex
+    
+    while (i < lines.length) {
+      const line = lines[i]
+      if (!line) {
+        i++
+        continue
+      }
+      const indent = line.length - line.trimStart().length
+      
+      if (indent <= parentIndent && i !== startIndex) {
+        break
+      }
+      
+      if (line.trim().startsWith('-')) {
+        // Array item
+        const items: unknown[] = []
+        while (i < lines.length) {
+          const arrayLine = lines[i]
+          if (!arrayLine) {
+            i++
+            continue
+          }
+          const arrayIndent = arrayLine.length - arrayLine.trimStart().length
+          
+          if (arrayIndent < indent || (!arrayLine.trim().startsWith('-') && arrayIndent === indent)) {
+            break
+          }
+          
+          if (arrayLine.trim().startsWith('-')) {
+            const itemValue = arrayLine.trim().substring(1).trim()
+            if (itemValue.includes(':')) {
+              // Object in array
+              const [objResult, nextIndex] = parseLines(lines, i, arrayIndent)
+              items.push(objResult)
+              i = nextIndex - 1
+            } else {
+              items.push(parseValue(itemValue))
+            }
+          }
+          i++
+        }
+        return [items, i]
+      } else if (line.includes(':')) {
+        // Key-value pair
+        const colonIndex = line.indexOf(':')
+        const key = line.substring(0, colonIndex).trim()
+        const value = line.substring(colonIndex + 1).trim()
+        
+        if (value === '') {
+          // Nested object
+          const [nestedResult, nextIndex] = parseLines(lines, i + 1, indent)
+          result[key] = nestedResult
+          i = nextIndex - 1
+        } else {
+          result[key] = parseValue(value)
+        }
+      }
+      
+      i++
+    }
+    
+    return [Object.keys(result).length === 0 ? null : result, i]
+  }
+  
+  const [parsed] = parseLines(lines)
+  return parsed
+}
+
+/**
+ * Coerce string value to appropriate type
+ */
+const coerceValue = (value: string): unknown => {
+  const trimmed = value.trim()
+  
+  if (trimmed === '') return ''
+  
+  // Handle null/undefined
+  if (trimmed === 'null' || trimmed === 'NULL') return null
+  if (trimmed === 'undefined') return undefined
+  
+  // Handle booleans
+  if (trimmed === 'true' || trimmed === 'TRUE') return true
+  if (trimmed === 'false' || trimmed === 'FALSE') return false
+  
+  // Handle numbers
+  if (!isNaN(Number(trimmed))) {
+    const num = Number(trimmed)
+    // Check if it's an integer
+    if (Number.isInteger(num)) {
+      return num
+    }
+    // It's a float
+    return num
+  }
+  
+  // Handle dates (basic ISO format detection)
+  if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+    const date = new Date(trimmed)
+    if (!isNaN(date.getTime())) {
+      return date
+    }
+  }
+  
+  // Return as string if no other type matches
+  return trimmed
+}
+
+/**
+ * Shallow clone helper function
+ */
+const shallowClone = <T>(input: T): T => {
+  // Handle primitives and null
+  if (input === null || typeof input !== 'object') {
+    return input
+  }
+
+  // Handle Date
+  if (input instanceof Date) {
+    return new Date(input.getTime()) as T
+  }
+
+  // Handle RegExp
+  if (input instanceof RegExp) {
+    return new RegExp(input.source, input.flags) as T
+  }
+
+  // Handle Arrays
+  if (Array.isArray(input)) {
+    return [...input] as T
+  }
+
+  // Handle Objects
+  if (isPlainObject(input)) {
+    return { ...(input as Record<string, unknown>) } as T
+  }
+
+  // For other object types, return as-is (shallow)
+  return input
 }

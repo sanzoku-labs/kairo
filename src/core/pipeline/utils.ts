@@ -152,39 +152,69 @@ export const trap = <T, E = Error>(
  * Execute function with retry logic
  *
  * @param fn - Function to execute
- * @param retries - Number of retry attempts
- * @param delay - Delay between retries in milliseconds
- * @returns Function with retry logic
+ * @param options - Retry options
+ * @returns Promise with retry logic
  */
-export const retry = <T>(
-  fn: (data: T) => T | Promise<T>,
-  retries = 3,
-  delay = 1000
-): ((data: T) => Promise<PipelineResult<T>>) => {
-  return async (data: T) => {
-    let lastError: unknown
+export const retry = async <T>(
+  fn: () => T | Promise<T>,
+  options: {
+    maxAttempts?: number
+    delay?: number
+    backoff?: 'linear' | 'exponential'
+    retryOn?: string[]
+  } = {}
+): Promise<PipelineResult<T>> => {
+  const opts = {
+    maxAttempts: 3,
+    delay: 1000,
+    backoff: 'linear' as const,
+    retryOn: [],
+    ...options,
+  }
 
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        const result = await fn(data)
-        return Result.Ok(result)
-      } catch (error) {
-        lastError = error
+  let lastError: unknown
 
-        if (attempt < retries) {
-          await new Promise(resolve => setTimeout(resolve, delay * (attempt + 1)))
+  for (let attempt = 0; attempt < opts.maxAttempts; attempt++) {
+    try {
+      const result = await fn()
+      return Result.Ok(result)
+    } catch (error) {
+      lastError = error
+
+      // Check if we should retry for this specific error
+      if (opts.retryOn.length > 0) {
+        const shouldRetry = opts.retryOn.some(retryType => {
+          if (error instanceof Error) {
+            return error.message.includes(retryType) || error.name.includes(retryType)
+          }
+          return false
+        })
+        if (!shouldRetry) {
+          break
         }
       }
-    }
 
-    return Result.Err(
-      createPipelineError('retry', `All ${retries + 1} attempts failed: ${String(lastError)}`, {
-        error: lastError,
-        data,
-        attempts: retries + 1,
-      })
-    )
+      // Don't delay on the last attempt
+      if (attempt < opts.maxAttempts - 1) {
+        let delayTime = opts.delay
+        
+        if (opts.backoff === 'exponential') {
+          delayTime = opts.delay * Math.pow(2, attempt)
+        } else {
+          delayTime = opts.delay * (attempt + 1)
+        }
+
+        await new Promise(resolve => setTimeout(resolve, delayTime))
+      }
+    }
   }
+
+  return Result.Err(
+    createPipelineError('retry', `Max retry attempts (${opts.maxAttempts}) exceeded: ${String(lastError)}`, {
+      error: lastError,
+      attempts: opts.maxAttempts,
+    })
+  )
 }
 
 /**

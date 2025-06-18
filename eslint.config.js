@@ -5,6 +5,9 @@ import tsParser from '@typescript-eslint/parser'
 export default [
   js.configs.recommended,
   {
+    ignores: ['eslint.config.js'],
+  },
+  {
     files: ['**/*.ts', '**/*.tsx'],
     plugins: {
       '@typescript-eslint': typescript,
@@ -12,7 +15,7 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        ecmaVersion: 'latest',
+        ecmaVersion: 2022,
         sourceType: 'module',
         project: './tsconfig.json',
       },
@@ -23,12 +26,20 @@ export default [
         Response: 'readonly',
         RequestInit: 'readonly',
         globalThis: 'readonly',
+        global: 'readonly',
         AbortSignal: 'readonly',
         setTimeout: 'readonly',
+        clearTimeout: 'readonly',
         Math: 'readonly',
         Date: 'readonly',
         JSON: 'readonly',
         Error: 'readonly',
+        TypeError: 'readonly',
+        RegExp: 'readonly',
+        Promise: 'readonly',
+        WeakMap: 'readonly',
+        Set: 'readonly',
+        Map: 'readonly',
         process: 'readonly',
         Buffer: 'readonly',
       },
@@ -53,7 +64,7 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        ecmaVersion: 'latest',
+        ecmaVersion: 2022,
         sourceType: 'module',
         project: './tsconfig.json',
       },
@@ -67,25 +78,43 @@ export default [
         globalThis: 'readonly',
         AbortSignal: 'readonly',
         setTimeout: 'readonly',
+        clearTimeout: 'readonly',
         Math: 'readonly',
         Date: 'readonly',
         JSON: 'readonly',
         Error: 'readonly',
+        TypeError: 'readonly',
+        RegExp: 'readonly',
+        Promise: 'readonly',
+        WeakMap: 'readonly',
+        Set: 'readonly',
+        Map: 'readonly',
         global: 'readonly',
         require: 'readonly',
         module: 'readonly',
         process: 'readonly',
         Buffer: 'readonly',
+        // Vitest globals
+        vi: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        test: 'readonly',
       },
     },
     rules: {
-      // Allow more flexibility in tests for mocking, but keep important safety rules
-      '@typescript-eslint/no-explicit-any': 'warn', // Allow but warn
-      '@typescript-eslint/no-unsafe-assignment': 'warn', // Allow but warn
-      '@typescript-eslint/no-unsafe-member-access': 'warn', // Allow but warn
-      // Keep these rules enabled for safety
+      // Maintain strict type safety even in tests - no any types allowed
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unsafe-assignment': 'error',
+      '@typescript-eslint/no-unsafe-member-access': 'error',
       '@typescript-eslint/no-unsafe-return': 'error',
+      '@typescript-eslint/no-unsafe-call': 'error',
       '@typescript-eslint/ban-ts-comment': 'error',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
   {
@@ -93,8 +122,9 @@ export default [
     languageOptions: {
       parser: tsParser,
       parserOptions: {
-        ecmaVersion: 'latest',
+        ecmaVersion: 2022,
         sourceType: 'module',
+        project: './tsconfig.json',
       },
     },
     rules: {

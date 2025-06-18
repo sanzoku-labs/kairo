@@ -42,6 +42,8 @@ export interface MapOptions extends PipelineBaseOptions {
 
   // Error handling
   keepErrors?: boolean
+  continueOnError?: boolean
+  errorValue?: unknown
   fallback?: (error: unknown, item: unknown, index: number) => unknown
 }
 
@@ -54,6 +56,7 @@ export interface FilterOptions extends BaseOptions {
 
   // Error handling
   keepErrors?: boolean
+  continueOnError?: boolean
   onError?: (error: unknown, item: unknown, index: number) => void
 }
 
@@ -113,6 +116,9 @@ export interface ParallelOptions extends PipelineBaseOptions {
   // Execution control
   maxConcurrency?: number
   failFast?: boolean
+
+  // Error handling
+  collectErrors?: boolean
 
   // Result combination
   combiner?: (input: unknown, results: unknown[]) => unknown
