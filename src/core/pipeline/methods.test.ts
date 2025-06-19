@@ -575,7 +575,7 @@ describe('PIPELINE Pillar Methods', () => {
 
       const value = ResultTestUtils.expectOk(result)
       expect(value).toBe('recovered')
-      expect(duration).toBeGreaterThan(10) // Should have some delay
+      expect(duration).toBeGreaterThanOrEqual(10) // Should have at least the delay time
     })
 
     it('should fail after max attempts', async () => {

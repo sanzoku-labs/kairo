@@ -148,7 +148,7 @@ export class TestApiServer {
         for (const [key, ep] of this.endpoints.entries()) {
           const colonIndex = key.indexOf(':')
           if (colonIndex === -1) continue
-          
+
           const epMethod = key.substring(0, colonIndex)
           const fullEpPath = key.substring(colonIndex + 1) // Get everything after method:
           if (epMethod === method && this.matchesRoute(fullEpPath, path)) {
