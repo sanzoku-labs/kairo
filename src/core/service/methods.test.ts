@@ -1,9 +1,9 @@
 /**
  * SERVICE Pillar Methods Tests
- * 
+ *
  * Comprehensive tests for all SERVICE pillar HTTP methods following Kairo patterns:
  * - get() - Fetch data
- * - post() - Create resources  
+ * - post() - Create resources
  * - put() - Update resources
  * - patch() - Partial updates
  * - delete() - Remove resources
@@ -13,11 +13,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { get, post, put, patch, deleteMethod as del } from './methods'
 import { Result } from '../shared'
 import type { ServiceHttpError } from '../shared'
-import { 
-  ResultTestUtils, 
-  MockDataGenerator, 
-  HttpMockUtils
-} from '../../test-utils'
+import { ResultTestUtils, MockDataGenerator, HttpMockUtils } from '../../test-utils'
 
 describe('SERVICE Pillar Methods', () => {
   beforeEach(() => {
@@ -34,7 +30,7 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockSuccess(mockData)
 
       const result = await get('/users/123')
-      
+
       const data = ResultTestUtils.expectOk(result)
       expect(data).toEqual(mockData)
     })
@@ -44,13 +40,13 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockSuccess(mockUsers)
 
       const result = await get('/users', {
-        params: { 
-          active: true, 
+        params: {
+          active: true,
           department: 'Engineering',
-          limit: 10 
-        }
+          limit: 10,
+        },
       })
-      
+
       const data = ResultTestUtils.expectOk(result)
       expect(data).toEqual(mockUsers)
     })
@@ -59,7 +55,7 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockError(404, 'Not Found')
 
       const result = await get('/users/nonexistent')
-      
+
       const error = ResultTestUtils.expectErrType(result, 'SERVICE_HTTP_ERROR')
       expect((error as ServiceHttpError).status).toBe(404)
       expect((error as ServiceHttpError).statusText).toBe('Not Found')
@@ -70,7 +66,7 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockNetworkError()
 
       const result = await get('/users/123')
-      
+
       const error = ResultTestUtils.expectErrType(result, 'SERVICE_NETWORK_ERROR')
       expect(error.pillar).toBe('SERVICE')
       expect(error.message).toContain('Network error')
@@ -82,7 +78,7 @@ describe('SERVICE Pillar Methods', () => {
 
       // Test with minimal options to verify defaults
       const result = await get('/users/123', {})
-      
+
       ResultTestUtils.expectOk(result)
       // Defaults are applied internally, test passes if no errors
     })
@@ -93,11 +89,11 @@ describe('SERVICE Pillar Methods', () => {
 
       const result = await get('/users/123', {
         headers: {
-          'Authorization': 'Bearer token123',
-          'X-Custom-Header': 'custom-value'
-        }
+          Authorization: 'Bearer token123',
+          'X-Custom-Header': 'custom-value',
+        },
       })
-      
+
       ResultTestUtils.expectOk(result)
     })
 
@@ -107,15 +103,15 @@ describe('SERVICE Pillar Methods', () => {
 
       const result = await get('/users/123', {
         ifModifiedSince: new Date('2024-01-01'),
-        ifNoneMatch: 'etag-123'
+        ifNoneMatch: 'etag-123',
       })
-      
+
       ResultTestUtils.expectOk(result)
     })
 
     it('should handle different response types', async () => {
       const textData = 'Plain text response'
-      
+
       // Mock text response
       global.fetch = async () => {
         await Promise.resolve() // Add async work
@@ -125,24 +121,42 @@ describe('SERVICE Pillar Methods', () => {
           statusText: 'OK',
           headers: new Headers({ 'content-type': 'text/plain' }),
           url: 'https://api.example.com/text',
-          json: async () => { await Promise.resolve(); throw new Error('Not JSON') },
-          text: async () => { await Promise.resolve(); return textData },
-          blob: async () => { await Promise.resolve(); return new Blob([textData]) },
-        redirected: false,
-        type: 'basic' as ResponseType,
-        clone: () => ({} as Response),
-        body: null,
-        bodyUsed: false,
-          arrayBuffer: async () => { await Promise.resolve(); return new ArrayBuffer(0) },
-          formData: async () => { await Promise.resolve(); return new FormData() },
-          bytes: async () => { await Promise.resolve(); return new Uint8Array() }
+          json: async () => {
+            await Promise.resolve()
+            throw new Error('Not JSON')
+          },
+          text: async () => {
+            await Promise.resolve()
+            return textData
+          },
+          blob: async () => {
+            await Promise.resolve()
+            return new Blob([textData])
+          },
+          redirected: false,
+          type: 'basic' as ResponseType,
+          clone: () => ({}) as Response,
+          body: null,
+          bodyUsed: false,
+          arrayBuffer: async () => {
+            await Promise.resolve()
+            return new ArrayBuffer(0)
+          },
+          formData: async () => {
+            await Promise.resolve()
+            return new FormData()
+          },
+          bytes: async () => {
+            await Promise.resolve()
+            return new Uint8Array()
+          },
         } as Response
       }
 
       const result = await get('/text-endpoint', {
-        responseType: 'text'
+        responseType: 'text',
       })
-      
+
       const data = ResultTestUtils.expectOk(result)
       expect(data).toBe(textData)
     })
@@ -155,7 +169,7 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockSuccess(createdUser, 201)
 
       const result = await post('/users', newUser)
-      
+
       const data = ResultTestUtils.expectOk(result)
       expect(data).toEqual(createdUser)
     })
@@ -165,9 +179,9 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockSuccess({ success: true })
 
       const result = await post('/users', formData, {
-        contentType: 'form'
+        contentType: 'form',
       })
-      
+
       ResultTestUtils.expectOk(result)
     })
 
@@ -176,9 +190,9 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockSuccess({ uploaded: true })
 
       const result = await post('/upload', fileData, {
-        contentType: 'multipart'
+        contentType: 'multipart',
       })
-      
+
       ResultTestUtils.expectOk(result)
     })
 
@@ -187,9 +201,9 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockSuccess(userData)
 
       const result = await post('/users', userData, {
-        idempotencyKey: 'unique-key-123'
+        idempotencyKey: 'unique-key-123',
       })
-      
+
       ResultTestUtils.expectOk(result)
     })
 
@@ -198,9 +212,9 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockSuccess({ received: textData })
 
       const result = await post('/text-endpoint', textData, {
-        contentType: 'text'
+        contentType: 'text',
       })
-      
+
       ResultTestUtils.expectOk(result)
     })
 
@@ -209,7 +223,7 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockError(400, 'Bad Request')
 
       const result = await post('/users', userData)
-      
+
       const error = ResultTestUtils.expectErrType(result, 'SERVICE_HTTP_ERROR')
       expect((error as ServiceHttpError).status).toBe(400)
       expect((error as ServiceHttpError).statusText).toBe('Bad Request')
@@ -222,7 +236,7 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockSuccess(updatedUser)
 
       const result = await put('/users/123', updatedUser)
-      
+
       const data = ResultTestUtils.expectOk(result)
       expect(data).toEqual(updatedUser)
     })
@@ -233,9 +247,9 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockSuccess(mergedUser)
 
       const result = await put('/users/123', partialUpdate, {
-        merge: true
+        merge: true,
       })
-      
+
       ResultTestUtils.expectOk(result)
     })
 
@@ -245,9 +259,9 @@ describe('SERVICE Pillar Methods', () => {
 
       const result = await put('/users/123', userData, {
         ifMatch: 'etag-123',
-        ifUnmodifiedSince: new Date('2024-01-01')
+        ifUnmodifiedSince: new Date('2024-01-01'),
       })
-      
+
       ResultTestUtils.expectOk(result)
     })
 
@@ -256,7 +270,7 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockError(409, 'Conflict')
 
       const result = await put('/users/123', userData)
-      
+
       const error = ResultTestUtils.expectErrType(result, 'SERVICE_HTTP_ERROR')
       expect((error as ServiceHttpError).status).toBe(409)
     })
@@ -269,7 +283,7 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockSuccess(patchedUser)
 
       const result = await patch('/users/123', patchData)
-      
+
       const data = ResultTestUtils.expectOk(result)
       expect(data).toEqual(patchedUser)
     })
@@ -277,14 +291,14 @@ describe('SERVICE Pillar Methods', () => {
     it('should handle different patch formats', async () => {
       const jsonPatchOps = [
         { op: 'replace', path: '/name', value: 'New Name' },
-        { op: 'add', path: '/tags', value: ['admin'] }
+        { op: 'add', path: '/tags', value: ['admin'] },
       ]
       HttpMockUtils.mockSuccess({ success: true })
 
       const result = await patch('/users/123', jsonPatchOps, {
-        format: 'json-patch'
+        format: 'json-patch',
       })
-      
+
       ResultTestUtils.expectOk(result)
     })
 
@@ -293,9 +307,9 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockSuccess(MockDataGenerator.user(mergePatch))
 
       const result = await patch('/users/123', mergePatch, {
-        format: 'merge-patch'
+        format: 'merge-patch',
       })
-      
+
       ResultTestUtils.expectOk(result)
     })
 
@@ -304,9 +318,9 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockSuccess(MockDataGenerator.user())
 
       const result = await patch('/users/123', patchData, {
-        strategy: 'merge'
+        strategy: 'merge',
       })
-      
+
       ResultTestUtils.expectOk(result)
     })
   })
@@ -316,7 +330,7 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockSuccess({ deleted: true }, 204)
 
       const result = await del('/users/123')
-      
+
       ResultTestUtils.expectOk(result)
     })
 
@@ -326,9 +340,9 @@ describe('SERVICE Pillar Methods', () => {
 
       const result = await del('/users/123', {
         soft: true,
-        returnDeleted: true
+        returnDeleted: true,
       })
-      
+
       const data = ResultTestUtils.expectOk(result)
       expect(data).toEqual(deletedUser)
     })
@@ -337,9 +351,9 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockSuccess({ forceDeleted: true })
 
       const result = await del('/users/123', {
-        force: true
+        force: true,
       })
-      
+
       ResultTestUtils.expectOk(result)
     })
 
@@ -347,7 +361,7 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockError(403, 'Forbidden')
 
       const result = await del('/users/123')
-      
+
       const error = ResultTestUtils.expectErrType(result, 'SERVICE_HTTP_ERROR')
       expect((error as ServiceHttpError).status).toBe(403)
       expect((error as ServiceHttpError).statusText).toBe('Forbidden')
@@ -357,7 +371,7 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockError(404, 'Not Found')
 
       const result = await del('/users/nonexistent')
-      
+
       const error = ResultTestUtils.expectErrType(result, 'SERVICE_HTTP_ERROR')
       expect((error as ServiceHttpError).status).toBe(404)
     })
@@ -371,9 +385,9 @@ describe('SERVICE Pillar Methods', () => {
       // Test that user options override defaults
       const result = await get('/users/123', {
         timeout: 5000,
-        responseType: 'json'
+        responseType: 'json',
       })
-      
+
       ResultTestUtils.expectOk(result)
     })
 
@@ -382,7 +396,7 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockSuccess(mockData)
 
       const result = await get('/users/123', {})
-      
+
       ResultTestUtils.expectOk(result)
     })
 
@@ -391,7 +405,7 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockSuccess(mockData)
 
       const result = await get('/users/123')
-      
+
       ResultTestUtils.expectOk(result)
     })
   })
@@ -416,7 +430,7 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockError(400, 'Bad Request')
 
       const result = await post('/users', { invalid: 'data' })
-      
+
       const error = ResultTestUtils.expectErrType(result, 'SERVICE_HTTP_ERROR')
       expect(error.context).toBeDefined()
       expect(error.timestamp).toBeTypeOf('number')
@@ -429,7 +443,7 @@ describe('SERVICE Pillar Methods', () => {
       HttpMockUtils.mockSuccess({ test: 'data' })
 
       const result = await get('/test')
-      
+
       expect(Result.isOk(result) || Result.isErr(result)).toBe(true)
     })
 
@@ -441,7 +455,7 @@ describe('SERVICE Pillar Methods', () => {
       }
 
       const result = await get('/test')
-      
+
       // Should return Err Result, not throw
       expect(Result.isErr(result)).toBe(true)
     })

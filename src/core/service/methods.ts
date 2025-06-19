@@ -146,7 +146,10 @@ const executeWithRetry = async <T>(
 /**
  * Internal function to handle caching
  */
-const getCachedResult = <T>(cacheKey: string, cacheConfig: { enabled?: boolean; ttl?: number }): T | null => {
+const getCachedResult = <T>(
+  cacheKey: string,
+  cacheConfig: { enabled?: boolean; ttl?: number }
+): T | null => {
   if (!cacheConfig.enabled) {
     return null
   }
@@ -168,7 +171,11 @@ const getCachedResult = <T>(cacheKey: string, cacheConfig: { enabled?: boolean; 
 /**
  * Internal function to set cache
  */
-const setCachedResult = <T>(cacheKey: string, data: T, cacheConfig: { enabled?: boolean; ttl?: number }): void => {
+const setCachedResult = <T>(
+  cacheKey: string,
+  data: T,
+  cacheConfig: { enabled?: boolean; ttl?: number }
+): void => {
   if (!cacheConfig.enabled) {
     return
   }

@@ -197,7 +197,7 @@ export const retry = async <T>(
       // Don't delay on the last attempt
       if (attempt < opts.maxAttempts - 1) {
         let delayTime = opts.delay
-        
+
         if (opts.backoff === 'exponential') {
           delayTime = opts.delay * Math.pow(2, attempt)
         } else {
@@ -210,10 +210,14 @@ export const retry = async <T>(
   }
 
   return Result.Err(
-    createPipelineError('retry', `Max retry attempts (${opts.maxAttempts}) exceeded: ${String(lastError)}`, {
-      error: lastError,
-      attempts: opts.maxAttempts,
-    })
+    createPipelineError(
+      'retry',
+      `Max retry attempts (${opts.maxAttempts}) exceeded: ${String(lastError)}`,
+      {
+        error: lastError,
+        attempts: opts.maxAttempts,
+      }
+    )
   )
 }
 
@@ -439,7 +443,9 @@ export const extractSuccessful = <T>(results: PipelineResult<T>[]): T[] => {
  * @returns Array of errors
  */
 export const extractErrors = <T>(results: PipelineResult<T>[]): PipelineError[] => {
-  return results.filter(result => Result.isErr(result)).map(result => (result as { error: PipelineError }).error)
+  return results
+    .filter(result => Result.isErr(result))
+    .map(result => (result as { error: PipelineError }).error)
 }
 
 /**
@@ -499,7 +505,10 @@ export const toResult = <TInput, TOutput>(
       return Result.Ok(result)
     } catch (error) {
       return Result.Err(
-        createPipelineError('toResult', `Function execution failed: ${String(error)}`, { error, data })
+        createPipelineError('toResult', `Function execution failed: ${String(error)}`, {
+          error,
+          data,
+        })
       )
     }
   }

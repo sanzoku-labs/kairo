@@ -59,7 +59,9 @@ export const map = <TInput, TOutput>(
 
   try {
     if (data === null || data === undefined) {
-      return Result.Err(createPipelineError('map', 'Input cannot be null or undefined', { data, context }))
+      return Result.Err(
+        createPipelineError('map', 'Input cannot be null or undefined', { data, context })
+      )
     }
 
     if (!Array.isArray(data)) {
@@ -189,7 +191,9 @@ export const filter = <T>(
 
   try {
     if (data === null || data === undefined) {
-      return Result.Err(createPipelineError('filter', 'Input cannot be null or undefined', { data, context }))
+      return Result.Err(
+        createPipelineError('filter', 'Input cannot be null or undefined', { data, context })
+      )
     }
 
     if (!Array.isArray(data)) {
@@ -397,7 +401,11 @@ export const compose = <TInput, TOutput>(
                   let errorMessage = `Operation ${i} failed`
                   if (resultObj.error instanceof Error) {
                     errorMessage = resultObj.error.message
-                  } else if (resultObj.error && typeof resultObj.error === 'object' && 'message' in resultObj.error) {
+                  } else if (
+                    resultObj.error &&
+                    typeof resultObj.error === 'object' &&
+                    'message' in resultObj.error
+                  ) {
                     errorMessage = String((resultObj.error as { message: unknown }).message)
                   }
                   return Result.Err(
@@ -458,13 +466,17 @@ export const compose = <TInput, TOutput>(
             // Execute operation
             let result: unknown
 
+            // Execute the operation
+            result = operation(currentData)
+
+            // Check if the result is a Promise and await it
             if (
-              operation.constructor.name === 'AsyncFunction' ||
-              (typeof operation === 'function' && operation.toString().includes('async'))
+              result &&
+              typeof result === 'object' &&
+              'then' in result &&
+              typeof result.then === 'function'
             ) {
-              result = await operation(currentData)
-            } else {
-              result = operation(currentData)
+              result = await (result as Promise<unknown>)
             }
 
             // Handle Result type
@@ -475,7 +487,11 @@ export const compose = <TInput, TOutput>(
                   let errorMessage = `Operation ${i} failed`
                   if (resultObj.error instanceof Error) {
                     errorMessage = resultObj.error.message
-                  } else if (resultObj.error && typeof resultObj.error === 'object' && 'message' in resultObj.error) {
+                  } else if (
+                    resultObj.error &&
+                    typeof resultObj.error === 'object' &&
+                    'message' in resultObj.error
+                  ) {
                     errorMessage = String((resultObj.error as { message: unknown }).message)
                   }
                   return Result.Err(
@@ -527,10 +543,13 @@ export const compose = <TInput, TOutput>(
     }
 
     // Check if any operation is async
-    const hasAsyncOperation = opts.async || operations.some(op => 
-      op?.constructor.name === 'AsyncFunction' ||
-      (typeof op === 'function' && op.toString().includes('async'))
-    )
+    const hasAsyncOperation =
+      opts.async ||
+      operations.some(
+        op =>
+          op?.constructor.name === 'AsyncFunction' ||
+          (typeof op === 'function' && op.toString().includes('async'))
+      )
 
     if (hasAsyncOperation) {
       return executeAsync()
@@ -655,7 +674,10 @@ export const branch = <TInput, TOutput = Record<string, TInput[]>>(
 
   if (!conditions || typeof conditions !== 'object') {
     return Result.Err(
-      createPipelineError('branch', 'Conditions must be an object with predicate functions', { conditions, data })
+      createPipelineError('branch', 'Conditions must be an object with predicate functions', {
+        conditions,
+        data,
+      })
     )
   }
 
@@ -786,10 +808,13 @@ export const branch = <TInput, TOutput = Record<string, TInput[]>>(
   }
 
   // Check if we need async processing
-  const needsAsync = opts.async || conditionEntries.some(([, condition]) => 
-    condition.constructor.name === 'AsyncFunction' ||
-    (typeof condition === 'function' && condition.toString().includes('async'))
-  )
+  const needsAsync =
+    opts.async ||
+    conditionEntries.some(
+      ([, condition]) =>
+        condition.constructor.name === 'AsyncFunction' ||
+        (typeof condition === 'function' && condition.toString().includes('async'))
+    )
 
   if (needsAsync) {
     return executeBranchingAsync()
@@ -830,13 +855,31 @@ export const parallel = async <TInput, TOutput>(
 
         let result: unknown
 
+        // Execute the operation
+        result = (operation as () => unknown)()
+
+        // Check if the result is a Promise and await it
         if (
-          operation.constructor.name === 'AsyncFunction' ||
-          (typeof operation === 'function' && operation.toString().includes('async'))
+          result &&
+          typeof result === 'object' &&
+          'then' in result &&
+          typeof result.then === 'function'
         ) {
-          result = await (operation as () => Promise<unknown>)()
-        } else {
-          result = (operation as () => unknown)()
+          result = await (result as Promise<unknown>)
+        }
+
+        // Check if the result is a Result.Err and treat it as an error
+        if (result && typeof result === 'object' && 'tag' in result) {
+          const resultObj = result as { tag: string; error?: unknown }
+          if (resultObj.tag === 'Err') {
+            const errorMessage =
+              resultObj.error instanceof Error ? resultObj.error.message : 'Operation failed'
+            return {
+              index,
+              result: null,
+              error: new Error(errorMessage),
+            }
+          }
         }
 
         return { index, result, error: null }
@@ -877,18 +920,22 @@ export const parallel = async <TInput, TOutput>(
       if (opts.failFast) {
         const firstError = errors[0]?.error
         const errorMessage = firstError instanceof Error ? firstError.message : String(firstError)
-        
+
         return Result.Err(
-          createPipelineError('parallel', `${errors.length} parallel operation(s) failed: ${errorMessage}`, {
-            errors: errors.map(e => e.error),
-            context,
-          })
+          createPipelineError(
+            'parallel',
+            `${errors.length} parallel operation(s) failed: ${errorMessage}`,
+            {
+              errors: errors.map(e => e.error),
+              context,
+            }
+          )
         )
       } else if (errors.length === operations.length) {
         // All operations failed
         const firstError = errors[0]?.error
         const errorMessage = firstError instanceof Error ? firstError.message : String(firstError)
-        
+
         return Result.Err(
           createPipelineError('parallel', `All parallel operations failed: ${errorMessage}`, {
             errors: errors.map(e => e.error),
@@ -900,10 +947,10 @@ export const parallel = async <TInput, TOutput>(
 
     // Extract results based on collectErrors option
     let finalResults: unknown[]
-    
+
     if (opts.collectErrors) {
       // Include both successful results and errors/nulls for failed operations
-      finalResults = results.map(r => r.error === null ? r.result : null)
+      finalResults = results.map(r => (r.error === null ? r.result : null))
     } else {
       // Only include successful results
       finalResults = results.filter(r => r.error === null).map(r => r.result)

@@ -1,17 +1,12 @@
 /**
  * Test Utilities for Kairo Three-Pillar Architecture
- * 
+ *
  * Provides common testing patterns and utilities for SERVICE, DATA, and PIPELINE pillars.
  * Follows Kairo's Result pattern and configuration object design principles.
  */
 
 import { Result } from '../core/shared'
-import type { 
-  ServiceError, 
-  ServiceHttpError, 
-  DataError,
-  PipelineError 
-} from '../core/shared'
+import type { ServiceError, ServiceHttpError, DataError, PipelineError } from '../core/shared'
 
 /**
  * Test utilities for Result pattern validation
@@ -43,7 +38,9 @@ export class ResultTestUtils {
   static expectOkValue<T>(result: Result<unknown, T>, expectedValue: T): void {
     const value = this.expectOk(result)
     if (JSON.stringify(value) !== JSON.stringify(expectedValue)) {
-      throw new Error(`Expected value ${JSON.stringify(expectedValue)}, got ${JSON.stringify(value)}`)
+      throw new Error(
+        `Expected value ${JSON.stringify(expectedValue)}, got ${JSON.stringify(value)}`
+      )
     }
   }
 
@@ -51,12 +48,14 @@ export class ResultTestUtils {
    * Assert that a Result is Err with a specific error type
    */
   static expectErrType<E extends { code: string }>(
-    result: Result<E, unknown>, 
+    result: Result<E, unknown>,
     expectedCode: string
   ): E {
     const error = this.expectErr(result)
     if ((error as { code: string }).code !== expectedCode) {
-      throw new Error(`Expected error code ${expectedCode}, got ${(error as { code: string }).code}`)
+      throw new Error(
+        `Expected error code ${expectedCode}, got ${(error as { code: string }).code}`
+      )
     }
     return error
   }
@@ -69,14 +68,16 @@ export class MockDataGenerator {
   /**
    * Generate mock user data for testing
    */
-  static user(overrides: Partial<{
-    id: string
-    name: string
-    email: string
-    active: boolean
-    department: string
-    salary: number
-  }> = {}) {
+  static user(
+    overrides: Partial<{
+      id: string
+      name: string
+      email: string
+      active: boolean
+      department: string
+      salary: number
+    }> = {}
+  ) {
     return {
       id: 'user-123',
       name: 'John Doe',
@@ -84,7 +85,7 @@ export class MockDataGenerator {
       active: true,
       department: 'Engineering',
       salary: 75000,
-      ...overrides
+      ...overrides,
     }
   }
 
@@ -92,12 +93,12 @@ export class MockDataGenerator {
    * Generate an array of mock users
    */
   static users(count = 3, baseOverrides: Parameters<typeof MockDataGenerator.user>[0] = {}) {
-    return Array.from({ length: count }, (_, index) => 
+    return Array.from({ length: count }, (_, index) =>
       this.user({
         ...baseOverrides,
         id: `user-${index + 1}`,
         name: `User ${index + 1}`,
-        email: `user${index + 1}@example.com`
+        email: `user${index + 1}@example.com`,
       })
     )
   }
@@ -105,17 +106,20 @@ export class MockDataGenerator {
   /**
    * Generate mock API response data
    */
-  static apiResponse<T>(data: T, overrides: Partial<{
-    status: number
-    statusText: string
-    headers: Record<string, string>
-  }> = {}) {
+  static apiResponse<T>(
+    data: T,
+    overrides: Partial<{
+      status: number
+      statusText: string
+      headers: Record<string, string>
+    }> = {}
+  ) {
     return {
       data,
       status: 200,
       statusText: 'OK',
       headers: { 'content-type': 'application/json' },
-      ...overrides
+      ...overrides,
     }
   }
 
@@ -130,7 +134,7 @@ export class MockDataGenerator {
       message: 'Test service error',
       timestamp: Date.now(),
       context: {},
-      ...overrides
+      ...overrides,
     }
   }
 
@@ -145,7 +149,7 @@ export class MockDataGenerator {
       url: 'https://api.example.com/test',
       timestamp: Date.now(),
       context: {},
-      ...overrides
+      ...overrides,
     }
   }
 
@@ -157,7 +161,7 @@ export class MockDataGenerator {
       message: 'Test data error',
       timestamp: Date.now(),
       context: {},
-      ...overrides
+      ...overrides,
     }
   }
 
@@ -169,7 +173,7 @@ export class MockDataGenerator {
       message: 'Test pipeline error',
       timestamp: Date.now(),
       context: {},
-      ...overrides
+      ...overrides,
     }
   }
 }
@@ -203,9 +207,10 @@ export class HttpMockUtils {
   private static createMockFetch() {
     return async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
       await Promise.resolve() // Add async work
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : 'unknown'
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : 'unknown'
       const method = init?.method || 'GET'
-      
+
       // Default mock response
       const mockResponse = {
         ok: true,
@@ -213,9 +218,18 @@ export class HttpMockUtils {
         statusText: 'OK',
         headers: new Headers({ 'content-type': 'application/json' }),
         url,
-        json: async () => { await Promise.resolve(); return { message: 'Mock response', url, method } },
-        text: async () => { await Promise.resolve(); return JSON.stringify({ message: 'Mock response', url, method }) },
-        blob: async () => { await Promise.resolve(); return new Blob([JSON.stringify({ message: 'Mock response' })]) },
+        json: async () => {
+          await Promise.resolve()
+          return { message: 'Mock response', url, method }
+        },
+        text: async () => {
+          await Promise.resolve()
+          return JSON.stringify({ message: 'Mock response', url, method })
+        },
+        blob: async () => {
+          await Promise.resolve()
+          return new Blob([JSON.stringify({ message: 'Mock response' })])
+        },
       }
 
       return mockResponse as Response
@@ -234,9 +248,18 @@ export class HttpMockUtils {
         statusText: 'OK',
         headers: new Headers({ 'content-type': 'application/json' }),
         url: 'https://api.example.com/test',
-        json: async () => { await Promise.resolve(); return data },
-        text: async () => { await Promise.resolve(); return JSON.stringify(data) },
-        blob: async () => { await Promise.resolve(); return new Blob([JSON.stringify(data)]) },
+        json: async () => {
+          await Promise.resolve()
+          return data
+        },
+        text: async () => {
+          await Promise.resolve()
+          return JSON.stringify(data)
+        },
+        blob: async () => {
+          await Promise.resolve()
+          return new Blob([JSON.stringify(data)])
+        },
       } as Response
     }
   }
@@ -253,9 +276,18 @@ export class HttpMockUtils {
         statusText,
         headers: new Headers({ 'content-type': 'application/json' }),
         url: 'https://api.example.com/test',
-        json: async () => { await Promise.resolve(); return { error: statusText } },
-        text: async () => { await Promise.resolve(); return JSON.stringify({ error: statusText }) },
-        blob: async () => { await Promise.resolve(); return new Blob([JSON.stringify({ error: statusText })]) },
+        json: async () => {
+          await Promise.resolve()
+          return { error: statusText }
+        },
+        text: async () => {
+          await Promise.resolve()
+          return JSON.stringify({ error: statusText })
+        },
+        blob: async () => {
+          await Promise.resolve()
+          return new Blob([JSON.stringify({ error: statusText })])
+        },
       } as Response
     }
   }
@@ -291,14 +323,14 @@ export class PerformanceTestUtils {
   static async benchmark<T>(
     fn: () => Promise<T> | T,
     iterations = 100
-  ): Promise<{ 
+  ): Promise<{
     averageDuration: number
     minDuration: number
     maxDuration: number
     totalDuration: number
   }> {
     const durations: number[] = []
-    
+
     for (let i = 0; i < iterations; i++) {
       const { duration } = await this.measureTime(fn)
       durations.push(duration)
@@ -313,7 +345,7 @@ export class PerformanceTestUtils {
       averageDuration,
       minDuration,
       maxDuration,
-      totalDuration
+      totalDuration,
     }
   }
 }
@@ -325,10 +357,7 @@ export class ConfigTestUtils {
   /**
    * Test that default configuration is applied correctly
    */
-  static expectDefaultConfig<T>(
-    actualConfig: T,
-    expectedDefaults: Partial<T>
-  ): void {
+  static expectDefaultConfig<T>(actualConfig: T, expectedDefaults: Partial<T>): void {
     for (const [key, expectedValue] of Object.entries(expectedDefaults)) {
       const actualValue = (actualConfig as Record<string, unknown>)[key]
       if (actualValue !== expectedValue) {
@@ -365,7 +394,10 @@ export class SchemaTestUtils {
   /**
    * Test schema validation with valid data
    */
-  static expectValidData<T>(schema: { parse: (data: unknown) => Result<unknown, T> }, data: unknown): T {
+  static expectValidData<T>(
+    schema: { parse: (data: unknown) => Result<unknown, T> },
+    data: unknown
+  ): T {
     const result = schema.parse(data)
     return ResultTestUtils.expectOk(result)
   }
@@ -373,7 +405,10 @@ export class SchemaTestUtils {
   /**
    * Test schema validation with invalid data
    */
-  static expectInvalidData(schema: { parse: (data: unknown) => Result<unknown, unknown> }, data: unknown): unknown {
+  static expectInvalidData(
+    schema: { parse: (data: unknown) => Result<unknown, unknown> },
+    data: unknown
+  ): unknown {
     const result = schema.parse(data)
     return ResultTestUtils.expectErr(result)
   }

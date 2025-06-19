@@ -198,7 +198,9 @@ export type ChainOperation<TInput, TOutput = TInput> = PipelineOperation<TInput,
 /**
  * Parallel operation type
  */
-export type ParallelOperation<TInput, TOutput = unknown> = (data: TInput) => TOutput | Promise<TOutput>
+export type ParallelOperation<TInput, TOutput = unknown> = (
+  data: TInput
+) => TOutput | Promise<TOutput>
 
 /**
  * Validation rule type

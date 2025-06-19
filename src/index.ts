@@ -75,11 +75,7 @@ export type {
 } from './core/pipeline'
 
 // Additional Error Types
-export type {
-  DataError,
-  PipelineError,
-  AllKairoErrors,
-} from './core/shared'
+export type { DataError, PipelineError, AllKairoErrors } from './core/shared'
 
 // Core Configuration Types
 export type {

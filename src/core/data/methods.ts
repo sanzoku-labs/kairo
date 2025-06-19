@@ -31,6 +31,7 @@ import type {
   MergeOptions,
   DataResult,
   SchemaDefinition,
+  SchemaFieldDefinition,
   TransformMapping,
   TransformContext,
   TransformFunction,
@@ -82,7 +83,123 @@ export const schema = <T>(
         }
       } else {
         // Full field definition - convert to appropriate schema
-        schemaFields[key] = nativeSchema.any() // Simplified for now
+        const fieldDef = field as SchemaFieldDefinition
+        let fieldSchema: Schema<unknown>
+
+        // Create base schema based on type
+        switch (fieldDef.type) {
+          case 'string': {
+            let stringSchema = nativeSchema.string()
+
+            // Apply string constraints
+            if (fieldDef.min !== undefined) {
+              stringSchema = stringSchema.min(fieldDef.min)
+            }
+            if (fieldDef.max !== undefined) {
+              stringSchema = stringSchema.max(fieldDef.max)
+            }
+            if (fieldDef.format === 'email') {
+              stringSchema = stringSchema.email()
+            }
+            if (fieldDef.format === 'url') {
+              stringSchema = stringSchema.url()
+            }
+            if (fieldDef.format === 'uuid') {
+              stringSchema = stringSchema.uuid()
+            }
+            if (fieldDef.pattern) {
+              stringSchema = stringSchema.regex(fieldDef.pattern)
+            }
+            if (fieldDef.enum && Array.isArray(fieldDef.enum)) {
+              const enumValues = fieldDef.enum.filter(v => typeof v === 'string')
+              if (enumValues.length > 0) {
+                fieldSchema = nativeSchema.enum(
+                  enumValues as unknown as readonly [string, ...string[]]
+                )
+                break
+              }
+            }
+
+            fieldSchema = stringSchema
+            break
+          }
+          case 'number': {
+            let numberSchema = nativeSchema.number()
+
+            // Apply number constraints
+            if (fieldDef.min !== undefined) {
+              numberSchema = numberSchema.min(fieldDef.min)
+            }
+            if (fieldDef.max !== undefined) {
+              numberSchema = numberSchema.max(fieldDef.max)
+            }
+
+            fieldSchema = numberSchema
+            break
+          }
+          case 'boolean':
+            fieldSchema = nativeSchema.boolean()
+            break
+          case 'array': {
+            // Handle array items
+            let itemSchema: Schema<unknown> = nativeSchema.any()
+            if (fieldDef.items) {
+              if (typeof fieldDef.items === 'object' && 'type' in fieldDef.items) {
+                // Recursively process item schema definition
+                const itemDef = fieldDef.items as SchemaFieldDefinition
+                switch (itemDef.type) {
+                  case 'string':
+                    itemSchema = nativeSchema.string()
+                    break
+                  case 'number':
+                    itemSchema = nativeSchema.number()
+                    break
+                  case 'boolean':
+                    itemSchema = nativeSchema.boolean()
+                    break
+                  default:
+                    itemSchema = nativeSchema.any()
+                }
+              } else if (fieldDef.items && 'parse' in fieldDef.items) {
+                // Already a schema
+                itemSchema = fieldDef.items as Schema<unknown>
+              }
+            }
+
+            let arraySchema = nativeSchema.array(itemSchema)
+            if (fieldDef.min !== undefined) {
+              arraySchema = arraySchema.min(fieldDef.min)
+            }
+            if (fieldDef.max !== undefined) {
+              arraySchema = arraySchema.max(fieldDef.max)
+            }
+
+            fieldSchema = arraySchema
+            break
+          }
+          case 'object':
+            fieldSchema = fieldDef.schema || nativeSchema.any()
+            break
+          case 'date':
+            fieldSchema = nativeSchema.string() // ISO date string validation could be added
+            break
+          default:
+            fieldSchema = nativeSchema.any()
+        }
+
+        // Apply optional/nullable modifiers
+        if (fieldDef.nullable) {
+          fieldSchema = fieldSchema.nullable()
+        }
+        // Only make field optional if explicitly marked as not required OR has a default value
+        if (fieldDef.required === false || fieldDef.default !== undefined) {
+          fieldSchema = fieldSchema.optional()
+        }
+        if (fieldDef.default !== undefined) {
+          fieldSchema = fieldSchema.default(fieldDef.default)
+        }
+
+        schemaFields[key] = fieldSchema
       }
     }
 
@@ -281,7 +398,7 @@ export const convert = <TInput, TOutput>(
 
     // Apply mapping transformation
     const convertedData: Record<string, unknown> = {}
-    
+
     for (const [targetKey, sourceKey] of Object.entries(mapping)) {
       if (typeof sourceKey === 'function') {
         // Function mapping
@@ -584,7 +701,7 @@ export const deserialize = <T>(
     if (schema) {
       return validate(parsed, schema, opts)
     }
-    
+
     return Result.Ok(parsed as T)
   } catch (error: unknown) {
     return Result.Err(
@@ -679,39 +796,45 @@ const serializeJSON = <T>(input: T, options: SerializeOptions): DataResult<strin
     // Handle circular references
     const seen = new WeakSet()
     let hasCircular = false
-    
-    const json = JSON.stringify(input, (_key, value) => {
-      if (typeof value === 'object' && value !== null) {
-        if (seen.has(value as object)) {
-          hasCircular = true
-          if (options.handleCircular === false) {
-            throw new Error('Converting circular structure to JSON')
+
+    const json = JSON.stringify(
+      input,
+      (_key, value) => {
+        if (typeof value === 'object' && value !== null) {
+          if (seen.has(value as object)) {
+            hasCircular = true
+            if (options.handleCircular === false) {
+              throw new Error('Converting circular structure to JSON')
+            }
+            return '[Circular]'
           }
-          return '[Circular]'
+          seen.add(value as object)
         }
-        seen.add(value as object)
-      }
-      
-      // Handle encoding options
-      if (options.escapeUnicode === false && typeof value === 'string') {
-        return value
-      }
-      
-      return value as unknown
-    }, options.pretty ? 2 : undefined)
-    
+
+        // Handle encoding options
+        if (options.escapeUnicode === false && typeof value === 'string') {
+          return value
+        }
+
+        return value as unknown
+      },
+      options.pretty ? 2 : undefined
+    )
+
     // If circular reference found and not handled, throw error
     if (hasCircular && options.handleCircular !== true) {
       return Result.Err(
         createDataError('serialize', 'JSON serialization failed: circular reference detected', {})
       )
     }
-    
+
     return Result.Ok(json)
   } catch (error: unknown) {
     if (error instanceof Error && error.message.includes('circular')) {
       return Result.Err(
-        createDataError('serialize', 'JSON serialization failed: circular reference detected', { error })
+        createDataError('serialize', 'JSON serialization failed: circular reference detected', {
+          error,
+        })
       )
     }
     return Result.Err(
@@ -778,7 +901,11 @@ const serializeXML = <T>(input: T, options: SerializeOptions): DataResult<string
     return Result.Ok(xmlString)
   } catch (error: unknown) {
     return Result.Err(
-      createDataError('serialize', `XML serialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { input, error })
+      createDataError(
+        'serialize',
+        `XML serialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { input, error }
+      )
     )
   }
 }
@@ -789,18 +916,22 @@ const serializeYAML = <T>(input: T, options: SerializeOptions): DataResult<strin
     return Result.Ok(yamlString)
   } catch (error: unknown) {
     return Result.Err(
-      createDataError('serialize', `YAML serialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { input, error })
+      createDataError(
+        'serialize',
+        `YAML serialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { input, error }
+      )
     )
   }
 }
 
 const deserializeJSON = (input: string | Buffer, options: DeserializeOptions): unknown => {
   const str = Buffer.isBuffer(input) ? input.toString(options.encoding || 'utf8') : input
-  
+
   if (!str.trim()) {
     throw new Error('Empty input')
   }
-  
+
   try {
     return JSON.parse(str)
   } catch (error: unknown) {
@@ -836,7 +967,7 @@ const deserializeCSV = (input: string | Buffer, options: DeserializeOptions): un
 
     headers.forEach((header, index) => {
       const rawValue = values[index] || ''
-      
+
       if (options.coerceTypes) {
         // Try to coerce to appropriate type
         obj[header] = coerceValue(rawValue)
@@ -851,21 +982,21 @@ const deserializeCSV = (input: string | Buffer, options: DeserializeOptions): un
 
 const deserializeXML = (input: string | Buffer, options: DeserializeOptions): unknown => {
   const str = Buffer.isBuffer(input) ? input.toString(options.encoding || 'utf8') : input
-  
+
   if (!str.trim()) {
     throw new Error('Empty input')
   }
-  
+
   return parseXMLToObject(str)
 }
 
 const deserializeYAML = (input: string | Buffer, options: DeserializeOptions): unknown => {
   const str = Buffer.isBuffer(input) ? input.toString(options.encoding || 'utf8') : input
-  
+
   if (!str.trim()) {
     throw new Error('Empty input')
   }
-  
+
   return parseYAMLToObject(str)
 }
 
@@ -994,7 +1125,7 @@ export const merge = <T extends Record<string, unknown>>(
 const convertToXML = (obj: unknown, rootTag = 'root', pretty = false): string => {
   const indent = pretty ? '  ' : ''
   const newline = pretty ? '\n' : ''
-  
+
   const escapeXML = (str: string): string => {
     return str
       .replace(/&/g, '&amp;')
@@ -1003,37 +1134,42 @@ const convertToXML = (obj: unknown, rootTag = 'root', pretty = false): string =>
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&apos;')
   }
-  
+
   const convertValue = (value: unknown, tag: string, depth = 0): string => {
     const currentIndent = pretty ? indent.repeat(depth) : ''
-    
+
     if (value === null || value === undefined) {
       return `${currentIndent}<${tag} />${newline}`
     }
-    
+
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
       return `${currentIndent}<${tag}>${escapeXML(String(value))}</${tag}>${newline}`
     }
-    
+
     if (Array.isArray(value)) {
       const items = value.map(item => convertValue(item, 'item', depth + 1)).join('')
       return `${currentIndent}<${tag}>${newline}${items}${currentIndent}</${tag}>${newline}`
     }
-    
+
     if (typeof value === 'object') {
       const entries = Object.entries(value as Record<string, unknown>)
       const items = entries.map(([key, val]) => convertValue(val, key, depth + 1)).join('')
       return `${currentIndent}<${tag}>${newline}${items}${currentIndent}</${tag}>${newline}`
     }
-    
-    const stringValue = typeof value === 'string' ? value : typeof value === 'number' ? value.toString() : JSON.stringify(value)
+
+    const stringValue =
+      typeof value === 'string'
+        ? value
+        : typeof value === 'number'
+          ? value.toString()
+          : JSON.stringify(value)
     return `${currentIndent}<${tag}>${escapeXML(stringValue)}</${tag}>${newline}`
   }
-  
+
   if (rootTag) {
     return `<?xml version="1.0" encoding="UTF-8"?>${newline}${convertValue(obj, rootTag)}`
   }
-  
+
   return convertValue(obj, 'root')
 }
 
@@ -1043,11 +1179,11 @@ const convertToXML = (obj: unknown, rootTag = 'root', pretty = false): string =>
 const convertToYAML = (obj: unknown, depth = 0, pretty = false): string => {
   const indent = '  '
   const currentIndent = indent.repeat(depth)
-  
+
   if (obj === null || obj === undefined) {
     return 'null'
   }
-  
+
   if (typeof obj === 'string') {
     // Check if string needs quoting
     if (obj.includes('\n') || obj.includes(':') || obj.includes('"') || obj.includes("'")) {
@@ -1055,32 +1191,34 @@ const convertToYAML = (obj: unknown, depth = 0, pretty = false): string => {
     }
     return obj
   }
-  
+
   if (typeof obj === 'number' || typeof obj === 'boolean') {
     return String(obj)
   }
-  
+
   if (Array.isArray(obj)) {
     if (obj.length === 0) return '[]'
     return obj.map(item => `${currentIndent}- ${convertToYAML(item, depth + 1, pretty)}`).join('\n')
   }
-  
+
   if (typeof obj === 'object') {
     const entries = Object.entries(obj as Record<string, unknown>)
     if (entries.length === 0) return '{}'
-    
-    return entries.map(([key, value]) => {
-      const yamlValue = convertToYAML(value, depth + 1, pretty)
-      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-        return `${currentIndent}${key}:\n${yamlValue}`
-      } else if (Array.isArray(value) && value.length > 0) {
-        return `${currentIndent}${key}:\n${yamlValue}`
-      } else {
-        return `${currentIndent}${key}: ${yamlValue}`
-      }
-    }).join('\n')
+
+    return entries
+      .map(([key, value]) => {
+        const yamlValue = convertToYAML(value, depth + 1, pretty)
+        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+          return `${currentIndent}${key}:\n${yamlValue}`
+        } else if (Array.isArray(value) && value.length > 0) {
+          return `${currentIndent}${key}:\n${yamlValue}`
+        } else {
+          return `${currentIndent}${key}: ${yamlValue}`
+        }
+      })
+      .join('\n')
   }
-  
+
   return typeof obj === 'string' ? obj : JSON.stringify(obj)
 }
 
@@ -1093,7 +1231,7 @@ const parseXMLToObject = (xmlString: string): unknown => {
     .replace(/<\?xml[^>]*\?>/i, '')
     .replace(/<!--[\s\S]*?-->/g, '')
     .trim()
-  
+
   // Simple XML parser for basic structures
   const parseElement = (str: string): unknown => {
     // Handle self-closing tags
@@ -1103,20 +1241,20 @@ const parseXMLToObject = (xmlString: string): unknown => {
         return null
       }
     }
-    
+
     // Handle regular tags
     const tagMatch = str.match(/<(\w+)([^>]*)>([\s\S]*?)<\/\1>/)
     if (!tagMatch) {
       return str.trim()
     }
-    
+
     const [, , , content] = tagMatch
-    
+
     // Check if content has nested tags
     if (content && content.includes('<')) {
       const result: Record<string, unknown> = {}
       let remaining = content
-      
+
       while (remaining && remaining.trim()) {
         const nextTagMatch = remaining.match(/<(\w+)([^>]*)>([\s\S]*?)<\/\1>/)
         if (!nextTagMatch) {
@@ -1130,12 +1268,12 @@ const parseXMLToObject = (xmlString: string): unknown => {
           }
           break
         }
-        
+
         const [fullMatch, childTagName] = nextTagMatch
         if (!childTagName) continue
-        
+
         const childValue = parseElement(fullMatch)
-        
+
         if (result[childTagName]) {
           if (Array.isArray(result[childTagName])) {
             ;(result[childTagName] as unknown[]).push(childValue)
@@ -1145,10 +1283,10 @@ const parseXMLToObject = (xmlString: string): unknown => {
         } else {
           result[childTagName] = childValue
         }
-        
+
         remaining = remaining.replace(fullMatch, '')
       }
-      
+
       return result
     } else {
       // Plain text content
@@ -1162,7 +1300,7 @@ const parseXMLToObject = (xmlString: string): unknown => {
       return trimmed
     }
   }
-  
+
   return parseElement(cleanXml)
 }
 
@@ -1171,22 +1309,27 @@ const parseXMLToObject = (xmlString: string): unknown => {
  */
 const parseYAMLToObject = (yamlString: string): unknown => {
   const lines = yamlString.split('\n').filter(line => line.trim() && !line.trim().startsWith('#'))
-  
+
   const parseValue = (value: string): unknown => {
     const trimmed = value.trim()
-    
+
     // Handle quoted strings
-    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || 
-        (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    if (
+      (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'"))
+    ) {
       return trimmed.slice(1, -1)
     }
-    
+
     // Handle arrays
     if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-      const items = trimmed.slice(1, -1).split(',').map(item => parseValue(item))
+      const items = trimmed
+        .slice(1, -1)
+        .split(',')
+        .map(item => parseValue(item))
       return items
     }
-    
+
     // Handle objects
     if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
       const obj: Record<string, unknown> = {}
@@ -1199,28 +1342,28 @@ const parseYAMLToObject = (yamlString: string): unknown => {
       }
       return obj
     }
-    
+
     // Handle null
     if (trimmed === 'null' || trimmed === '~') {
       return null
     }
-    
+
     // Handle booleans
     if (trimmed === 'true') return true
     if (trimmed === 'false') return false
-    
+
     // Handle numbers
     if (!isNaN(Number(trimmed)) && trimmed !== '') {
       return Number(trimmed)
     }
-    
+
     return trimmed
   }
-  
+
   const parseLines = (lines: string[], startIndex = 0, parentIndent = -1): [unknown, number] => {
     const result: Record<string, unknown> = {}
     let i = startIndex
-    
+
     while (i < lines.length) {
       const line = lines[i]
       if (!line) {
@@ -1228,11 +1371,11 @@ const parseYAMLToObject = (yamlString: string): unknown => {
         continue
       }
       const indent = line.length - line.trimStart().length
-      
+
       if (indent <= parentIndent && i !== startIndex) {
         break
       }
-      
+
       if (line.trim().startsWith('-')) {
         // Array item
         const items: unknown[] = []
@@ -1243,11 +1386,14 @@ const parseYAMLToObject = (yamlString: string): unknown => {
             continue
           }
           const arrayIndent = arrayLine.length - arrayLine.trimStart().length
-          
-          if (arrayIndent < indent || (!arrayLine.trim().startsWith('-') && arrayIndent === indent)) {
+
+          if (
+            arrayIndent < indent ||
+            (!arrayLine.trim().startsWith('-') && arrayIndent === indent)
+          ) {
             break
           }
-          
+
           if (arrayLine.trim().startsWith('-')) {
             const itemValue = arrayLine.trim().substring(1).trim()
             if (itemValue.includes(':')) {
@@ -1267,7 +1413,7 @@ const parseYAMLToObject = (yamlString: string): unknown => {
         const colonIndex = line.indexOf(':')
         const key = line.substring(0, colonIndex).trim()
         const value = line.substring(colonIndex + 1).trim()
-        
+
         if (value === '') {
           // Nested object
           const [nestedResult, nextIndex] = parseLines(lines, i + 1, indent)
@@ -1277,13 +1423,13 @@ const parseYAMLToObject = (yamlString: string): unknown => {
           result[key] = parseValue(value)
         }
       }
-      
+
       i++
     }
-    
+
     return [Object.keys(result).length === 0 ? null : result, i]
   }
-  
+
   const [parsed] = parseLines(lines)
   return parsed
 }
@@ -1293,17 +1439,17 @@ const parseYAMLToObject = (yamlString: string): unknown => {
  */
 const coerceValue = (value: string): unknown => {
   const trimmed = value.trim()
-  
+
   if (trimmed === '') return ''
-  
+
   // Handle null/undefined
   if (trimmed === 'null' || trimmed === 'NULL') return null
   if (trimmed === 'undefined') return undefined
-  
+
   // Handle booleans
   if (trimmed === 'true' || trimmed === 'TRUE') return true
   if (trimmed === 'false' || trimmed === 'FALSE') return false
-  
+
   // Handle numbers
   if (!isNaN(Number(trimmed))) {
     const num = Number(trimmed)
@@ -1314,7 +1460,7 @@ const coerceValue = (value: string): unknown => {
     // It's a float
     return num
   }
-  
+
   // Handle dates (basic ISO format detection)
   if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
     const date = new Date(trimmed)
@@ -1322,7 +1468,7 @@ const coerceValue = (value: string): unknown => {
       return date
     }
   }
-  
+
   // Return as string if no other type matches
   return trimmed
 }
