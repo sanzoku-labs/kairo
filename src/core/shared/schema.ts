@@ -14,7 +14,7 @@
 
 import { Result } from './result'
 import { type KairoError } from './errors'
-// Performance monitoring (simplified for V2)
+// Performance monitoring
 const perf = {
   now: () => Date.now(),
   mark: () => {},

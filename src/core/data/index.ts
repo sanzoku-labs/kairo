@@ -1,7 +1,7 @@
 /**
  * DATA Pillar - Data Operations + Aggregation
  *
- * The DATA pillar provides essential data operations following V2 specifications:
+ * The DATA pillar provides essential data operations:
  * - 10 core methods for data validation, transformation, and aggregation
  * - 6 public utilities for safe data access and manipulation
  * - Configuration object pattern (no method chaining)
@@ -128,7 +128,7 @@ export type { DataError, DataValidationError, DataTransformError } from '../shar
  *   createdAt: (input) => new Date(input.created_timestamp)
  * })
  *
- * // Data aggregation (major V2 feature)
+ * // Data aggregation
  * const salesStats = data.aggregate(salesData, {
  *   groupBy: ['region', 'quarter'],
  *   sum: ['revenue', 'units'],

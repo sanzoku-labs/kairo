@@ -1,7 +1,7 @@
 {
   "name": "kairo",
   "version": "0.1.0",
-  "description": "Kairo V2 - Three-pillar TypeScript library with 93% API reduction (SERVICE, DATA, PIPELINE)",
+  "description": "Kairo - Three-pillar TypeScript library for SERVICE, DATA, and PIPELINE operations",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

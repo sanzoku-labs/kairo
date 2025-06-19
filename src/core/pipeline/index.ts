@@ -1,7 +1,7 @@
 /**
  * PIPELINE Pillar - Logic Composition
  *
- * The PIPELINE pillar provides essential logic composition following V2 specifications:
+ * The PIPELINE pillar provides essential logic composition:
  * - 8 core methods for functional data processing and flow control
  * - 5 public utilities for function composition and async operations
  * - Configuration object pattern (no method chaining)

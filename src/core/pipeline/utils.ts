@@ -1,7 +1,7 @@
 /**
  * PIPELINE Pillar Utilities
  *
- * Public utility functions for PIPELINE pillar following V2 specifications.
+ * Public utility functions for PIPELINE pillar.
  * These utilities can be used within PIPELINE methods and by users for functional programming.
  */
 

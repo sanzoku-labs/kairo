@@ -1,11 +1,11 @@
 /**
  * SERVICE Pillar - HTTP-only API Integration
  *
- * The SERVICE pillar provides essential HTTP operations following V2 specifications:
+ * The SERVICE pillar provides essential HTTP operations:
  * - 5 core methods for HTTP operations
  * - 4 public utilities for URL handling and error management
  * - Configuration object pattern (no method chaining)
- * - Built from scratch with strategic V1 component reuse
+ * - Built with strategic component reuse
  */
 
 // Core HTTP Methods (5 methods)

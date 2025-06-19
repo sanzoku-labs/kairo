@@ -1,7 +1,7 @@
 /**
  * SERVICE Pillar Utilities
  *
- * Public utility functions for SERVICE pillar following V2 specifications.
+ * Public utility functions for SERVICE pillar.
  * These utilities can be used within SERVICE methods and by users.
  */
 

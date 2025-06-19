@@ -1,7 +1,7 @@
 /**
  * PIPELINE Pillar Core Methods
  *
- * Implements the 8 core PIPELINE methods according to V2 specifications:
+ * Implements the 8 core PIPELINE methods:
  * - map() - Transform collections
  * - filter() - Filter collections
  * - reduce() - Aggregate data

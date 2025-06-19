@@ -1,7 +1,7 @@
 /**
  * DATA Pillar Types
  *
- * Type definitions for the DATA pillar following V2 specifications.
+ * Type definitions for the DATA pillar.
  * Implements data operations with schema validation, transformation, and aggregation.
  */
 

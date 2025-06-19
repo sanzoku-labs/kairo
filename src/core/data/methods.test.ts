@@ -753,25 +753,25 @@ describe('DATA Pillar Methods', () => {
     })
 
     it('should handle schema version migration', () => {
-      const v1Schema = nativeSchema.object({
+      const sourceSchema = nativeSchema.object({
         user_name: nativeSchema.string(),
         user_email: nativeSchema.string()
       })
 
-      const v2Schema = nativeSchema.object({
+      const targetSchema = nativeSchema.object({
         name: nativeSchema.string(),
         email: nativeSchema.string(),
         version: nativeSchema.number()
       })
 
-      const v1Data = { user_name: 'John', user_email: 'john@example.com' }
+      const sourceData = { user_name: 'John', user_email: 'john@example.com' }
       const migration = {
         name: 'user_name',
         email: 'user_email',
         version: () => 2 // Default value function
       }
 
-      const result = convert(v1Data, v1Schema, v2Schema, migration)
+      const result = convert(sourceData, sourceSchema, targetSchema, migration)
       
       const migrated = ResultTestUtils.expectOk(result)
       expect(migrated.name).toBe('John')

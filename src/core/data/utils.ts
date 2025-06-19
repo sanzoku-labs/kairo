@@ -1,7 +1,7 @@
 /**
  * DATA Pillar Utilities
  *
- * Public utility functions for DATA pillar following V2 specifications.
+ * Public utility functions for DATA pillar.
  * These utilities can be used within DATA methods and by users.
  */
 

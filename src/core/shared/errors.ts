@@ -74,7 +74,7 @@ export const hasErrorCode = (error: KairoError, code: string): boolean =>
   Boolean(findErrorByCode(error, code))
 
 // ============================================================================
-// V2 Pillar-Specific Error Types
+// Pillar-Specific Error Types
 // ============================================================================
 
 /**
@@ -162,9 +162,9 @@ export interface PipelineValidationError extends PipelineError<'PIPELINE_VALIDAT
 }
 
 /**
- * Union type of all V2 pillar errors
+ * Union type of all Kairo pillar errors
  */
-export type V2Error =
+export type AllKairoErrors =
   | ServiceError
   | ServiceHttpError
   | ServiceNetworkError
@@ -177,7 +177,7 @@ export type V2Error =
   | PipelineValidationError
 
 // ============================================================================
-// V2 Error Factory Functions
+// Kairo Error Factory Functions
 // ============================================================================
 
 /**

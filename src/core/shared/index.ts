@@ -26,7 +26,7 @@ export type {
   ArraySchema,
 } from './schema'
 
-// Error Handling Foundation & V2 Error Types
+// Error Handling Foundation & Kairo Error Types
 export {
   createError,
   chainError,
@@ -55,7 +55,7 @@ export type {
   PipelineError,
   PipelineCompositionError,
   PipelineValidationError,
-  V2Error,
+  AllKairoErrors,
 } from './errors'
 
 // Configuration Types and Utilities

@@ -1,14 +1,13 @@
 /**
- * Kairo V2 - Core API
+ * Kairo - Core API
  *
- * Complete architectural redesign built from scratch with strategic V1 component reuse.
- * Four-layer architecture with Pareto-optimized API surface.
+ * Three-pillar TypeScript library with focused functionality.
+ * Built for universal compatibility across all TypeScript environments.
  *
  * Architecture:
- * - Layer 1: Core Methods (23 total)
- * - Layer 2: Configuration Objects (rich options)
- * - Layer 3: Public Utilities (15 total)
- * - Layer 4: Internal Utilities (private)
+ * - SERVICE: HTTP-only API integration (5 methods + 4 utilities)
+ * - DATA: Data operations + aggregation (10 methods + 6 utilities)
+ * - PIPELINE: Logic composition (8 methods + 5 utilities)
  */
 
 // Shared Utilities - Used across all pillars
@@ -75,8 +74,8 @@ export type {
   ComposedPipeline,
 } from './pipeline'
 
-// V2 Error Types
-export type { ServiceError as V2ServiceError, DataError, PipelineError, V2Error } from './shared'
+// Error Types
+export type { DataError, PipelineError, AllKairoErrors } from './shared'
 
 // Core Configuration Types
 export type {
@@ -88,7 +87,7 @@ export type {
 } from './shared'
 
 /**
- * Kairo V2 API
+ * Kairo API
  *
  * Three pillars with consistent patterns:
  * - service() - HTTP-only API integration
@@ -97,7 +96,7 @@ export type {
  *
  * @example
  * ```typescript
- * import { service, data, pipeline, Result } from 'kairo/v2'
+ * import { service, data, pipeline, Result } from 'kairo'
  *
  * // HTTP API requests
  * const users = await service.get('/users')
@@ -132,13 +131,13 @@ export type {
  */
 
 // Implementation Status
-export const V2_STATUS = {
-  version: '2.0.0-alpha',
+export const STATUS = {
+  version: '1.0.0',
   pillars: {
     SERVICE: 'IMPLEMENTED', // 5 methods + 4 utilities ✅
     DATA: 'IMPLEMENTED', // 10 methods + 6 utilities ✅
     PIPELINE: 'IMPLEMENTED', // 8 methods + 5 utilities ✅
   },
   shared: 'COMPLETE', // Shared utilities ✅
-  architecture: 'COMPLETE', // Four-layer design ✅
+  architecture: 'COMPLETE', // Three-pillar design ✅
 } as const

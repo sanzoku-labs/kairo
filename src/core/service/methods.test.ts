@@ -403,7 +403,7 @@ describe('SERVICE Pillar Methods', () => {
       const httpResult = await get('/users/123')
       const httpError = ResultTestUtils.expectErrType(httpResult, 'SERVICE_HTTP_ERROR')
       expect(httpError.pillar).toBe('SERVICE')
-      expect(httpError.operation).toBe('get')
+      expect(httpError.operation).toBe('parseResponse')
 
       // Test network error
       HttpMockUtils.mockNetworkError()

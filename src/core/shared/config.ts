@@ -1,14 +1,14 @@
 /**
- * V2 Configuration System
+ * Kairo Configuration System
  *
- * Implements the V2 configuration object pattern for all pillars.
+ * Implements the configuration object pattern for all pillars.
  * Follows "smart defaults, rich configuration" principle with progressive enhancement.
  */
 
 import type { Schema } from './schema'
 
 /**
- * Base configuration options shared across all V2 methods
+ * Base configuration options shared across all Kairo methods
  */
 export interface BaseOptions {
   // Execution control

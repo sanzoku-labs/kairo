@@ -1,7 +1,7 @@
 /**
  * SERVICE Pillar Types
  *
- * Type definitions for the SERVICE pillar following V2 specifications.
+ * Type definitions for the SERVICE pillar.
  * Implements HTTP-only operations with configuration object pattern.
  */
 

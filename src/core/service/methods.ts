@@ -1,7 +1,7 @@
 /**
  * SERVICE Pillar Core Methods
  *
- * Implements the 5 core SERVICE methods according to V2 specifications:
+ * Implements the 5 core SERVICE methods:
  * - get() - Fetch data
  * - post() - Create resources
  * - put() - Update resources

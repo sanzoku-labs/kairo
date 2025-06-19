@@ -1,7 +1,7 @@
 /**
  * PIPELINE Pillar Types
  *
- * Type definitions for the PIPELINE pillar following V2 specifications.
+ * Type definitions for the PIPELINE pillar.
  * Implements logic composition with functional programming patterns.
  */
 

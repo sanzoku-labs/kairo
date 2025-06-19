@@ -1,7 +1,7 @@
 /**
  * DATA Pillar Core Methods
  *
- * Implements the 10 core DATA methods according to V2 specifications:
+ * Implements the 10 core DATA methods:
  * - schema() - Create schemas
  * - validate() - Data validation
  * - transform() - Data transformation
