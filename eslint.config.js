@@ -47,17 +47,31 @@ export default [
     rules: {
       ...typescript.configs['recommended'].rules,
       ...typescript.configs['recommended-requiring-type-checking'].rules,
-      '@typescript-eslint/explicit-function-return-type': 'off',
-      '@typescript-eslint/explicit-module-boundary-types': 'off',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      // Library-quality explicit typing requirements
+      '@typescript-eslint/explicit-function-return-type': 'error',
+      '@typescript-eslint/explicit-module-boundary-types': 'error',
+      // Comprehensive TypeScript unsafe operation coverage
       '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unsafe-assignment': 'error',
+      '@typescript-eslint/no-unsafe-call': 'error',
+      '@typescript-eslint/no-unsafe-member-access': 'error',
+      '@typescript-eslint/no-unsafe-return': 'error',
+      '@typescript-eslint/no-unsafe-argument': 'error',
+      '@typescript-eslint/ban-ts-comment': 'error',
+      // Functional programming and code quality rules
+      'prefer-const': 'error',
+      'no-var': 'error',
+      'no-param-reassign': 'error',
+      '@typescript-eslint/prefer-readonly': 'error',
+      '@typescript-eslint/no-inferrable-types': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       'no-redeclare': 'off',
       '@typescript-eslint/no-redeclare': 'error',
     },
   },
   {
-    files: ['tests/**/*.ts', 'examples/**/*.ts'],
+    files: ['tests/**/*.ts', 'examples/**/*.ts', '**/*.test.ts', '**/*.spec.ts'],
     plugins: {
       '@typescript-eslint': typescript,
     },
@@ -66,7 +80,7 @@ export default [
       parserOptions: {
         ecmaVersion: 2022,
         sourceType: 'module',
-        project: './tsconfig.json',
+        project: './tsconfig.test.json',
       },
       globals: {
         console: 'readonly',
@@ -113,12 +127,27 @@ export default [
       '@typescript-eslint/no-unsafe-member-access': 'error',
       '@typescript-eslint/no-unsafe-return': 'error',
       '@typescript-eslint/no-unsafe-call': 'error',
+      '@typescript-eslint/no-unsafe-argument': 'error',
       '@typescript-eslint/ban-ts-comment': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      // Relax explicit typing for test files - inference is acceptable
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/explicit-module-boundary-types': 'off',
+      // Functional programming rules
+      'prefer-const': 'error',
+      'no-var': 'error',
+      'no-param-reassign': 'error',
+      '@typescript-eslint/no-inferrable-types': 'error',
     },
   },
   {
-    files: ['**/*.config.{js,ts}', 'docs/**/*.ts', 'docs/**/*.md'],
+    files: [
+      '**/*.config.{js,ts}',
+      'docs/**/*.ts',
+      'docs/**/*.md',
+      'src/test-utils/**/*.ts',
+      'src/integration/**/*.ts',
+    ],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
@@ -128,12 +157,15 @@ export default [
       },
     },
     rules: {
-      // Disable strict type checking for docs and config files
+      // Relax strict typing for utility, integration, and config files
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
       '@typescript-eslint/no-unsafe-call': 'off',
       '@typescript-eslint/no-unsafe-return': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/prefer-readonly': 'off',
     },
   },
   {

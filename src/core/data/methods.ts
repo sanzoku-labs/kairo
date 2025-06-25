@@ -205,8 +205,8 @@ export const schema = <T>(
 
     // Add timestamps if requested
     if (opts.timestamps) {
-      schemaFields.createdAt = nativeSchema.string()
-      schemaFields.updatedAt = nativeSchema.string()
+      schemaFields['createdAt'] = nativeSchema.string()
+      schemaFields['updatedAt'] = nativeSchema.string()
     }
 
     return nativeSchema.object(schemaFields) as unknown as Schema<T>

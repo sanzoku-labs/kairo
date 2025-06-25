@@ -1,16 +1,16 @@
 /**
  * SERVICE Pillar Core Methods
  *
- * Implements the 5 core SERVICE methods:
- * - get() - Fetch data
- * - post() - Create resources
- * - put() - Update resources
- * - patch() - Partial updates
- * - delete() - Remove resources
+ * Implements the 5 core SERVICE methods with clean, maintainable patterns:
+ * - get() - Fetch data with caching support
+ * - post() - Create resources with idempotency
+ * - put() - Update/replace resources with concurrency control
+ * - patch() - Partial updates with format support
+ * - delete() - Remove resources with soft delete options
  */
 
 import { Result } from '../shared'
-import type { ServiceError, ServiceHttpError, ServiceNetworkError } from '../shared'
+import type { ServiceError, ServiceNetworkError } from '../shared'
 import { createServiceError } from '../shared'
 import type {
   GetOptions,
@@ -21,6 +21,15 @@ import type {
   ServiceResult,
   RequestConfig,
 } from './types'
+
+/**
+ * Extended request configuration with caching metadata
+ */
+interface GetRequestConfig {
+  request: RequestConfig
+  cache: { enabled?: boolean; ttl?: number }
+  cacheKey: string
+}
 import {
   mergeOptions,
   normalizeTimeout,
@@ -30,206 +39,111 @@ import {
 } from '../shared/config'
 import { buildURL, parseResponse, isRetryable } from './utils'
 
-/**
- * Internal cache storage for SERVICE methods
- */
-const cache = new Map<string, { data: unknown; timestamp: number; ttl: number }>()
+// ============================================================================
+// CORE HTTP METHODS - PUBLIC API
+// ============================================================================
 
 /**
- * Internal function to execute HTTP requests
- */
-const executeRequest = async <T>(config: RequestConfig): Promise<ServiceResult<T>> => {
-  try {
-    const response = await fetch(config.url, {
-      method: config.method,
-      headers: config.headers,
-      body: config.body || null,
-      signal: config.signal || null,
-    })
-
-    const parsed = await parseResponse<T>(response)
-    if (Result.isErr(parsed)) {
-      return parsed
-    }
-
-    return Result.Ok(parsed.value.data)
-  } catch (error: unknown) {
-    // Handle different types of errors
-    if (error instanceof Error && error.name === 'AbortError') {
-      return Result.Err(
-        createServiceError(config.method.toLowerCase(), 'Request was aborted', { url: config.url })
-      )
-    }
-
-    if (
-      error instanceof Error &&
-      error.name === 'TypeError' &&
-      error.message.includes('Failed to fetch')
-    ) {
-      return Result.Err({
-        code: 'SERVICE_NETWORK_ERROR',
-        pillar: 'SERVICE',
-        operation: config.method.toLowerCase(),
-        message: 'Network error occurred',
-        url: config.url,
-        timestamp: Date.now(),
-        context: { error },
-      } as ServiceNetworkError)
-    }
-
-    return Result.Err(
-      createServiceError(
-        config.method.toLowerCase(),
-        error instanceof Error ? error.message : 'Unknown error occurred',
-        { url: config.url, error }
-      )
-    )
-  }
-}
-
-/**
- * Internal function to handle retry logic
- */
-const executeWithRetry = async <T>(
-  config: RequestConfig,
-  options: { retry?: boolean | RetryOptions }
-): Promise<ServiceResult<T>> => {
-  const retryConfig = normalizeRetryOptions(options.retry)
-
-  if (retryConfig.attempts === 0) {
-    return executeRequest<T>(config)
-  }
-
-  let lastError: ServiceHttpError | ServiceNetworkError | ServiceError<'SERVICE_ERROR'> | undefined
-
-  for (let attempt = 0; attempt <= (retryConfig.attempts ?? 0); attempt++) {
-    const result = await executeRequest<T>(config)
-
-    if (Result.isOk(result)) {
-      return result
-    }
-
-    lastError = result.error
-
-    // Don't retry on last attempt
-    if (attempt === retryConfig.attempts) {
-      break
-    }
-
-    // Check if error is retryable
-    if (!lastError || !isRetryable(lastError)) {
-      break
-    }
-
-    // Calculate delay for next attempt
-    const delay = retryConfig.delay || 1000
-    let actualDelay = delay
-
-    if (retryConfig.backoff === 'exponential') {
-      actualDelay = delay * Math.pow(2, attempt)
-    } else if (retryConfig.backoff === 'linear') {
-      actualDelay = delay * (attempt + 1)
-    }
-
-    // Apply max delay cap
-    if (retryConfig.maxDelay && actualDelay > retryConfig.maxDelay) {
-      actualDelay = retryConfig.maxDelay
-    }
-
-    // Wait before retry
-    await new Promise(resolve => setTimeout(resolve, actualDelay))
-  }
-
-  return Result.Err(lastError!)
-}
-
-/**
- * Internal function to handle caching
- */
-const getCachedResult = <T>(
-  cacheKey: string,
-  cacheConfig: { enabled?: boolean; ttl?: number }
-): T | null => {
-  if (!cacheConfig.enabled) {
-    return null
-  }
-
-  const cached = cache.get(cacheKey)
-  if (!cached) {
-    return null
-  }
-
-  // Check if cache is expired
-  if (Date.now() - cached.timestamp > cached.ttl) {
-    cache.delete(cacheKey)
-    return null
-  }
-
-  return cached.data as T
-}
-
-/**
- * Internal function to set cache
- */
-const setCachedResult = <T>(
-  cacheKey: string,
-  data: T,
-  cacheConfig: { enabled?: boolean; ttl?: number }
-): void => {
-  if (!cacheConfig.enabled) {
-    return
-  }
-
-  cache.set(cacheKey, {
-    data,
-    timestamp: Date.now(),
-    ttl: cacheConfig.ttl ?? 300000,
-  })
-}
-
-/**
- * GET method - Fetch data from HTTP endpoints
+ * GET method - Fetch data from HTTP endpoints with intelligent caching
  */
 export const get = async <T = unknown>(
   url: string,
   options: GetOptions = {}
 ): Promise<ServiceResult<T>> => {
+  const config = createGetConfig(url, options)
+
+  // Check cache before making request
+  const cachedResult = getCachedData<T>(config.cacheKey, config.cache)
+  if (cachedResult) {
+    return Result.Ok(cachedResult)
+  }
+
+  const result = await executeWithRetry<T>(config.request, options)
+
+  // Cache successful results
+  if (Result.isOk(result)) {
+    setCachedData(config.cacheKey, result.value, config.cache)
+  }
+
+  return result
+}
+
+/**
+ * POST method - Create resources with proper content handling
+ */
+export const post = async <TData = unknown, TResponse = unknown>(
+  url: string,
+  data?: TData,
+  options: PostOptions = {}
+): Promise<ServiceResult<TResponse>> => {
+  const config = createPostConfig(url, data, options)
+  return executeWithRetry<TResponse>(config, options)
+}
+
+/**
+ * PUT method - Update/replace resources with concurrency support
+ */
+export const put = async <TData = unknown, TResponse = unknown>(
+  url: string,
+  data: TData,
+  options: PutOptions = {}
+): Promise<ServiceResult<TResponse>> => {
+  const config = createPutConfig(url, data, options)
+  return executeWithRetry<TResponse>(config, options)
+}
+
+/**
+ * PATCH method - Partial updates with format flexibility
+ */
+export const patch = async <TData = unknown, TResponse = unknown>(
+  url: string,
+  data: TData,
+  options: PatchOptions = {}
+): Promise<ServiceResult<TResponse>> => {
+  const config = createPatchConfig(url, data, options)
+  return executeWithRetry<TResponse>(config, options)
+}
+
+/**
+ * DELETE method - Remove resources with comprehensive options
+ */
+export const deleteMethod = async <TResponse = unknown>(
+  url: string,
+  options: DeleteOptions = {}
+): Promise<ServiceResult<TResponse>> => {
+  const config = createDeleteConfig(url, options)
+  return executeWithRetry<TResponse>(config, options)
+}
+
+// Export delete with safe name to avoid keyword conflict
+export { deleteMethod as delete }
+
+// ============================================================================
+// REQUEST CONFIGURATION BUILDERS
+// ============================================================================
+
+/**
+ * Create GET request configuration with caching setup
+ */
+function createGetConfig(url: string, options: GetOptions): GetRequestConfig {
   const opts = mergeOptions(options, {
     timeout: 30000,
-    responseType: 'json' as const,
+    responseType: 'json',
   })
 
-  // Build complete URL with query parameters
   const completeURL = buildURL(url, undefined, opts.params)
-
-  // Handle caching
   const cacheConfig = normalizeCacheOptions(opts.cache)
   const cacheKey =
     typeof cacheConfig.key === 'function' ? cacheConfig.key(opts) : cacheConfig.key || completeURL
 
-  // Check cache first
-  if (cacheConfig.enabled) {
-    const cached = getCachedResult<T>(cacheKey, cacheConfig)
-    if (cached !== null) {
-      return Result.Ok(cached)
-    }
-  }
-
-  // Prepare request
-  const headers: Record<string, string> = {
+  const headers = buildHeaders({
     Accept: opts.responseType === 'json' ? 'application/json' : '*/*',
+    ...(opts.ifModifiedSince && { 'If-Modified-Since': opts.ifModifiedSince.toUTCString() }),
+    ...(opts.ifNoneMatch && { 'If-None-Match': opts.ifNoneMatch }),
     ...opts.headers,
-  }
+  })
 
-  // Add conditional request headers
-  if (opts.ifModifiedSince) {
-    headers['If-Modified-Since'] = opts.ifModifiedSince.toUTCString()
-  }
-  if (opts.ifNoneMatch) {
-    headers['If-None-Match'] = opts.ifNoneMatch
-  }
-
-  const config: RequestConfig = {
+  const request: RequestConfig = {
     method: 'GET',
     url: completeURL,
     headers,
@@ -237,179 +151,113 @@ export const get = async <T = unknown>(
     ...(opts.signal && { signal: opts.signal }),
   }
 
-  // Execute with retry logic
-  const result = await executeWithRetry<T>(config, opts)
-
-  // Cache successful results
-  if (Result.isOk(result) && cacheConfig.enabled) {
-    setCachedResult(cacheKey, result.value, cacheConfig)
+  return {
+    request,
+    cache: cacheConfig,
+    cacheKey,
   }
-
-  return result
 }
 
 /**
- * POST method - Create resources
+ * Create POST request configuration with body processing
  */
-export const post = async <TData = unknown, TResponse = unknown>(
+function createPostConfig<TData>(
   url: string,
-  data?: TData,
-  options: PostOptions = {}
-): Promise<ServiceResult<TResponse>> => {
+  data: TData | undefined,
+  options: PostOptions
+): RequestConfig {
   const opts = mergeOptions(options, {
     timeout: 30000,
-    contentType: 'json' as const,
+    contentType: 'json',
   })
 
-  // Prepare headers
-  const headers: Record<string, string> = {
+  const bodyConfig =
+    data !== undefined
+      ? processRequestBody(opts.contentType || 'json', data)
+      : { body: undefined, headers: {} }
+
+  const headers = buildHeaders({
     Accept: 'application/json',
+    ...(opts.idempotencyKey && { 'Idempotency-Key': opts.idempotencyKey }),
+    ...bodyConfig.headers,
     ...opts.headers,
-  }
-
-  // Prepare body based on content type
-  let body: string | FormData | undefined
-
-  if (data !== undefined) {
-    if (opts.contentType === 'json') {
-      headers['Content-Type'] = 'application/json'
-      body = JSON.stringify(data)
-    } else if (opts.contentType === 'form') {
-      headers['Content-Type'] = 'application/x-www-form-urlencoded'
-      // Convert data to URLSearchParams
-      const params = new URLSearchParams()
-      if (typeof data === 'object' && data !== null) {
-        Object.entries(data).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            params.append(key, String(value))
-          }
-        })
-      }
-      body = params.toString()
-    } else if (opts.contentType === 'multipart') {
-      // For multipart, assume data is already FormData or convert it
-      if (data instanceof FormData) {
-        body = data
-      } else {
-        const formData = new FormData()
-        if (typeof data === 'object' && data !== null) {
-          Object.entries(data).forEach(([key, value]) => {
-            if (value !== undefined && value !== null) {
-              formData.append(key, String(value))
-            }
-          })
-        }
-        body = formData
-      }
-    } else if (opts.contentType === 'text') {
-      headers['Content-Type'] = 'text/plain'
-      body = String(data)
-    }
-  }
-
-  // Add idempotency key if provided
-  if (opts.idempotencyKey) {
-    headers['Idempotency-Key'] = opts.idempotencyKey
-  }
+  })
 
   const config: RequestConfig = {
     method: 'POST',
     url,
     headers,
-    ...(body !== undefined && { body }),
     timeout: normalizeTimeout(opts.timeout),
+    ...(bodyConfig.body !== undefined && { body: bodyConfig.body }),
     ...(opts.signal && { signal: opts.signal }),
   }
 
-  return executeWithRetry<TResponse>(config, opts)
+  return config
 }
 
 /**
- * PUT method - Update/replace resources
+ * Create PUT request configuration with concurrency headers
  */
-export const put = async <TData = unknown, TResponse = unknown>(
-  url: string,
-  data: TData,
-  options: PutOptions = {}
-): Promise<ServiceResult<TResponse>> => {
+function createPutConfig<TData>(url: string, data: TData, options: PutOptions): RequestConfig {
   const opts = mergeOptions(options, {
     timeout: 30000,
     merge: false,
   })
 
-  const headers: Record<string, string> = {
+  const headers = buildHeaders({
     Accept: 'application/json',
     'Content-Type': 'application/json',
+    ...(opts.ifMatch && { 'If-Match': opts.ifMatch }),
+    ...(opts.ifUnmodifiedSince && { 'If-Unmodified-Since': opts.ifUnmodifiedSince.toUTCString() }),
     ...opts.headers,
-  }
-
-  // Add concurrency control headers
-  if (opts.ifMatch) {
-    headers['If-Match'] = opts.ifMatch
-  }
-  if (opts.ifUnmodifiedSince) {
-    headers['If-Unmodified-Since'] = opts.ifUnmodifiedSince.toUTCString()
-  }
+  })
 
   const config: RequestConfig = {
     method: 'PUT',
     url,
     headers,
-    body: JSON.stringify(data),
     timeout: normalizeTimeout(opts.timeout),
+    body: JSON.stringify(data),
     ...(opts.signal && { signal: opts.signal }),
   }
 
-  return executeWithRetry<TResponse>(config, opts)
+  return config
 }
 
 /**
- * PATCH method - Partial updates
+ * Create PATCH request configuration with format-specific headers
  */
-export const patch = async <TData = unknown, TResponse = unknown>(
-  url: string,
-  data: TData,
-  options: PatchOptions = {}
-): Promise<ServiceResult<TResponse>> => {
+function createPatchConfig<TData>(url: string, data: TData, options: PatchOptions): RequestConfig {
   const opts = mergeOptions(options, {
     timeout: 30000,
-    strategy: 'merge' as const,
-    format: 'merge-patch' as const,
+    strategy: 'merge',
+    format: 'merge-patch',
   })
 
-  const headers: Record<string, string> = {
-    Accept: 'application/json',
-    ...opts.headers,
-  }
+  const contentType = getPatchContentType(opts.format || 'merge-patch')
 
-  // Set content type based on patch format
-  if (opts.format === 'json-patch') {
-    headers['Content-Type'] = 'application/json-patch+json'
-  } else if (opts.format === 'merge-patch') {
-    headers['Content-Type'] = 'application/merge-patch+json'
-  } else {
-    headers['Content-Type'] = 'application/json'
-  }
+  const headers = buildHeaders({
+    Accept: 'application/json',
+    'Content-Type': contentType,
+    ...opts.headers,
+  })
 
   const config: RequestConfig = {
     method: 'PATCH',
     url,
     headers,
-    body: JSON.stringify(data),
     timeout: normalizeTimeout(opts.timeout),
+    body: JSON.stringify(data),
     ...(opts.signal && { signal: opts.signal }),
   }
 
-  return executeWithRetry<TResponse>(config, opts)
+  return config
 }
 
 /**
- * DELETE method - Remove resources
+ * Create DELETE request configuration with query parameters
  */
-export const deleteMethod = async <TResponse = unknown>(
-  url: string,
-  options: DeleteOptions = {}
-): Promise<ServiceResult<TResponse>> => {
+function createDeleteConfig(url: string, options: DeleteOptions): RequestConfig {
   const opts = mergeOptions(options, {
     timeout: 30000,
     soft: false,
@@ -417,16 +265,18 @@ export const deleteMethod = async <TResponse = unknown>(
     returnDeleted: false,
   })
 
-  const headers: Record<string, string> = {
+  // Build query parameters for delete options
+  const queryParams: Record<string, string> = {}
+  if (opts.soft) queryParams['soft'] = 'true'
+  if (opts.force) queryParams['force'] = 'true'
+  if (opts.returnDeleted) queryParams['return'] = 'true'
+
+  const deleteURL =
+    Object.keys(queryParams).length > 0 ? buildURL(url, undefined, queryParams) : url
+
+  const headers = buildHeaders({
     Accept: 'application/json',
     ...opts.headers,
-  }
-
-  // Add query parameters for delete options
-  const deleteURL = buildURL(url, undefined, {
-    ...(opts.soft && { soft: 'true' }),
-    ...(opts.force && { force: 'true' }),
-    ...(opts.returnDeleted && { return: 'true' }),
   })
 
   const config: RequestConfig = {
@@ -437,8 +287,337 @@ export const deleteMethod = async <TResponse = unknown>(
     ...(opts.signal && { signal: opts.signal }),
   }
 
-  return executeWithRetry<TResponse>(config, opts)
+  return config
 }
 
-// Export delete with a different name to avoid keyword conflict
-export { deleteMethod as delete }
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+/**
+ * Build headers object with proper merging
+ */
+function buildHeaders(headers: Record<string, string | undefined>): Record<string, string> {
+  const result: Record<string, string> = {}
+
+  for (const [key, value] of Object.entries(headers)) {
+    if (value !== undefined) {
+      result[key] = value
+    }
+  }
+
+  return result
+}
+
+/**
+ * Process request body based on content type
+ */
+function processRequestBody(
+  contentType: string,
+  data: unknown
+): {
+  body: string | FormData
+  headers: Record<string, string>
+} {
+  switch (contentType) {
+    case 'json':
+      return {
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' },
+      }
+
+    case 'form':
+      return {
+        body: objectToUrlSearchParams(data).toString(),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      }
+
+    case 'multipart':
+      return {
+        body: objectToFormData(data),
+        headers: {}, // FormData sets boundary automatically
+      }
+
+    case 'text':
+      return {
+        body: String(data),
+        headers: { 'Content-Type': 'text/plain' },
+      }
+
+    default:
+      return {
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' },
+      }
+  }
+}
+
+/**
+ * Get content type for PATCH operations
+ */
+function getPatchContentType(format: string): string {
+  switch (format) {
+    case 'json-patch':
+      return 'application/json-patch+json'
+    case 'merge-patch':
+      return 'application/merge-patch+json'
+    default:
+      return 'application/json'
+  }
+}
+
+/**
+ * Convert object to URLSearchParams
+ */
+function objectToUrlSearchParams(data: unknown): URLSearchParams {
+  const params = new URLSearchParams()
+
+  if (data && typeof data === 'object') {
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined && value !== null) {
+        params.append(key, String(value))
+      }
+    }
+  }
+
+  return params
+}
+
+/**
+ * Convert object to FormData
+ */
+function objectToFormData(data: unknown): FormData {
+  if (data instanceof FormData) {
+    return data
+  }
+
+  const formData = new FormData()
+
+  if (data && typeof data === 'object') {
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined && value !== null) {
+        formData.append(key, String(value))
+      }
+    }
+  }
+
+  return formData
+}
+
+// ============================================================================
+// REQUEST EXECUTION & RETRY LOGIC
+// ============================================================================
+
+/**
+ * Execute HTTP request with comprehensive error handling
+ */
+async function executeRequest<T>(config: RequestConfig): Promise<ServiceResult<T>> {
+  try {
+    const response = await fetch(config.url, {
+      method: config.method,
+      headers: config.headers,
+      body: config.body || null,
+      signal: config.signal || null,
+    })
+
+    const parsed = await parseResponse<T>(response)
+
+    if (Result.isErr(parsed)) {
+      return parsed
+    }
+
+    return Result.Ok(parsed.value.data)
+  } catch (error) {
+    return Result.Err(createNetworkError(error, config))
+  }
+}
+
+/**
+ * Create appropriate network error based on error type
+ */
+function createNetworkError(
+  error: unknown,
+  config: RequestConfig
+): ServiceError | ServiceNetworkError {
+  if (error instanceof Error) {
+    if (error.name === 'AbortError') {
+      return createServiceError(config.method.toLowerCase(), 'Request was aborted', {
+        url: config.url,
+      })
+    }
+
+    if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+      const networkError: ServiceNetworkError = {
+        code: 'SERVICE_NETWORK_ERROR',
+        pillar: 'SERVICE',
+        operation: config.method.toLowerCase(),
+        message: 'Network error occurred',
+        url: config.url,
+        timestamp: Date.now(),
+        context: { error },
+      }
+      return networkError
+    }
+
+    return createServiceError(config.method.toLowerCase(), error.message, {
+      url: config.url,
+      error,
+    })
+  }
+
+  return createServiceError(config.method.toLowerCase(), 'Unknown error occurred', {
+    url: config.url,
+    error,
+  })
+}
+
+/**
+ * Execute request with intelligent retry logic
+ */
+async function executeWithRetry<T>(
+  config: RequestConfig,
+  options: { retry?: boolean | RetryOptions }
+): Promise<ServiceResult<T>> {
+  const retryConfig = normalizeRetryOptions(options.retry)
+
+  if (retryConfig.attempts === 0) {
+    return executeRequest<T>(config)
+  }
+
+  for (let attempt = 0; attempt <= (retryConfig.attempts ?? 0); attempt++) {
+    const result = await executeRequest<T>(config)
+
+    // Success - return immediately
+    if (Result.isOk(result)) {
+      return result
+    }
+
+    // Last attempt or non-retryable error - return error
+    const isLastAttempt = attempt === retryConfig.attempts
+    const shouldRetry = !isLastAttempt && result.error && isRetryable(result.error)
+
+    if (!shouldRetry) {
+      return result
+    }
+
+    // Wait before retry
+    const delay = calculateRetryDelay(retryConfig, attempt)
+    await sleep(delay)
+  }
+
+  // This should never be reached, but TypeScript requires it
+  return executeRequest<T>(config)
+}
+
+/**
+ * Calculate retry delay based on strategy
+ */
+function calculateRetryDelay(retryConfig: RetryOptions, attempt: number): number {
+  const baseDelay = retryConfig.delay || 1000
+
+  switch (retryConfig.backoff) {
+    case 'exponential': {
+      const delay = baseDelay * Math.pow(2, attempt)
+      return retryConfig.maxDelay ? Math.min(delay, retryConfig.maxDelay) : delay
+    }
+
+    case 'linear': {
+      const delay = baseDelay * (attempt + 1)
+      return retryConfig.maxDelay ? Math.min(delay, retryConfig.maxDelay) : delay
+    }
+
+    default:
+      return baseDelay
+  }
+}
+
+/**
+ * Sleep utility for retry delays
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve): void => {
+    setTimeout(resolve, ms)
+  })
+}
+
+// ============================================================================
+// CACHING SYSTEM
+// ============================================================================
+
+/**
+ * Simple in-memory cache for SERVICE results
+ */
+class ServiceCache {
+  private readonly cache = new Map<
+    string,
+    {
+      data: unknown
+      timestamp: number
+      ttl: number
+    }
+  >()
+
+  get<T>(key: string): T | null {
+    const entry = this.cache.get(key)
+
+    if (!entry) {
+      return null
+    }
+
+    if (Date.now() - entry.timestamp > entry.ttl) {
+      this.cache.delete(key)
+      return null
+    }
+
+    return entry.data as T // Type assertion needed here as we store as unknown
+  }
+
+  set<T>(key: string, data: T, ttl: number): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      ttl,
+    })
+  }
+
+  clear(): void {
+    this.cache.clear()
+  }
+
+  size(): number {
+    return this.cache.size
+  }
+}
+
+// Global cache instance
+const serviceCache = new ServiceCache()
+
+/**
+ * Get cached data if available and valid
+ */
+function getCachedData<T>(key: string, cacheConfig: { enabled?: boolean; ttl?: number }): T | null {
+  if (!cacheConfig.enabled) {
+    return null
+  }
+
+  return serviceCache.get<T>(key)
+}
+
+/**
+ * Cache successful response data
+ */
+function setCachedData<T>(
+  key: string,
+  data: T,
+  cacheConfig: { enabled?: boolean; ttl?: number }
+): void {
+  if (!cacheConfig.enabled) {
+    return
+  }
+
+  const ttl = cacheConfig.ttl ?? 300000 // 5 minutes default
+  serviceCache.set(key, data, ttl)
+}
+
+// Export cache for testing/debugging purposes
+export const cache = serviceCache
