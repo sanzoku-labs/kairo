@@ -189,7 +189,7 @@ describe('curry', () => {
 
   describe('binary', () => {
     it('should create a function that takes only the first two arguments', () => {
-      const addWithDefault = (a: number, b: number, c: number = 0) => a + b + c
+      const addWithDefault = (a: number, b: number, c = 0) => a + b + c
       const addTwoNumbers = binary(
         addWithDefault as (a: number, b: number, ...rest: unknown[]) => number
       )

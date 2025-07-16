@@ -13,7 +13,7 @@
  */
 
 import { Result } from '../shared'
-import type { Schema } from '../shared'
+import type { Schema, PipelineError } from '../shared'
 import { createPipelineError } from '../shared'
 import { mergeOptions } from '../shared/config'
 import type {
@@ -105,7 +105,7 @@ export const map = <TInput, TOutput>(
     }
 
     // Asynchronous processing
-    return (async () => {
+    return (async (): Promise<Result<PipelineError, TOutput[]>> => {
       const results: TOutput[] = []
 
       if (!opts.parallel) {
@@ -235,7 +235,7 @@ export const filter = <T>(
     }
 
     // Asynchronous processing
-    return (async () => {
+    return (async (): Promise<Result<PipelineError, T[]>> => {
       const results: T[] = []
 
       for (let i = 0; i < data.length; i++) {
@@ -328,7 +328,7 @@ export const reduce = <TInput, TOutput>(
     }
 
     // Asynchronous processing
-    return (async () => {
+    return (async (): Promise<Result<PipelineError, TOutput>> => {
       let accumulator = initialValue
 
       for (let i = 0; i < data.length; i++) {

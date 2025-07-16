@@ -122,7 +122,7 @@ export type {
  * const result = await processUsers(users)
  *
  * // Error handling
- * if (Result.isError(result)) {
+ * if (Result.isErr(result)) {
  *   console.error('Processing failed:', result.error.message)
  * } else {
  *   console.log('Analytics:', result.value)

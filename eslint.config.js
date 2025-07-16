@@ -71,7 +71,7 @@ export default [
     },
   },
   {
-    files: ['tests/**/*.ts', 'examples/**/*.ts', '**/*.test.ts', '**/*.spec.ts'],
+    files: ['tests/**/*.ts', 'examples/**/*.ts', '**/*.test.ts', '**/*.spec.ts', 'src/integration/**/*.ts', 'src/test-utils/**/*.ts'],
     plugins: {
       '@typescript-eslint': typescript,
     },
@@ -145,8 +145,6 @@ export default [
       '**/*.config.{js,ts}',
       'docs/**/*.ts',
       'docs/**/*.md',
-      'src/test-utils/**/*.ts',
-      'src/integration/**/*.ts',
     ],
     languageOptions: {
       parser: tsParser,

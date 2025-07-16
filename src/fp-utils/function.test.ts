@@ -293,7 +293,7 @@ describe('function', () => {
         .fn<(input: string) => Promise<string>>()
         .mockRejectedValueOnce(new Error('fail 1'))
         .mockRejectedValueOnce(new Error('fail 2'))
-        .mockResolvedValue('success')
+        .mockResolvedValueOnce('success')
 
       const retryFn = retry(failThenSucceed, 3, 10)
       const result = await retryFn('input')

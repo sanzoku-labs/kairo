@@ -31,7 +31,7 @@ export const resolveAll =
  */
 export const resolveWith =
   <T>() =>
-  <R extends Record<string, unknown>>(config: { [K in keyof R]: Resolvable<T, R[K]> }) =>
+  <R extends Record<string, unknown>>(config: { [K in keyof R]: Resolvable<T, R[K]> }): UnaryFunction<T, R> =>
     resolveAll(config)
 
 /**
@@ -80,7 +80,7 @@ export const apply =
  * Tap function - apply side effect and return original value
  */
 export const tap =
-  <T>(fn: UnaryFunction<T, void>) =>
+  <T>(fn: UnaryFunction<T, void>): UnaryFunction<T, T> =>
   (input: T): T => {
     fn(input)
     return input
@@ -100,7 +100,7 @@ export const delay =
  * Retry a function with exponential backoff
  */
 export const retry =
-  <T, R>(fn: UnaryFunction<T, R | Promise<R>>, maxAttempts: number = 3, baseDelay: number = 1000) =>
+  <T, R>(fn: UnaryFunction<T, R | Promise<R>>, maxAttempts = 3, baseDelay = 1000) =>
   async (input: T): Promise<R> => {
     let lastError: unknown
 

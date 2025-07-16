@@ -16,17 +16,17 @@ import { Result } from './result'
 import { type KairoError } from './errors'
 // Performance monitoring
 const perf = {
-  now: () => Date.now(),
-  mark: () => {},
-  measure: () => {},
-  startSpan: (name: string) => ({
+  now: (): number => Date.now(),
+  mark: (): void => {},
+  measure: (): void => {},
+  startSpan: (name: string): { id: string; name: string; metadata: Record<string, unknown>; endTime: number | undefined; startTime: number } => ({
     id: 'span',
     name,
     metadata: {} as Record<string, unknown>,
     endTime: undefined as number | undefined,
     startTime: Date.now(),
   }),
-  endSpan: (_span: unknown, _result?: unknown) => {},
+  endSpan: (_span: unknown, _result?: unknown): void => {},
 }
 // Removed unused FP imports
 
@@ -712,7 +712,7 @@ class NativeBooleanSchema extends BaseSchema<boolean> implements BooleanSchema {
 class NativeObjectSchema<T> extends BaseSchema<T> implements ObjectSchema<T> {
   readonly type = 'object'
 
-  constructor(private shape: SchemaShape<T>) {
+  constructor(private readonly shape: SchemaShape<T>) {
     super((input, path = []) => {
       if (!isObject(input)) {
         return Result.Err(
@@ -862,7 +862,7 @@ class NativeArraySchema<T> extends BaseSchema<T[]> implements ArraySchema<T> {
     code: string
   }> = []
 
-  constructor(private itemSchema: Schema<T>) {
+  constructor(private readonly itemSchema: Schema<T>) {
     super((input, path = []) => {
       if (!isArray(input)) {
         return Result.Err(
@@ -899,7 +899,7 @@ class NativeArraySchema<T> extends BaseSchema<T[]> implements ArraySchema<T> {
               message: itemResult.error?.message || 'Validation failed',
               code: itemResult.error?.code || 'VALIDATION_ERROR',
               expected: itemResult.error?.expected,
-              received: (() => {
+              received: ((): string => {
                 const item = input[i]
                 if (item === null) return 'null'
                 if (item === undefined) return 'undefined'
@@ -1004,7 +1004,7 @@ class OptionalSchema<T> extends BaseSchema<T | undefined> {
   readonly type: string
   override readonly isOptional = true
 
-  constructor(private innerSchema: Schema<T>) {
+  constructor(private readonly innerSchema: Schema<T>) {
     super((input, _path = []) => {
       if (input === undefined) {
         return Result.Ok(undefined)
@@ -1018,7 +1018,7 @@ class OptionalSchema<T> extends BaseSchema<T | undefined> {
 class NullableSchema<T> extends BaseSchema<T | null> {
   readonly type: string
 
-  constructor(private innerSchema: Schema<T>) {
+  constructor(private readonly innerSchema: Schema<T>) {
     super((input, _path = []) => {
       if (input === null) {
         return Result.Ok(null)
@@ -1034,7 +1034,7 @@ class DefaultSchema<T> extends BaseSchema<T> {
   override readonly defaultValue: T
 
   constructor(
-    private innerSchema: Schema<T>,
+    private readonly innerSchema: Schema<T>,
     defaultValue: T
   ) {
     super((input, _path = []) => {
@@ -1052,8 +1052,8 @@ class TransformSchema<T, U> extends BaseSchema<U> {
   readonly type: string
 
   constructor(
-    private innerSchema: Schema<T>,
-    private transformer: (value: T) => U
+    private readonly innerSchema: Schema<T>,
+    private readonly transformer: (value: T) => U
   ) {
     super((input, path = []) => {
       const result = this.innerSchema.parse(input)
@@ -1083,9 +1083,9 @@ class RefineSchema<T> extends BaseSchema<T> {
   readonly type: string
 
   constructor(
-    private innerSchema: Schema<T>,
-    private predicate: (value: T) => boolean,
-    private message: string
+    private readonly innerSchema: Schema<T>,
+    private readonly predicate: (value: T) => boolean,
+    private readonly message: string
   ) {
     super((input, path = []) => {
       const result = this.innerSchema.parse(input)
@@ -1108,7 +1108,7 @@ class NativeLiteralSchema<T extends string | number | boolean>
 {
   readonly type: string
 
-  constructor(private value: T) {
+  constructor(private readonly value: T) {
     super((input, path = []) => {
       if (input !== this.value) {
         return Result.Err(
@@ -1130,7 +1130,7 @@ class NativeLiteralSchema<T extends string | number | boolean>
 class NativeEnumSchema<T extends string> extends BaseSchema<T> implements EnumSchema<T> {
   readonly type: string
 
-  constructor(private values: readonly T[]) {
+  constructor(private readonly values: readonly T[]) {
     super((input, path = []) => {
       if (!isString(input)) {
         return Result.Err(
@@ -1160,7 +1160,7 @@ class NativeUnionSchema<T> extends BaseSchema<T> implements UnionSchema<T> {
   readonly type: string
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  constructor(private schemas: Schema<any>[]) {
+  constructor(private readonly schemas: Schema<any>[]) {
     super((input, _path = []) => {
       const errors: ValidationError[] = []
 
@@ -1189,7 +1189,7 @@ class NativeUnionSchema<T> extends BaseSchema<T> implements UnionSchema<T> {
 class NativeRecordSchema<T> extends BaseSchema<Record<string, T>> implements RecordSchema<T> {
   readonly type: string
 
-  constructor(private valueSchema: Schema<T>) {
+  constructor(private readonly valueSchema: Schema<T>) {
     super((input, path = []) => {
       if (!isObject(input)) {
         return Result.Err(
@@ -1226,7 +1226,7 @@ class NativeRecordSchema<T> extends BaseSchema<Record<string, T>> implements Rec
               message: fieldResult.error?.message || 'Validation failed',
               code: fieldResult.error?.code || 'VALIDATION_ERROR',
               expected: fieldResult.error?.expected,
-              received: (() => {
+              received: ((): string => {
                 if (value === null) return 'null'
                 if (value === undefined) return 'undefined'
                 if (typeof value === 'object') {
@@ -1551,13 +1551,12 @@ export const nativeSchema = {
   },
 
   // Backwards compatibility - create a wrapper that converts Zod to native
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  from<T>(zodSchema: any): Schema<T> {
+  from<T>(zodSchema: unknown): Schema<T> {
     const fromSchema: Schema<T> = {
       parse: (input: unknown) => {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-          const data = zodSchema.parse(input) as T
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+          const data = (zodSchema as any).parse(input) as T
           return Result.Ok(data)
         } catch (error: unknown) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment

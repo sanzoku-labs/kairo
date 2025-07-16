@@ -363,7 +363,7 @@ export const throttle = <T>(
  */
 export const guard = <T>(
   predicate: (data: T) => boolean,
-  errorMessage: string = 'Guard condition failed'
+  errorMessage = 'Guard condition failed'
 ): ((data: T) => PipelineResult<T>) => {
   return (data: T) => {
     if (predicate(data)) {

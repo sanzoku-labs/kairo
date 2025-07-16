@@ -216,7 +216,7 @@ export const unique = <T>(array: T[], keyFn?: UniqueKeyFunction<T>): T[] => {
  * @param depth - Maximum depth to flatten (default: 1)
  * @returns Flattened array
  */
-export const flatten = <T>(array: (T | T[])[], depth: number = 1): T[] => {
+export const flatten = <T>(array: (T | T[])[], depth = 1): T[] => {
   if (!Array.isArray(array)) {
     return []
   }

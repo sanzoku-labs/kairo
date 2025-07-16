@@ -98,18 +98,33 @@ export const mergeOptions = <T>(defaults: T, userOptions: Partial<T> = {} as Par
     ...userOptions,
   }) as T
 
+/**
+ * Normalize timeout value to safe bounds
+ * @param timeout - Timeout in milliseconds
+ * @returns Normalized timeout between 0 and 300000ms
+ */
 export const normalizeTimeout = (timeout?: number): number => {
   if (timeout === undefined) return 30000 // 30 second default
   if (timeout <= 0) return 30000
   return Math.min(timeout, 300000) // 5 minute maximum
 }
 
+/**
+ * Normalize batch size to safe bounds
+ * @param batchSize - Batch size for operations
+ * @returns Normalized batch size between 1 and 10000
+ */
 export const normalizeBatchSize = (batchSize?: number): number => {
   if (batchSize === undefined) return 100 // Default batch size
   if (batchSize <= 0) return 1
   return Math.min(batchSize, 10000) // Maximum batch size
 }
 
+/**
+ * Normalize retry options to standardized format
+ * @param retry - Retry configuration (boolean or RetryOptions)
+ * @returns Normalized retry options
+ */
 export const normalizeRetryOptions = (retry?: boolean | RetryOptions): RetryOptions => {
   if (retry === false || retry === undefined) {
     return { attempts: 0 }
@@ -126,7 +141,7 @@ export const normalizeRetryOptions = (retry?: boolean | RetryOptions): RetryOpti
 
   return {
     attempts: retry.attempts ?? 3,
-    delay: retry.delay ?? 1000,
+    delay: retry.delay ?? 1000, // Use provided delay or default to 1000ms
     backoff: retry.backoff ?? 'exponential',
     maxDelay: retry.maxDelay ?? 10000,
     ...(retry.retryOn && { retryOn: retry.retryOn }),
@@ -148,7 +163,7 @@ export const normalizeCacheOptions = (cache?: boolean | CacheOptions): CacheOpti
 
   return {
     enabled: cache.enabled ?? true,
-    ttl: cache.ttl ?? 300000,
+    ttl: Math.max(cache.ttl ?? 300000, 0), // Minimum TTL of 0
     strategy: cache.strategy ?? 'memory',
     ...(cache.key && { key: cache.key }),
     ...(cache.tags && { tags: cache.tags }),

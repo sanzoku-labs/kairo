@@ -149,7 +149,7 @@ export type { PipelineError, PipelineValidationError, PipelineCompositionError }
  * // Error handling
  * if (Result.isErr(result)) {
  *   if (pipeline.isError(result.error)) {
- *     console.error('Pipeline operation failed:', result.error.message)
+ *     // Handle error appropriately
  *   }
  * }
  * ```

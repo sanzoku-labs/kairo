@@ -122,7 +122,7 @@ export type {
  * const result = await processUsers(users)
  *
  * // Error handling
- * if (Result.isError(result)) {
+ * if (Result.isErr(result)) {
  *   console.error('Processing failed:', result.error.message)
  * } else {
  *   console.log('Analytics:', result.value)
@@ -130,7 +130,10 @@ export type {
  * ```
  */
 
-// Implementation Status
+/**
+ * Implementation status and version information for the Kairo library
+ * @description Provides runtime information about the library's implementation status and version
+ */
 export const STATUS = {
   version: '1.0.0',
   pillars: {

@@ -576,9 +576,9 @@ export const groupBy = <T, K extends keyof T>(
     if (typeof keys === 'function') {
       keyFn = keys
     } else if (Array.isArray(keys)) {
-      keyFn = (item: T) => keys.map(key => String(item[key])).join('-')
+      keyFn = (item: T): string => keys.map(key => String(item[key])).join('-')
     } else {
-      keyFn = (item: T) => String(item[keys])
+      keyFn = (item: T): string => String(item[keys])
     }
 
     // Group items

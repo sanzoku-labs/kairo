@@ -225,6 +225,7 @@ describe('effects', () => {
     })
 
     afterEach(() => {
+      vi.runOnlyPendingTimers()
       vi.useRealTimers()
     })
 
@@ -251,6 +252,7 @@ describe('effects', () => {
     })
 
     afterEach(() => {
+      vi.runOnlyPendingTimers()
       vi.useRealTimers()
     })
 

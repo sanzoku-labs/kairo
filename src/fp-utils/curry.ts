@@ -4,7 +4,7 @@
 export const curry2 =
   <A, B, R>(fn: (a: A, b: B) => R) =>
   (a: A) =>
-  (b: B) =>
+  (b: B): R =>
     fn(a, b)
 
 /**
@@ -14,7 +14,7 @@ export const curry3 =
   <A, B, C, R>(fn: (a: A, b: B, c: C) => R) =>
   (a: A) =>
   (b: B) =>
-  (c: C) =>
+  (c: C): R =>
     fn(a, b, c)
 
 /**
@@ -25,7 +25,7 @@ export const curry4 =
   (a: A) =>
   (b: B) =>
   (c: C) =>
-  (d: D) =>
+  (d: D): R =>
     fn(a, b, c, d)
 
 /**
@@ -57,7 +57,7 @@ export const partialRight =
  */
 export const flip =
   <A, B, R>(fn: (a: A, b: B) => R) =>
-  (b: B, a: A) =>
+  (b: B, a: A): R =>
     fn(a, b)
 
 /**
@@ -73,7 +73,7 @@ export const reverse =
  */
 export const unary =
   <T, R>(fn: (arg: T, ...rest: unknown[]) => R) =>
-  (arg: T) =>
+  (arg: T): R =>
     fn(arg)
 
 /**
@@ -81,7 +81,7 @@ export const unary =
  */
 export const binary =
   <A, B, R>(fn: (a: A, b: B, ...rest: unknown[]) => R) =>
-  (a: A, b: B) =>
+  (a: A, b: B): R =>
     fn(a, b)
 
 /**
@@ -89,7 +89,7 @@ export const binary =
  */
 export const spread =
   <T extends readonly unknown[], R>(fn: (...args: T) => R) =>
-  (args: T) =>
+  (args: T): R =>
     fn(...args)
 
 /**
@@ -97,7 +97,7 @@ export const spread =
  */
 export const collect =
   <T, R>(fn: (args: T[]) => R) =>
-  (...args: T[]) =>
+  (...args: T[]): R =>
     fn(args)
 
 /**
@@ -105,7 +105,7 @@ export const collect =
  */
 export const always =
   <T>(value: T) =>
-  () =>
+  (): T =>
     value
 
 /**

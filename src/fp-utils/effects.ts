@@ -21,19 +21,19 @@ export const conditionalEffect =
 /**
  * Execute side effect only if value is truthy
  */
-export const effectWhen = <T>(fn: UnaryFunction<T, void>) =>
+export const effectWhen = <T>(fn: UnaryFunction<T, void>): UnaryFunction<T, T> =>
   conditionalEffect((value: T) => !!value, fn)
 
 /**
  * Execute side effect only if value is falsy
  */
-export const effectUnless = <T>(fn: UnaryFunction<T, void>) =>
+export const effectUnless = <T>(fn: UnaryFunction<T, void>): UnaryFunction<T, T> =>
   conditionalEffect((value: T) => !value, fn)
 
 /**
  * Log value and return it unchanged
  */
-export const log = <T>(message?: string) =>
+export const log = <T>(message?: string): UnaryFunction<T, T> =>
   effect<T>((value: T) => {
     const prefix = message ? `[${message}]` : ''
     console.log(prefix, value)
@@ -42,7 +42,7 @@ export const log = <T>(message?: string) =>
 /**
  * Debug log with custom formatter
  */
-export const debug = <T>(formatter?: UnaryFunction<T, string>) =>
+export const debug = <T>(formatter?: UnaryFunction<T, string>): UnaryFunction<T, T> =>
   effect<T>((value: T) => {
     const formatted = formatter ? formatter(value) : JSON.stringify(value, null, 2)
     console.debug('[DEBUG]', formatted)
@@ -74,7 +74,7 @@ export const asyncEffect =
 /**
  * Batch effects - execute multiple side effects
  */
-export const effects = <T>(...fns: Array<UnaryFunction<T, void>>) =>
+export const effects = <T>(...fns: Array<UnaryFunction<T, void>>): UnaryFunction<T, T> =>
   effect<T>((value: T) => {
     for (const fn of fns) {
       fn(value)
@@ -84,7 +84,7 @@ export const effects = <T>(...fns: Array<UnaryFunction<T, void>>) =>
 /**
  * Throttle side effects (execute at most once per interval)
  */
-export const throttleEffect = <T>(intervalMs: number, fn: UnaryFunction<T, void>) => {
+export const throttleEffect = <T>(intervalMs: number, fn: UnaryFunction<T, void>): UnaryFunction<T, T> => {
   let lastExecution = 0
 
   return effect<T>((value: T) => {
@@ -99,7 +99,7 @@ export const throttleEffect = <T>(intervalMs: number, fn: UnaryFunction<T, void>
 /**
  * Debounce side effects (execute only after delay with no new calls)
  */
-export const debounceEffect = <T>(delayMs: number, fn: UnaryFunction<T, void>) => {
+export const debounceEffect = <T>(delayMs: number, fn: UnaryFunction<T, void>): UnaryFunction<T, T> => {
   let timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined
 
   return effect<T>((value: T) => {
@@ -114,8 +114,8 @@ export const debounceEffect = <T>(delayMs: number, fn: UnaryFunction<T, void>) =
  * Measure and log execution time
  */
 export const measure =
-  <T>(label: string = 'Operation') =>
-  (fn: UnaryFunction<T, T>) =>
+  <T>(label = 'Operation') =>
+  (fn: UnaryFunction<T, T>): UnaryFunction<T, T> =>
   (value: T): T => {
     const start = performance.now()
     const result = fn(value)
@@ -127,7 +127,7 @@ export const measure =
 /**
  * Count function calls and log periodically
  */
-export const countCalls = <T>(label: string, logInterval: number = 100) => {
+export const countCalls = <T>(label: string, logInterval = 100): UnaryFunction<T, T> => {
   let count = 0
 
   return effect<T>(() => {
@@ -141,7 +141,7 @@ export const countCalls = <T>(label: string, logInterval: number = 100) => {
 /**
  * Collect values for batch processing
  */
-export const collect = <T>(batchSize: number, processor: (batch: T[]) => void) => {
+export const collect = <T>(batchSize: number, processor: (batch: T[]) => void): UnaryFunction<T, T> => {
   const batch: T[] = []
 
   return effect<T>((value: T) => {
@@ -159,7 +159,7 @@ export const collect = <T>(batchSize: number, processor: (batch: T[]) => void) =
 export const catchEffect = <T>(
   fn: UnaryFunction<T, void>,
   errorHandler?: (error: unknown) => void
-) =>
+): UnaryFunction<T, T> =>
   effect<T>((value: T) => {
     try {
       fn(value)

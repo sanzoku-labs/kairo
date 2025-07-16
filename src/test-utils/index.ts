@@ -7,6 +7,26 @@
 
 import { Result } from '../core/shared'
 import type { ServiceError, ServiceHttpError, DataError, PipelineError } from '../core/shared'
+import type {
+  BatchProcessingResult,
+  DataNormalizationResult,
+  SynchronizationResult,
+  CircuitBreakerResult,
+  EmptyDataResult,
+  LargeDataResult,
+  PipelineResult,
+  RetryResult,
+  FallbackResult,
+  DegradationResult,
+  DebugResult,
+  ErrorPropagationResult,
+  ValidationErrorResult,
+  SchemaValidationResult,
+  SchemaErrorResult,
+  SchemaTransformResult,
+  SchemaMigrationResult,
+  SchemaContractResult,
+} from '../integration/types/test-result-types'
 
 /**
  * Test utilities for Result pattern validation
@@ -58,6 +78,168 @@ export class ResultTestUtils {
       )
     }
     return error
+  }
+
+  /**
+   * Type-safe expectOk for BatchProcessingResult
+   */
+  static expectBatchProcessingResult<T>(
+    result: Result<unknown, BatchProcessingResult<T>>
+  ): BatchProcessingResult<T> {
+    return this.expectOk(result)
+  }
+
+  /**
+   * Type-safe expectOk for DataNormalizationResult
+   */
+  static expectDataNormalizationResult<T>(
+    result: Result<unknown, DataNormalizationResult<T>>
+  ): DataNormalizationResult<T> {
+    return this.expectOk(result)
+  }
+
+  /**
+   * Type-safe expectOk for SynchronizationResult
+   */
+  static expectSynchronizationResult<T>(
+    result: Result<unknown, SynchronizationResult<T>>
+  ): SynchronizationResult<T> {
+    return this.expectOk(result)
+  }
+
+  /**
+   * Type-safe expectOk for CircuitBreakerResult
+   */
+  static expectCircuitBreakerResult<T>(
+    result: Result<unknown, CircuitBreakerResult<T>>
+  ): CircuitBreakerResult<T> {
+    return this.expectOk(result)
+  }
+
+  /**
+   * Type-safe expectOk for PipelineResult
+   */
+  static expectPipelineResult<T>(
+    result: Result<unknown, PipelineResult<T>>
+  ): PipelineResult<T> {
+    return this.expectOk(result)
+  }
+
+  /**
+   * Type-safe expectOk for RetryResult
+   */
+  static expectRetryResult<T>(
+    result: Result<unknown, RetryResult<T>>
+  ): RetryResult<T> {
+    return this.expectOk(result)
+  }
+
+  /**
+   * Type-safe expectOk for FallbackResult
+   */
+  static expectFallbackResult<T>(
+    result: Result<unknown, FallbackResult<T>>
+  ): FallbackResult<T> {
+    return this.expectOk(result)
+  }
+
+  /**
+   * Type-safe expectOk for DegradationResult
+   */
+  static expectDegradationResult<T>(
+    result: Result<unknown, DegradationResult<T>>
+  ): DegradationResult<T> {
+    return this.expectOk(result)
+  }
+
+  /**
+   * Type-safe expectOk for DebugResult
+   */
+  static expectDebugResult(
+    result: Result<unknown, DebugResult>
+  ): DebugResult {
+    return this.expectOk(result)
+  }
+
+  /**
+   * Type-safe expectOk for ErrorPropagationResult
+   */
+  static expectErrorPropagationResult<T>(
+    result: Result<unknown, ErrorPropagationResult<T>>
+  ): ErrorPropagationResult<T> {
+    return this.expectOk(result)
+  }
+
+  /**
+   * Type-safe expectOk for ValidationErrorResult
+   */
+  static expectValidationErrorResult<T>(
+    result: Result<unknown, ValidationErrorResult<T>>
+  ): ValidationErrorResult<T> {
+    return this.expectOk(result)
+  }
+
+  /**
+   * Type-safe expectOk for EmptyDataResult
+   */
+  static expectEmptyDataResult(
+    result: Result<unknown, EmptyDataResult>
+  ): EmptyDataResult {
+    return this.expectOk(result)
+  }
+
+  /**
+   * Type-safe expectOk for LargeDataResult
+   */
+  static expectLargeDataResult<T>(
+    result: Result<unknown, LargeDataResult<T>>
+  ): LargeDataResult<T> {
+    return this.expectOk(result)
+  }
+
+  /**
+   * Type-safe expectOk for SchemaValidationResult
+   */
+  static expectSchemaValidationResult<T>(
+    result: Result<unknown, SchemaValidationResult<T>>
+  ): SchemaValidationResult<T> {
+    return this.expectOk(result)
+  }
+
+  /**
+   * Type-safe expectOk for SchemaErrorResult
+   */
+  static expectSchemaErrorResult<T>(
+    result: Result<unknown, SchemaErrorResult<T>>
+  ): SchemaErrorResult<T> {
+    return this.expectOk(result)
+  }
+
+  /**
+   * Type-safe expectOk for SchemaTransformResult
+   */
+  static expectSchemaTransformResult<T>(
+    result: Result<unknown, SchemaTransformResult<T>>
+  ): SchemaTransformResult<T> {
+    return this.expectOk(result)
+  }
+
+  /**
+   * Type-safe expectOk for SchemaMigrationResult
+   */
+  static expectSchemaMigrationResult<T>(
+    result: Result<unknown, SchemaMigrationResult<T>>
+  ): SchemaMigrationResult<T> {
+    return this.expectOk(result)
+  }
+
+  /**
+   * Type-safe expectOk for SchemaContractResult
+   */
+  static expectSchemaContractResult<T>(
+    result: Result<unknown, SchemaContractResult<T>>
+  ): SchemaContractResult<T> {
+    return this.expectOk(result)
   }
 }
 

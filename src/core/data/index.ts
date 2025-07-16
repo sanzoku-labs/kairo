@@ -141,9 +141,9 @@ export type { DataError, DataValidationError, DataTransformError } from '../shar
  * const updated = data.set(userData, 'lastLogin', new Date())
  *
  * // Error handling
- * if (Result.isError(result)) {
+ * if (Result.isErr(result)) {
  *   if (data.isError(result.error)) {
- *     console.error('Data operation failed:', result.error.message)
+ *     // Handle error appropriately
  *   }
  * }
  * ```

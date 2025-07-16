@@ -58,7 +58,7 @@ export const withDefault =
  * Get value or throw error with custom message
  */
 export const unwrap =
-  <T>(errorMessage: string = 'Value is null or undefined') =>
+  <T>(errorMessage = 'Value is null or undefined') =>
   (value: Maybe<T>): T => {
     if (isNone(value)) {
       throw new Error(errorMessage)

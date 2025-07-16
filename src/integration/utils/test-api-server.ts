@@ -10,11 +10,12 @@
 export interface ApiEndpoint {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   path: string
-  response: unknown
+  response?: unknown
   status?: number
   delay?: number
   headers?: Record<string, string>
   requireAuth?: boolean
+  handler?: (context: { params: Record<string, string>, body?: unknown }) => { status: number, body: unknown }
 }
 
 export interface ServerConfig {
@@ -31,10 +32,10 @@ export interface ServerConfig {
  * Mock API Server for integration testing
  */
 export class TestApiServer {
-  private endpoints = new Map<string, ApiEndpoint>()
-  private requestCounts = new Map<string, number>()
+  private readonly endpoints = new Map<string, ApiEndpoint>()
+  private readonly requestCounts = new Map<string, number>()
   private lastReset = Date.now()
-  private config: ServerConfig
+  private readonly config: ServerConfig
 
   constructor(config: Partial<ServerConfig> = {}) {
     this.config = {
@@ -144,6 +145,7 @@ export class TestApiServer {
       let endpoint = this.endpoints.get(endpointKey)
 
       // If not found, try to match dynamic routes (e.g., /users/:id)
+      let routeParams: Record<string, string> = {}
       if (!endpoint) {
         for (const [key, ep] of this.endpoints.entries()) {
           const colonIndex = key.indexOf(':')
@@ -153,6 +155,7 @@ export class TestApiServer {
           const fullEpPath = key.substring(colonIndex + 1) // Get everything after method:
           if (epMethod === method && this.matchesRoute(fullEpPath, path)) {
             endpoint = ep
+            routeParams = this.extractRouteParams(fullEpPath, path)
             break
           }
         }
@@ -179,38 +182,59 @@ export class TestApiServer {
         await new Promise(resolve => setTimeout(resolve, delay))
       }
 
+      // Parse request body if present
+      let requestBody: unknown
+      if (init?.body) {
+        try {
+          requestBody = typeof init.body === 'string' ? JSON.parse(init.body) : init.body
+        } catch {
+          requestBody = init.body
+        }
+      }
+
       // Create successful response
-      return this.createSuccessResponse(endpoint, url)
+      return this.createSuccessResponse(endpoint, url, routeParams, requestBody)
     }
   }
 
   /**
    * Create a successful response
    */
-  private createSuccessResponse(endpoint: ApiEndpoint, url: string): Response {
-    const status = endpoint.status || 200
+  private createSuccessResponse(endpoint: ApiEndpoint, url: string, params: Record<string, string> = {}, body?: unknown): Response {
+    let responseData: unknown
+    let responseStatus: number
+
+    if (endpoint.handler) {
+      const handlerResult = endpoint.handler({ params, body })
+      responseData = handlerResult.body
+      responseStatus = handlerResult.status
+    } else {
+      responseData = endpoint.response
+      responseStatus = endpoint.status || 200
+    }
+
     const headers = new Headers({
       'content-type': 'application/json',
       ...endpoint.headers,
     })
 
     return {
-      ok: status >= 200 && status < 300,
-      status,
-      statusText: this.getStatusText(status),
+      ok: responseStatus >= 200 && responseStatus < 300,
+      status: responseStatus,
+      statusText: this.getStatusText(responseStatus),
       headers,
       url,
       json: async () => {
         await Promise.resolve()
-        return endpoint.response
+        return responseData
       },
       text: async () => {
         await Promise.resolve()
-        return JSON.stringify(endpoint.response)
+        return JSON.stringify(responseData)
       },
       blob: async () => {
         await Promise.resolve()
-        return new Blob([JSON.stringify(endpoint.response)])
+        return new Blob([JSON.stringify(responseData)])
       },
     } as Response
   }
@@ -274,6 +298,30 @@ export class TestApiServer {
     }
 
     return true
+  }
+
+  /**
+   * Extract parameters from a dynamic route
+   */
+  private extractRouteParams(routePath: string, actualPath: string): Record<string, string> {
+    const routeParts = routePath.split('/')
+    const pathParts = actualPath.split('/')
+    const params: Record<string, string> = {}
+
+    for (let i = 0; i < routeParts.length; i++) {
+      const routePart = routeParts[i]
+      const pathPart = pathParts[i]
+
+      // If route part starts with :, it's a parameter
+      if (routePart && routePart.startsWith(':')) {
+        const paramName = routePart.slice(1) // Remove the :
+        if (pathPart) {
+          params[paramName] = pathPart
+        }
+      }
+    }
+
+    return params
   }
 
   /**
