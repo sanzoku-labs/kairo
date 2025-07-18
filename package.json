@@ -1,6 +1,6 @@
 {
   "name": "@sanzoku-labs/kairo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Kairo - Three-pillar TypeScript library for SERVICE, DATA, and PIPELINE operations",
   "type": "module",
   "main": "./dist/index.cjs",
