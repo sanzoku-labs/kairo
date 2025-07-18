@@ -313,7 +313,7 @@ describe('function', () => {
     })
 
     it('should respect exponential backoff timing', async () => {
-      const startTime = Date.now()
+      const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
       const failThenSucceed = vi
         .fn<(input: string) => Promise<string>>()
         .mockRejectedValueOnce(new Error('fail'))
@@ -321,10 +321,12 @@ describe('function', () => {
 
       const retryFn = retry(failThenSucceed, 2, 100) // 100ms base delay
       await retryFn('input')
-      const endTime = Date.now()
 
-      // Should have delayed at least 100ms (base delay * 2^0)
-      expect(endTime - startTime).toBeGreaterThanOrEqual(100)
+      // Verify setTimeout was called with correct delay (100ms for first retry attempt)
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 100)
+      expect(failThenSucceed).toHaveBeenCalledTimes(2)
+      
+      setTimeoutSpy.mockRestore()
     })
 
     it('should work with async functions', async () => {
