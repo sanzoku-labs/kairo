@@ -2,9 +2,11 @@ name: Deploy Documentation
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
+  # Allow manual trigger
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,49 +14,54 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: "pages"
   cancel-in-progress: false
 
 jobs:
-  # Build job
   build:
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Not needed if lastUpdated is not enabled
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Needed for git-based VitePress features
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build library
+      run: npm run build
+    
+    - name: Generate API documentation
+      run: npm run docs:api
+    
+    - name: Build documentation
+      run: npm run docs:build
+    
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: docs/.vitepress/dist
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build with VitePress
-        run: |
-          bun run docs:build
-          touch docs/.vitepress/dist/.nojekyll
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
-        with:
-          path: docs/.vitepress/dist
-
-  # Deployment job
   deploy:
-    if: github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     needs: build
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v2
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4

@@ -173,6 +173,7 @@ export default [
       'coverage/',
       'docs/.vitepress/dist/',
       'docs/.vitepress/cache/',
+      'docs/.vitepress/theme/',
       '**/*.md',
     ],
   },

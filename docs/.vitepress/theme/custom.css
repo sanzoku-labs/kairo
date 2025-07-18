@@ -1,0 +1,306 @@
+/* Custom styles for Kairo documentation */
+
+:root {
+  /* Brand colors */
+  --vp-c-brand-1: #3b82f6;
+  --vp-c-brand-2: #2563eb;
+  --vp-c-brand-3: #1d4ed8;
+  --vp-c-brand-soft: rgba(59, 130, 246, 0.14);
+  
+  /* Semantic colors */
+  --vp-c-tip-1: var(--vp-c-brand-1);
+  --vp-c-tip-2: var(--vp-c-brand-2);
+  --vp-c-tip-3: var(--vp-c-brand-3);
+  --vp-c-tip-soft: var(--vp-c-brand-soft);
+  
+  /* Success colors */
+  --vp-c-success-1: #10b981;
+  --vp-c-success-2: #059669;
+  --vp-c-success-3: #047857;
+  --vp-c-success-soft: rgba(16, 185, 129, 0.14);
+  
+  /* Warning colors */
+  --vp-c-warning-1: #f59e0b;
+  --vp-c-warning-2: #d97706;
+  --vp-c-warning-3: #b45309;
+  --vp-c-warning-soft: rgba(245, 158, 11, 0.14);
+  
+  /* Danger colors */
+  --vp-c-danger-1: #ef4444;
+  --vp-c-danger-2: #dc2626;
+  --vp-c-danger-3: #b91c1c;
+  --vp-c-danger-soft: rgba(239, 68, 68, 0.14);
+}
+
+/* Dark mode adjustments */
+.dark {
+  --vp-c-brand-1: #60a5fa;
+  --vp-c-brand-2: #3b82f6;
+  --vp-c-brand-3: #2563eb;
+  --vp-c-brand-soft: rgba(96, 165, 250, 0.14);
+}
+
+/* Hero section enhancements */
+.VPHero {
+  padding-top: 48px !important;
+  padding-bottom: 48px !important;
+}
+
+.VPHero .VPImage {
+  max-width: 320px !important;
+  max-height: 320px !important;
+}
+
+.VPHero .name {
+  font-size: 3.5rem !important;
+  font-weight: 700 !important;
+  background: linear-gradient(135deg, var(--vp-c-brand-1), var(--vp-c-brand-3)) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+
+.VPHero .text {
+  font-size: 1.5rem !important;
+  font-weight: 500 !important;
+  color: var(--vp-c-text-2) !important;
+}
+
+.VPHero .tagline {
+  font-size: 1.1rem !important;
+  font-weight: 400 !important;
+  color: var(--vp-c-text-2) !important;
+}
+
+/* Features section */
+.VPFeatures {
+  padding-top: 48px !important;
+  padding-bottom: 48px !important;
+}
+
+.VPFeature {
+  border: 1px solid var(--vp-c-border) !important;
+  border-radius: 12px !important;
+  padding: 24px !important;
+  transition: all 0.3s ease !important;
+}
+
+.VPFeature:hover {
+  border-color: var(--vp-c-brand-1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  transform: translateY(-2px) !important;
+}
+
+.VPFeature .icon {
+  font-size: 2rem !important;
+  margin-bottom: 16px !important;
+}
+
+.VPFeature .title {
+  font-size: 1.2rem !important;
+  font-weight: 600 !important;
+  color: var(--vp-c-text-1) !important;
+  margin-bottom: 8px !important;
+}
+
+.VPFeature .details {
+  font-size: 0.95rem !important;
+  color: var(--vp-c-text-2) !important;
+  line-height: 1.6 !important;
+}
+
+/* Code blocks */
+.vp-code-group {
+  margin: 24px 0 !important;
+}
+
+.vp-code-group .tabs {
+  border-radius: 8px 8px 0 0 !important;
+  background: var(--vp-c-bg-soft) !important;
+}
+
+.vp-code-group .tabs .tab {
+  border-radius: 6px 6px 0 0 !important;
+  padding: 8px 16px !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+}
+
+.vp-code-group .tabs .tab.active {
+  background: var(--vp-c-brand-soft) !important;
+  color: var(--vp-c-brand-1) !important;
+}
+
+/* Custom blocks */
+.custom-block {
+  margin: 24px 0 !important;
+  border-radius: 8px !important;
+  padding: 20px !important;
+  border-left: 4px solid var(--vp-c-brand-1) !important;
+}
+
+.custom-block.tip {
+  background: var(--vp-c-tip-soft) !important;
+  border-left-color: var(--vp-c-tip-1) !important;
+}
+
+.custom-block.warning {
+  background: var(--vp-c-warning-soft) !important;
+  border-left-color: var(--vp-c-warning-1) !important;
+}
+
+.custom-block.danger {
+  background: var(--vp-c-danger-soft) !important;
+  border-left-color: var(--vp-c-danger-1) !important;
+}
+
+.custom-block.success {
+  background: var(--vp-c-success-soft) !important;
+  border-left-color: var(--vp-c-success-1) !important;
+}
+
+.custom-block-title {
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+  margin-bottom: 8px !important;
+  color: var(--vp-c-text-1) !important;
+}
+
+/* Table enhancements */
+.vp-doc table {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  margin: 24px 0 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.vp-doc table th {
+  background: var(--vp-c-bg-soft) !important;
+  font-weight: 600 !important;
+  padding: 12px 16px !important;
+  text-align: left !important;
+  border-bottom: 1px solid var(--vp-c-border) !important;
+}
+
+.vp-doc table td {
+  padding: 12px 16px !important;
+  border-bottom: 1px solid var(--vp-c-border-soft) !important;
+}
+
+.vp-doc table tr:hover {
+  background: var(--vp-c-bg-soft) !important;
+}
+
+/* Navigation enhancements */
+.VPSidebar {
+  background: var(--vp-c-bg-alt) !important;
+  border-right: 1px solid var(--vp-c-border-soft) !important;
+}
+
+.VPSidebarItem .text {
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+}
+
+.VPSidebarItem.is-active .text {
+  color: var(--vp-c-brand-1) !important;
+  font-weight: 600 !important;
+}
+
+/* Search box */
+.VPNavBarSearch {
+  margin-right: 16px !important;
+}
+
+.VPNavBarSearch .DocSearch-Button {
+  border-radius: 6px !important;
+  background: var(--vp-c-bg-soft) !important;
+  border: 1px solid var(--vp-c-border) !important;
+  transition: all 0.3s ease !important;
+}
+
+.VPNavBarSearch .DocSearch-Button:hover {
+  background: var(--vp-c-bg-alt) !important;
+  border-color: var(--vp-c-brand-1) !important;
+}
+
+/* Footer */
+.VPFooter {
+  background: var(--vp-c-bg-alt) !important;
+  border-top: 1px solid var(--vp-c-border-soft) !important;
+  padding: 32px 0 !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .VPHero .name {
+    font-size: 2.5rem !important;
+  }
+  
+  .VPHero .text {
+    font-size: 1.2rem !important;
+  }
+  
+  .VPHero .tagline {
+    font-size: 1rem !important;
+  }
+  
+  .VPFeature {
+    padding: 20px !important;
+  }
+  
+  .custom-block {
+    padding: 16px !important;
+  }
+}
+
+/* Utility classes */
+.text-center {
+  text-align: center !important;
+}
+
+.text-brand {
+  color: var(--vp-c-brand-1) !important;
+}
+
+.text-success {
+  color: var(--vp-c-success-1) !important;
+}
+
+.text-warning {
+  color: var(--vp-c-warning-1) !important;
+}
+
+.text-danger {
+  color: var(--vp-c-danger-1) !important;
+}
+
+.font-semibold {
+  font-weight: 600 !important;
+}
+
+.font-bold {
+  font-weight: 700 !important;
+}
+
+.mb-4 {
+  margin-bottom: 16px !important;
+}
+
+.mt-4 {
+  margin-top: 16px !important;
+}
+
+.p-4 {
+  padding: 16px !important;
+}
+
+.rounded {
+  border-radius: 6px !important;
+}
+
+.shadow {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}

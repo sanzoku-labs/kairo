@@ -1,0 +1,97 @@
+# Development files
+*.test.ts
+*.spec.ts
+*.test.js
+*.spec.js
+.nyc_output
+coverage/
+.coverage/
+lcov.info
+
+# Source files (we include dist/ instead)
+src/
+!src/index.ts
+
+# Build tools
+tsconfig.json
+tsconfig.test.json
+tsup.config.ts
+vitest.config.ts
+eslint.config.js
+typedoc.json
+typedoc-single.json
+
+# Documentation source (we don't need source files in npm package)
+docs/
+archives/
+api-reference-single/
+scripts/
+
+# Development dependencies
+node_modules/
+.bun/
+bun.lockb
+.npm/
+.yarn/
+yarn.lock
+package-lock.json
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Git and version control
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+.travis.yml
+.circleci/
+.gitlab-ci.yml
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Development utilities
+check_anchors.py
+check_links.py
+dead_links_report.md
+PUBLISHING_CHECKLIST.md
+CLAUDE.md
+
+# Keep these files:
+# README.md
+# LICENSE
+# package.json
+# dist/

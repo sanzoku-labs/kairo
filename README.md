@@ -3,7 +3,7 @@
 > **Clean Three-Pillar TypeScript Library**  
 > _23 methods. Configuration objects. Zero dependencies._
 
-[![Documentation](https://img.shields.io/badge/docs-vitepress-blue)](https://sovanaryththorng.github.io/kairo/)
+[![Documentation](https://img.shields.io/badge/docs-vitepress-blue)](https://sanzoku-labs.github.io/kairo/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Overview
@@ -408,11 +408,11 @@ if (Result.isErr(processed)) {
 
 ## Documentation
 
-Visit our [documentation site](https://sovanaryththorng.github.io/kairo/) for:
+Visit our [documentation site](https://sanzoku-labs.github.io/kairo/) for:
 
-- 📖 [Getting Started Guide](https://sovanaryththorng.github.io/kairo/guide/getting-started)
-- 🔧 [API Reference](https://sovanaryththorng.github.io/kairo/api/)
-- 💡 [Examples](https://sovanaryththorng.github.io/kairo/examples/)
+- 📖 [Getting Started Guide](https://sanzoku-labs.github.io/kairo/guide/getting-started)
+- 🔧 [API Reference](https://sanzoku-labs.github.io/kairo/api/)
+- 💡 [Examples](https://sanzoku-labs.github.io/kairo/examples/)
 
 ## Development
 
@@ -446,4 +446,4 @@ This design ensures predictability, type safety, and maintainability while keepi
 
 ## License
 
-MIT © [Sovanaryth THORNG](https://github.com/sovanaryththorng)
+MIT © [Sovanaryth THORNG](https://github.com/sanzoku-labs)
