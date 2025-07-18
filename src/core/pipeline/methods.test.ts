@@ -555,6 +555,7 @@ describe('PIPELINE Pillar Methods', () => {
     })
 
     it('should handle exponential backoff', async () => {
+      const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout')
       let attempts = 0
       const flaky = async () => {
         await Promise.resolve() // Add async work
@@ -565,17 +566,20 @@ describe('PIPELINE Pillar Methods', () => {
         return 'recovered'
       }
 
-      const startTime = Date.now()
       const result = await retry(flaky, {
         maxAttempts: 3,
         backoff: 'exponential',
         delay: 10,
       })
-      const duration = Date.now() - startTime
 
       const value = ResultTestUtils.expectOk(result)
       expect(value).toBe('recovered')
-      expect(duration).toBeGreaterThanOrEqual(9) // Should have at least the delay time (account for timing precision)
+      expect(attempts).toBe(2)
+      
+      // Verify setTimeout was called with correct exponential backoff delay (10ms for first retry)
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 10)
+      
+      setTimeoutSpy.mockRestore()
     })
 
     it('should fail after max attempts', async () => {
