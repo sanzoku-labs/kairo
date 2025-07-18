@@ -19,7 +19,7 @@
  * - merge() - Combine data streams
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { map, filter, reduce, compose, parallel, branch } from './methods'
 import { retry } from './utils'
 import { Result } from '../shared'
