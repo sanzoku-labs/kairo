@@ -200,6 +200,8 @@ export const retry = async <T>(
 
         if (opts.backoff === 'exponential') {
           delayTime = opts.delay * Math.pow(2, attempt)
+          // Ensure minimum delay to prevent timing issues
+          delayTime = Math.max(delayTime, opts.delay)
         } else {
           delayTime = opts.delay * (attempt + 1)
         }
