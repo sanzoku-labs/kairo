@@ -64,9 +64,17 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Create git tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag ${{ github.event.inputs.version }}
+          git push origin ${{ github.event.inputs.version }}
+
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
+          tag: ${{ github.event.inputs.version }}
           generateReleaseNotes: true
           draft: false
           prerelease: false
