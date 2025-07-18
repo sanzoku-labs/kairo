@@ -5,7 +5,7 @@ Simple, straightforward examples to get you started with Kairo.
 ## HTTP Requests
 
 ```typescript
-import { service, Result } from 'kairo'
+import { service, Result } from '@sanzoku-labs/kairo'
 
 // Simple GET request
 const result = await service.get('/api/users')
@@ -20,7 +20,7 @@ if (Result.isOk(result)) {
 ## Data Validation
 
 ```typescript
-import { data, Result } from 'kairo'
+import { data, Result } from '@sanzoku-labs/kairo'
 
 // Define schema
 const UserSchema = data.schema({
@@ -42,7 +42,7 @@ if (Result.isOk(result)) {
 ## Pipeline Processing
 
 ```typescript
-import { pipeline, Result } from 'kairo'
+import { pipeline, Result } from '@sanzoku-labs/kairo'
 
 // Simple pipeline
 const processed = pipeline.map(items, item => item.toUpperCase())

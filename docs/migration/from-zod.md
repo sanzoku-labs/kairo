@@ -38,7 +38,7 @@ try {
 ### After (Kairo)
 
 ```typescript
-import { data, Result } from 'kairo'
+import { data, Result } from '@sanzoku-labs/kairo'
 
 const UserSchema = data.schema({
   id: { type: 'string', format: 'uuid' },
@@ -576,7 +576,7 @@ class UserService {
 ### After: Kairo-based API
 
 ```typescript
-import { service, data, Result } from 'kairo'
+import { service, data, Result } from '@sanzoku-labs/kairo'
 
 const CreateUserSchema = data.schema({
   name: { type: 'string', min: 2, max: 100 },

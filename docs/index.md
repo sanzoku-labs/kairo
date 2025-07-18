@@ -42,7 +42,7 @@ features:
 ## Quick Example
 
 ```typescript
-import { service, data, pipeline, Result } from 'kairo'
+import { service, data, pipeline, Result } from '@sanzoku-labs/kairo'
 
 // SERVICE: HTTP operations with configuration
 const users = await service.get('/api/users', {

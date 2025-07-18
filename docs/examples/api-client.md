@@ -5,7 +5,7 @@ Building robust API clients with the SERVICE pillar.
 ## Basic API Client
 
 ```typescript
-import { service, data, Result } from 'kairo'
+import { service, data, Result } from '@sanzoku-labs/kairo'
 
 class UserApiClient {
   private baseUrl = 'https://api.example.com'

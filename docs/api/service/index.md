@@ -96,7 +96,7 @@ const result = await service.get('/api/users', {
 ### Basic GET Request
 
 ```typescript
-import { service, Result } from 'kairo'
+import { service, Result } from '@sanzoku-labs/kairo'
 
 const users = await service.get('/api/users')
 
@@ -110,7 +110,7 @@ if (Result.isOk(users)) {
 ### POST with Validation
 
 ```typescript
-import { service, data, Result } from 'kairo'
+import { service, data, Result } from '@sanzoku-labs/kairo'
 
 const UserSchema = data.schema({
   name: { type: 'string', min: 2, max: 100 },

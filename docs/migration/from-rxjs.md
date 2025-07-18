@@ -27,7 +27,7 @@ const stream$ = of(data).pipe(
 )
 
 // Kairo - Functional pipelines with Result pattern
-import { pipeline, Result } from 'kairo'
+import { pipeline, Result } from '@sanzoku-labs/kairo'
 
 const process = pipeline.compose([
   data => pipeline.map(data, transform),
@@ -50,7 +50,7 @@ const processed$ = of(users).pipe(
 )
 
 // Kairo
-import { pipeline } from 'kairo'
+import { pipeline } from '@sanzoku-labs/kairo'
 
 const processed = pipeline.compose([
   users => pipeline.filter(users, user => user.active),
@@ -70,7 +70,7 @@ const fetchUsers$ = from(userIds).pipe(
 )
 
 // Kairo
-import { pipeline, service } from 'kairo'
+import { pipeline, service } from '@sanzoku-labs/kairo'
 
 const fetchUsers = pipeline.compose([
   userIds => pipeline.asyncMap(userIds, id => 
@@ -94,7 +94,7 @@ const safe$ = of(data).pipe(
 )
 
 // Kairo
-import { pipeline, Result } from 'kairo'
+import { pipeline, Result } from '@sanzoku-labs/kairo'
 
 const safe = pipeline.compose([
   data => pipeline.tryCatch(
@@ -118,7 +118,7 @@ const doubled$ = of([1, 2, 3]).pipe(
 )
 
 // Kairo
-import { pipeline } from 'kairo'
+import { pipeline } from '@sanzoku-labs/kairo'
 
 const doubled = pipeline.map([1, 2, 3], x => x * 2)
 ```
@@ -134,7 +134,7 @@ const evens$ = of([1, 2, 3, 4]).pipe(
 )
 
 // Kairo
-import { pipeline } from 'kairo'
+import { pipeline } from '@sanzoku-labs/kairo'
 
 const evens = pipeline.filter([1, 2, 3, 4], x => x % 2 === 0)
 ```
@@ -150,7 +150,7 @@ const sum$ = of(1, 2, 3, 4).pipe(
 )
 
 // Kairo
-import { pipeline } from 'kairo'
+import { pipeline } from '@sanzoku-labs/kairo'
 
 const sum = pipeline.reduce([1, 2, 3, 4], (acc, val) => acc + val, 0)
 ```
@@ -166,7 +166,7 @@ const flattened$ = of([1, 2, 3]).pipe(
 )
 
 // Kairo
-import { pipeline } from 'kairo'
+import { pipeline } from '@sanzoku-labs/kairo'
 
 const flattened = pipeline.flatMap([1, 2, 3], x => [x])
 ```
@@ -182,7 +182,7 @@ const combined$ = combineLatest([stream1$, stream2$]).pipe(
 )
 
 // Kairo
-import { pipeline } from 'kairo'
+import { pipeline } from '@sanzoku-labs/kairo'
 
 const combined = pipeline.parallel([
   () => getStream1Data(),
@@ -205,7 +205,7 @@ const throttled$ = fromEvent(button, 'click').pipe(
 )
 
 // Kairo
-import { pipeline } from 'kairo'
+import { pipeline } from '@sanzoku-labs/kairo'
 
 const debouncedHandler = pipeline.debounce(handleInput, 300)
 const throttledHandler = pipeline.throttle(handleClick, 1000)
@@ -227,7 +227,7 @@ const apiCall$ = ajax.getJSON('/api/data').pipe(
 )
 
 // Kairo
-import { service, Result } from 'kairo'
+import { service, Result } from '@sanzoku-labs/kairo'
 
 const apiCall = async () => {
   const result = await service.get('/api/data', {
@@ -255,7 +255,7 @@ const pipeline$ = of(rawData).pipe(
 )
 
 // Kairo
-import { pipeline, data } from 'kairo'
+import { pipeline, data } from '@sanzoku-labs/kairo'
 
 const processPipeline = pipeline.compose([
   data => data.validate(data, DataSchema),
@@ -280,7 +280,7 @@ const conditional$ = of(user).pipe(
 )
 
 // Kairo
-import { pipeline } from 'kairo'
+import { pipeline } from '@sanzoku-labs/kairo'
 
 const conditional = pipeline.branch(user, [
   {
@@ -316,7 +316,7 @@ class UserStore {
 }
 
 // Kairo (simple state management)
-import { Result } from 'kairo'
+import { Result } from '@sanzoku-labs/kairo'
 
 class UserStore {
   private user: User | null = null
@@ -441,7 +441,7 @@ class DataService {
 ### After: Kairo-based Data Service
 
 ```typescript
-import { service, pipeline, Result } from 'kairo'
+import { service, pipeline, Result } from '@sanzoku-labs/kairo'
 
 class DataService {
   private searchHandler = pipeline.debounce(
@@ -546,7 +546,7 @@ import { map, mergeMap, catchError, retry, debounceTime } from 'rxjs/operators'
 // ~30kb+ when tree-shaken
 
 // Kairo bundle impact
-import { service, pipeline, Result } from 'kairo'
+import { service, pipeline, Result } from '@sanzoku-labs/kairo'
 // ~5kb when tree-shaken
 ```
 

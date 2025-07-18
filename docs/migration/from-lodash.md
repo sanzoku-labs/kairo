@@ -33,7 +33,7 @@ const grouped = _.groupBy(users, 'department')
 ### After (Kairo)
 
 ```typescript
-import { data, pipeline, Result } from 'kairo'
+import { data, pipeline, Result } from '@sanzoku-labs/kairo'
 
 const users = [
   { id: 1, name: 'John', department: 'Engineering' },
@@ -370,7 +370,7 @@ import groupBy from 'lodash/groupBy'
 
 ```typescript
 // Kairo (tree-shakable by default)
-import { data, pipeline } from 'kairo'
+import { data, pipeline } from '@sanzoku-labs/kairo'
 
 // Or import specific functions
 import { map, filter } from 'kairo/pipeline'
@@ -423,7 +423,7 @@ class DataProcessor {
 ### After: Kairo-based Data Processing
 
 ```typescript
-import { data, pipeline, Result } from 'kairo'
+import { data, pipeline, Result } from '@sanzoku-labs/kairo'
 
 const UserSchema = data.schema({
   id: { type: 'string' },

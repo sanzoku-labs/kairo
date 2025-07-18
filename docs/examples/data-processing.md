@@ -5,7 +5,7 @@ Examples of data processing with the DATA pillar.
 ## Basic Data Processing
 
 ```typescript
-import { data, pipeline, Result } from 'kairo'
+import { data, pipeline, Result } from '@sanzoku-labs/kairo'
 
 // Transform raw data
 const processUserData = (rawData: any[]) => {

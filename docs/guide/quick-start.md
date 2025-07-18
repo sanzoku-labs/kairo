@@ -18,7 +18,7 @@ Create a new TypeScript project:
 mkdir kairo-quickstart
 cd kairo-quickstart
 npm init -y
-npm install kairo typescript @types/node ts-node
+npm install @sanzoku-labs/kairo typescript @types/node ts-node
 ```
 
 Create `tsconfig.json`:
@@ -41,7 +41,7 @@ Create `tsconfig.json`:
 Create `src/schemas.ts`:
 
 ```typescript
-import { data } from 'kairo'
+import { data } from '@sanzoku-labs/kairo'
 
 // User schema with validation rules
 export const UserSchema = data.schema({
@@ -75,7 +75,7 @@ export type ApiResponse = InferSchema<typeof ApiResponseSchema>
 Create `src/api.ts`:
 
 ```typescript
-import { service, Result } from 'kairo'
+import { service, Result } from '@sanzoku-labs/kairo'
 import { ApiResponseSchema } from './schemas'
 
 // Configuration for our API
@@ -138,7 +138,7 @@ export const userApi = {
 Create `src/processors.ts`:
 
 ```typescript
-import { pipeline, data, Result } from 'kairo'
+import { pipeline, data, Result } from '@sanzoku-labs/kairo'
 import { UserSchema, User } from './schemas'
 
 // User transformation pipeline
@@ -215,7 +215,7 @@ function getSalaryRange(salary: number): string {
 Create `src/main.ts`:
 
 ```typescript
-import { Result } from 'kairo'
+import { Result } from '@sanzoku-labs/kairo'
 import { userApi } from './api'
 import { userProcessor, analyticsProcessor } from './processors'
 

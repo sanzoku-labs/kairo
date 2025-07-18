@@ -32,7 +32,7 @@ const zod = require('zod')
 const lodash = require('lodash')
 
 // After: Unified Kairo patterns
-import { service, data, pipeline, Result } from 'kairo'
+import { service, data, pipeline, Result } from '@sanzoku-labs/kairo'
 ```
 
 ## From Axios to SERVICE
@@ -53,7 +53,7 @@ try {
 }
 
 // After: Kairo SERVICE
-import { service, Result } from 'kairo'
+import { service, Result } from '@sanzoku-labs/kairo'
 
 const result = await service.get('/api/users')
 if (Result.isOk(result)) {
@@ -178,7 +178,7 @@ const UserSchema = z.object({
 type User = z.infer<typeof UserSchema>
 
 // After: Kairo DATA
-import { data, type InferSchema } from 'kairo'
+import { data, type InferSchema } from '@sanzoku-labs/kairo'
 
 const UserSchema = data.schema({
   id: { type: 'string', format: 'uuid' },
@@ -251,7 +251,7 @@ const userNames = _.map(activeUsers, user => user.name)
 const groupedUsers = _.groupBy(users, 'department')
 
 // After: Kairo PIPELINE
-import { pipeline, data } from 'kairo'
+import { pipeline, data } from '@sanzoku-labs/kairo'
 
 const activeUsers = pipeline.filter(users, user => user.active)
 const userNames = pipeline.map(activeUsers, user => user.name)

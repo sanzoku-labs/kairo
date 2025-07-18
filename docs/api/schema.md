@@ -7,7 +7,7 @@ Kairo's native schema system provides fast validation and automatic TypeScript t
 ### Basic Schema
 
 ```typescript
-import { data, type InferSchema } from 'kairo'
+import { data, type InferSchema } from '@sanzoku-labs/kairo'
 
 // Define schema
 const UserSchema = data.schema({

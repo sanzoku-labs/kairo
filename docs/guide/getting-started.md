@@ -9,15 +9,15 @@ Install Kairo via npm, yarn, or bun:
 ::: code-group
 
 ```bash [npm]
-npm install kairo
+npm install @sanzoku-labs/kairo
 ```
 
 ```bash [yarn]
-yarn add kairo
+yarn add @sanzoku-labs/kairo
 ```
 
 ```bash [bun]
-bun add kairo
+bun add @sanzoku-labs/kairo
 ```
 
 :::
@@ -25,7 +25,7 @@ bun add kairo
 ## Your First Import
 
 ```typescript
-import { service, data, pipeline, Result } from 'kairo'
+import { service, data, pipeline, Result } from '@sanzoku-labs/kairo'
 ```
 
 That's it! You now have access to all three pillars:
@@ -39,7 +39,7 @@ That's it! You now have access to all three pillars:
 Let's build a simple user management system:
 
 ```typescript
-import { service, data, pipeline, Result } from 'kairo'
+import { service, data, pipeline, Result } from '@sanzoku-labs/kairo'
 
 // 1. Define a user schema
 const UserSchema = data.schema({

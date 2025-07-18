@@ -15,15 +15,15 @@ This guide covers how to install and set up Kairo in your TypeScript project.
 ::: code-group
 
 ```bash [npm]
-npm install kairo
+npm install @sanzoku-labs/kairo
 ```
 
 ```bash [yarn]
-yarn add kairo
+yarn add @sanzoku-labs/kairo
 ```
 
 ```bash [bun]
-bun add kairo
+bun add @sanzoku-labs/kairo
 ```
 
 :::
@@ -79,7 +79,7 @@ Kairo supports multiple import styles:
 ### Named Imports (Recommended)
 
 ```typescript
-import { service, data, pipeline, Result } from 'kairo'
+import { service, data, pipeline, Result } from '@sanzoku-labs/kairo'
 
 // Use the pillars
 const users = await service.get('/api/users')
@@ -91,11 +91,11 @@ const processor = pipeline.compose([...])
 
 ```typescript
 // Import only what you need
-import { service, Result } from 'kairo'
+import { service, Result } from '@sanzoku-labs/kairo'
 
 // Or import specific pillars
-import { data } from 'kairo'
-import type { DataValidationOptions } from 'kairo'
+import { data } from '@sanzoku-labs/kairo'
+import type { DataValidationOptions } from '@sanzoku-labs/kairo'
 ```
 
 ### Type-Only Imports
@@ -108,7 +108,7 @@ import type {
   PipelineResult,
   Schema,
   InferSchema
-} from 'kairo'
+} from '@sanzoku-labs/kairo'
 ```
 
 ## Bundle Size Optimization
@@ -117,10 +117,10 @@ Kairo is designed to be tree-shakable. Modern bundlers will only include what yo
 
 ```typescript
 // Only includes service pillar code
-import { service } from 'kairo'
+import { service } from '@sanzoku-labs/kairo'
 
 // Only includes specific utilities
-import { Result } from 'kairo'
+import { Result } from '@sanzoku-labs/kairo'
 ```
 
 ### Bundle Analysis
@@ -143,7 +143,7 @@ Expected bundle sizes:
 
 ```typescript
 // server.ts
-import { service, data, pipeline, Result } from 'kairo'
+import { service, data, pipeline, Result } from '@sanzoku-labs/kairo'
 
 const app = express()
 
@@ -162,7 +162,7 @@ app.get('/api/users', async (req, res) => {
 
 ```typescript
 // hooks/useApi.ts
-import { service, Result } from 'kairo'
+import { service, Result } from '@sanzoku-labs/kairo'
 import { useState, useEffect } from 'react'
 
 export const useApi = <T>(url: string) => {
@@ -196,7 +196,7 @@ export const useApi = <T>(url: string) => {
 
 ```typescript
 // composables/useApi.ts
-import { service, Result } from 'kairo'
+import { service, Result } from '@sanzoku-labs/kairo'
 import { ref, computed } from 'vue'
 
 export const useApi = <T>(url: string) => {
@@ -229,7 +229,7 @@ export const useApi = <T>(url: string) => {
 
 ```typescript
 // pages/api/users.ts
-import { service, Result } from 'kairo'
+import { service, Result } from '@sanzoku-labs/kairo'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 export default async function handler(
@@ -281,7 +281,7 @@ npm start
 
 ### TypeScript Errors
 
-**Issue**: `Cannot find module 'kairo'`
+**Issue**: `Cannot find module '@sanzoku-labs/kairo'`
 **Solution**: Ensure TypeScript can resolve the module:
 
 ```json
@@ -307,10 +307,10 @@ npm update typescript
 
 ```typescript
 // ✅ Good - tree-shakable
-import { service } from 'kairo'
+import { service } from '@sanzoku-labs/kairo'
 
 // ❌ Bad - imports everything
-import * as kairo from 'kairo'
+import * as kairo from '@sanzoku-labs/kairo'
 ```
 
 **Issue**: Module not found in browser
@@ -331,7 +331,7 @@ Verify your installation works:
 
 ```typescript
 // test-install.ts
-import { service, data, pipeline, Result } from 'kairo'
+import { service, data, pipeline, Result } from '@sanzoku-labs/kairo'
 
 // Test basic functionality
 const testSchema = data.schema({

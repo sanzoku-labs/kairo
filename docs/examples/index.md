@@ -7,7 +7,7 @@ Practical examples demonstrating how to use Kairo in real-world scenarios. Learn
 ### Basic API Client
 
 ```typescript
-import { service, data, Result } from 'kairo'
+import { service, data, Result } from '@sanzoku-labs/kairo'
 
 // Define user schema
 const UserSchema = data.schema({
@@ -48,7 +48,7 @@ if (Result.isOk(result)) {
 ### Data Processing Pipeline
 
 ```typescript
-import { pipeline, data, Result } from 'kairo'
+import { pipeline, data, Result } from '@sanzoku-labs/kairo'
 
 // Define processing pipeline
 const dataProcessor = pipeline.compose([
@@ -81,7 +81,7 @@ if (Result.isOk(processedResult)) {
 ### Error Handling Pattern
 
 ```typescript
-import { service, Result } from 'kairo'
+import { service, Result } from '@sanzoku-labs/kairo'
 
 const robustApiCall = async (url: string) => {
   const result = await service.get(url, {
@@ -148,7 +148,7 @@ Complex scenarios with error recovery and performance optimization.
 ### E-commerce Product Catalog
 
 ```typescript
-import { service, data, pipeline, Result } from 'kairo'
+import { service, data, pipeline, Result } from '@sanzoku-labs/kairo'
 
 // Product schema
 const ProductSchema = data.schema({
@@ -205,7 +205,7 @@ if (Result.isOk(result)) {
 ### User Analytics Dashboard
 
 ```typescript
-import { service, data, pipeline, Result } from 'kairo'
+import { service, data, pipeline, Result } from '@sanzoku-labs/kairo'
 
 // Analytics data processor
 const analyticsProcessor = pipeline.compose([
@@ -253,7 +253,7 @@ if (Result.isOk(dashboardData)) {
 ### Real-time Data Sync
 
 ```typescript
-import { service, data, pipeline, Result } from 'kairo'
+import { service, data, pipeline, Result } from '@sanzoku-labs/kairo'
 
 class DataSyncManager {
   private cache = new Map()
@@ -337,7 +337,7 @@ if (Result.isOk(result)) {
 You can try these examples in your browser by setting up a new project with Kairo:
 
 1. Create a new project: `npm init -y`
-2. Install Kairo: `npm install kairo`
+2. Install Kairo: `npm install @sanzoku-labs/kairo`
 3. Copy and run the examples above
 
 ### Local Setup
@@ -348,7 +348,7 @@ Set up a local project to test examples:
 mkdir kairo-examples
 cd kairo-examples
 npm init -y
-npm install kairo
+npm install @sanzoku-labs/kairo
 # Copy examples from documentation
 ```
 

@@ -224,7 +224,7 @@ The three pillars are designed to work together seamlessly:
 ### Complete Workflow Example
 
 ```typescript
-import { service, data, pipeline, Result } from 'kairo'
+import { service, data, pipeline, Result } from '@sanzoku-labs/kairo'
 
 // 1. Define schemas (DATA pillar)
 const UserSchema = data.schema({

@@ -33,13 +33,13 @@ Kairo is a clean, focused TypeScript library built around three core pillars wit
 ## Quick Start
 
 ```bash
-npm install kairo
+npm install @sanzoku-labs/kairo
 ```
 
 ### Basic Usage
 
 ```typescript
-import { service, data, pipeline, Result } from 'kairo'
+import { service, data, pipeline, Result } from '@sanzoku-labs/kairo'
 
 // SERVICE: HTTP operations with configuration
 const users = await service.get('/api/users', {

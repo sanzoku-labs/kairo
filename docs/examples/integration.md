@@ -5,7 +5,7 @@ Examples of combining all three pillars for complete workflows.
 ## Full Stack Example
 
 ```typescript
-import { service, data, pipeline, Result } from 'kairo'
+import { service, data, pipeline, Result } from '@sanzoku-labs/kairo'
 
 // Define schemas
 const UserSchema = data.schema({

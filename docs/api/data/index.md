@@ -29,7 +29,7 @@ The DATA pillar includes 10 core methods and 6 utilities for complete data opera
 ## Quick Start
 
 ```typescript
-import { data, Result, type InferSchema } from 'kairo'
+import { data, Result, type InferSchema } from '@sanzoku-labs/kairo'
 
 // Define schema
 const UserSchema = data.schema({

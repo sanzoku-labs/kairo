@@ -19,7 +19,7 @@ The PIPELINE pillar includes 8 core methods and 5 utilities for complete workflo
 ## Quick Start
 
 ```typescript
-import { pipeline, Result } from 'kairo'
+import { pipeline, Result } from '@sanzoku-labs/kairo'
 
 // Map transformation
 const processed = pipeline.map(items, item => transform(item))

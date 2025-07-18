@@ -1,5 +1,5 @@
 {
-  "name": "kairo",
+  "name": "@sanzoku-labs/kairo",
   "version": "0.1.0",
   "description": "Kairo - Three-pillar TypeScript library for SERVICE, DATA, and PIPELINE operations",
   "type": "module",

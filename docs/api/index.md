@@ -15,14 +15,14 @@ Kairo provides **23 core methods** across three pillars:
 ### Core Imports
 
 ```typescript
-import { service, data, pipeline, Result } from 'kairo'
+import { service, data, pipeline, Result } from '@sanzoku-labs/kairo'
 import type { 
   ServiceResult, 
   DataResult, 
   PipelineResult,
   Schema,
   InferSchema
-} from 'kairo'
+} from '@sanzoku-labs/kairo'
 ```
 
 ### Error Handling

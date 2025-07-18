@@ -33,7 +33,7 @@ try {
 ### After (Kairo)
 
 ```typescript
-import { service, Result } from 'kairo'
+import { service, Result } from '@sanzoku-labs/kairo'
 
 const result = await service.get('/api/users', {
   timeout: 5000,
@@ -351,7 +351,7 @@ class UserService {
 ### After: Kairo-based User Service
 
 ```typescript
-import { service, data, Result } from 'kairo'
+import { service, data, Result } from '@sanzoku-labs/kairo'
 
 const UserSchema = data.schema({
   id: { type: 'string' },
