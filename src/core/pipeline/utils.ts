@@ -8,6 +8,10 @@
 import { Result, createPipelineError } from '../shared'
 import type { PipelineError } from '../shared'
 import type { PipelineResult, CurriedFunction, PipelineContext } from './types'
+// Enhanced fp-utils integration for pipeline utilities
+import { pipe } from '../../fp-utils/basics'
+import { map as fpMap, filter as fpFilter } from '../../fp-utils'
+import { tryCatch } from '../../fp-utils/safe'
 // Utility functions use explicit return types rather than imported interface types
 
 /**
@@ -181,28 +185,36 @@ export const retry = async <T>(
     } catch (error) {
       lastError = error
 
-      // Check if we should retry for this specific error
+      // Check if we should retry for this specific error using functional patterns
       if (opts.retryOn.length > 0) {
-        const shouldRetry = opts.retryOn.some(retryType => {
-          if (error instanceof Error) {
-            return error.message.includes(retryType) || error.name.includes(retryType)
-          }
-          return false
-        })
-        if (!shouldRetry) {
+        const shouldRetryError = (error: unknown, retryTypes: string[]): boolean => {
+          if (!(error instanceof Error)) return false
+          
+          // Use functional pattern to check retry conditions
+          const checkRetryCondition = pipe(
+            (retryTypes: string[]) => retryTypes,
+            fpMap((retryType: string) => 
+              error.message.includes(retryType) || error.name.includes(retryType)
+            ),
+            (conditions: boolean[]) => conditions.some(Boolean)
+          )
+          
+          return checkRetryCondition(retryTypes)
+        }
+
+        if (!shouldRetryError(error, opts.retryOn)) {
           break
         }
       }
 
       // Don't delay on the last attempt
       if (attempt < opts.maxAttempts - 1) {
+        // Use functional pattern for delay calculation
         let delayTime = opts.delay
 
         if (opts.backoff === 'exponential') {
-          delayTime = opts.delay * Math.pow(2, attempt)
-          // Ensure minimum delay to prevent timing issues
-          delayTime = Math.max(delayTime, opts.delay)
-        } else {
+          delayTime = Math.max(opts.delay * Math.pow(2, attempt), opts.delay)
+        } else if (opts.backoff === 'linear') {
           delayTime = opts.delay * (attempt + 1)
         }
 
@@ -435,7 +447,12 @@ export const isPipelineError = (error: unknown): error is PipelineError => {
  * @returns Array of successful values
  */
 export const extractSuccessful = <T>(results: PipelineResult<T>[]): T[] => {
-  return results.filter(result => Result.isOk(result)).map(result => (result as { value: T }).value)
+  // Use functional pipeline for result extraction
+  return pipe(
+    (results: PipelineResult<T>[]) => results,
+    fpFilter(result => Result.isOk(result)),
+    fpMap(result => (result as { value: T }).value)
+  )(results)
 }
 
 /**
@@ -445,9 +462,12 @@ export const extractSuccessful = <T>(results: PipelineResult<T>[]): T[] => {
  * @returns Array of errors
  */
 export const extractErrors = <T>(results: PipelineResult<T>[]): PipelineError[] => {
-  return results
-    .filter(result => Result.isErr(result))
-    .map(result => (result as { error: PipelineError }).error)
+  // Use functional pipeline for error extraction
+  return pipe(
+    (results: PipelineResult<T>[]) => results,
+    fpFilter(result => Result.isErr(result)),
+    fpMap(result => (result as { error: PipelineError }).error)
+  )(results)
 }
 
 /**
@@ -479,7 +499,12 @@ export const combineResults = <T>(results: PipelineResult<T>[]): PipelineResult<
  * @returns True if all Results are Ok
  */
 export const allSuccessful = <T>(results: PipelineResult<T>[]): boolean => {
-  return results.every(result => Result.isOk(result))
+  // Use functional approach for checking all results
+  return pipe(
+    (results: PipelineResult<T>[]) => results,
+    fpMap(result => Result.isOk(result)),
+    (successes: boolean[]) => successes.every(Boolean)
+  )(results)
 }
 
 /**
@@ -489,7 +514,12 @@ export const allSuccessful = <T>(results: PipelineResult<T>[]): boolean => {
  * @returns True if any Result is Ok
  */
 export const anySuccessful = <T>(results: PipelineResult<T>[]): boolean => {
-  return results.some(result => Result.isOk(result))
+  // Use functional approach for checking any results
+  return pipe(
+    (results: PipelineResult<T>[]) => results,
+    fpMap(result => Result.isOk(result)),
+    (successes: boolean[]) => successes.some(Boolean)
+  )(results)
 }
 
 /**
@@ -501,18 +531,15 @@ export const anySuccessful = <T>(results: PipelineResult<T>[]): boolean => {
 export const toResult = <TInput, TOutput>(
   fn: (data: TInput) => TOutput
 ): ((data: TInput) => PipelineResult<TOutput>) => {
+  // Use tryCatch for functional error handling
   return (data: TInput) => {
-    try {
-      const result = fn(data)
-      return Result.Ok(result)
-    } catch (error) {
-      return Result.Err(
-        createPipelineError('toResult', `Function execution failed: ${String(error)}`, {
-          error,
-          data,
-        })
-      )
-    }
+    return tryCatch(
+      () => fn(data),
+      (error: unknown) => createPipelineError('toResult', `Function execution failed: ${String(error)}`, {
+        error,
+        data,
+      })
+    )
   }
 }
 

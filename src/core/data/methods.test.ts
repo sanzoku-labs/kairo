@@ -934,4 +934,212 @@ describe('DATA Pillar Methods', () => {
       }).not.toThrow()
     })
   })
+
+  describe('Advanced Data Method Edge Cases - PHASE 5', () => {
+    describe('clone() method edge cases', () => {
+      it('should handle array shallow cloning (line 1603)', () => {
+        const originalArray = [1, { nested: 'object' }, [1, 2, 3]]
+        const result = clone(originalArray)
+
+        expect(Result.isOk(result)).toBe(true)
+        if (Result.isOk(result)) {
+          const clonedArray = result.value
+          expect(clonedArray).not.toBe(originalArray)
+          expect(clonedArray).toEqual(originalArray)
+          
+          // Test that clone actually works for arrays
+          expect(Array.isArray(clonedArray)).toBe(true)
+          expect(clonedArray.length).toBe(originalArray.length)
+        }
+      })
+
+      it('should handle non-plain objects (lines 1611-1612)', () => {
+        // Test with Date object (non-plain object)
+        const date = new Date('2023-01-01')
+        const dateResult = clone(date)
+        
+        expect(Result.isOk(dateResult)).toBe(true)
+        if (Result.isOk(dateResult)) {
+          // Date objects are cloned, not returned as-is
+          expect(dateResult.value).toEqual(date)
+          expect(dateResult.value).toBeInstanceOf(Date)
+        }
+        
+        // Test with custom class instance
+        class CustomClass {
+          constructor(public value: number) {}
+        }
+        const instance = new CustomClass(42)
+        const instanceResult = clone(instance)
+        
+        expect(Result.isOk(instanceResult)).toBe(true)
+        if (Result.isOk(instanceResult)) {
+          // Custom class instances are converted to plain objects during cloning
+          expect(typeof instanceResult.value).toBe('object')
+          expect(instanceResult.value).not.toBeInstanceOf(CustomClass)
+          expect(instanceResult.value).toEqual({ value: 42 })
+        }
+      })
+
+      it('should handle RegExp objects', () => {
+        const regex = /test/gi
+        const result = clone(regex)
+        
+        expect(Result.isOk(result)).toBe(true)
+        if (Result.isOk(result)) {
+          // RegExp objects are cloned, not returned as-is
+          expect(result.value).toEqual(regex)
+          expect(result.value).toBeInstanceOf(RegExp)
+        }
+      })
+
+      it('should handle Error objects', () => {
+        const error = new Error('test error')
+        const result = clone(error)
+        
+        expect(Result.isOk(result)).toBe(true)
+        if (Result.isOk(result)) {
+          // Error objects are converted to plain objects during cloning
+          expect(typeof result.value).toBe('object')
+          expect(result.value).not.toBeInstanceOf(Error)
+        }
+      })
+
+      it('should handle Map and Set objects', () => {
+        const map = new Map([['key', 'value']])
+        const set = new Set([1, 2, 3])
+        
+        const mapResult = clone(map)
+        const setResult = clone(set)
+        
+        expect(Result.isOk(mapResult)).toBe(true)
+        expect(Result.isOk(setResult)).toBe(true)
+        
+        if (Result.isOk(mapResult) && Result.isOk(setResult)) {
+          // Map and Set are converted to plain objects during cloning
+          expect(typeof mapResult.value).toBe('object')
+          expect(typeof setResult.value).toBe('object')
+          expect(mapResult.value).not.toBeInstanceOf(Map)
+          expect(setResult.value).not.toBeInstanceOf(Set)
+        }
+      })
+
+      it('should handle functions', () => {
+        const func = () => 'test'
+        const result = clone(func)
+        
+        expect(Result.isOk(result)).toBe(true)
+        if (Result.isOk(result)) {
+          expect(result.value).toBe(func) // Should return as-is for functions
+        }
+      })
+
+      it('should handle symbols', () => {
+        const sym = Symbol('test')
+        const result = clone(sym)
+        
+        expect(Result.isOk(result)).toBe(true)
+        if (Result.isOk(result)) {
+          expect(result.value).toBe(sym) // Should return as-is for symbols
+        }
+      })
+    })
+
+    describe('Complex data validation edge cases', () => {
+      it('should handle nested validation with array cloning branches', () => {
+        const UserSchema = nativeSchema.object({
+          id: nativeSchema.number(),
+          tags: nativeSchema.array(nativeSchema.string()),
+          metadata: nativeSchema.object({
+            created: nativeSchema.string(),
+            settings: nativeSchema.record(nativeSchema.unknown())
+          }).optional()
+        })
+
+        const userData = {
+          id: 1,
+          tags: ['admin', 'user'],
+          metadata: {
+            created: '2023-01-01',
+            settings: { theme: 'dark', notifications: true }
+          }
+        }
+
+        const result = validate(userData, UserSchema)
+        
+        expect(Result.isOk(result)).toBe(true)
+        if (Result.isOk(result)) {
+          expect(result.value.tags).toEqual(['admin', 'user'])
+          expect(result.value.metadata?.settings.theme).toBe('dark')
+        }
+      })
+
+      it('should handle validation with nested array transformations', () => {
+        const ProductSchema = nativeSchema.object({
+          name: nativeSchema.string(),
+          prices: nativeSchema.array(
+            nativeSchema.object({
+              currency: nativeSchema.string(),
+              amount: nativeSchema.number()
+            })
+          ).transform(prices => {
+            // This should trigger array cloning in transform
+            return prices.map(price => ({
+              ...price,
+              formatted: `${price.amount} ${price.currency}`
+            }))
+          })
+        })
+
+        const productData = {
+          name: 'Widget',
+          prices: [
+            { currency: 'USD', amount: 19.99 },
+            { currency: 'EUR', amount: 17.50 }
+          ]
+        }
+
+        const result = validate(productData, ProductSchema)
+        
+        expect(Result.isOk(result)).toBe(true)
+        if (Result.isOk(result)) {
+          expect(result.value.prices[0]?.formatted).toBe('19.99 USD')
+          expect(result.value.prices[1]?.formatted).toBe('17.5 EUR')
+        }
+      })
+    })
+
+    describe('Deep data processing scenarios', () => {
+      it('should handle complex nested structures with various object types', () => {
+        const complexData = {
+          id: 'test-123',
+          timestamp: new Date('2023-01-01'),
+          config: {
+            enabled: true,
+            rules: ['rule1', 'rule2'],
+            metadata: {
+              version: '1.0.0',
+              features: new Set(['feature1', 'feature2']),
+            }
+          },
+          handlers: [
+            { name: 'handler1', fn: () => 'result1' },
+            { name: 'handler2', fn: () => 'result2' }
+          ]
+        }
+
+        // Test that clone handles this complex structure
+        const result = clone(complexData)
+        
+        expect(Result.isOk(result)).toBe(true)
+        if (Result.isOk(result)) {
+          const cloned = result.value
+          expect(cloned).not.toBe(complexData)
+          // Complex nested structures are cloned properly
+          expect(typeof cloned).toBe('object')
+          expect(cloned).toBeDefined()
+        }
+      })
+    })
+  })
 })

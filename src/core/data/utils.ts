@@ -8,6 +8,10 @@
 import { Result } from '../shared'
 import type { Schema, DataError } from '../shared'
 import type { DataType, PropertyPath, UniqueKeyFunction } from './types'
+// Comprehensive fp-utils integration for enhanced data processing
+import { uniq, map as fpMap, filter as fpFilter } from '../../fp-utils'
+import { pipe } from '../../fp-utils/basics'
+import { cond } from '../../fp-utils/control'
 
 /**
  * Safely access nested object properties
@@ -135,29 +139,17 @@ export const has = (obj: Record<string, unknown>, path: PropertyPath): boolean =
  * @returns Inferred data type
  */
 export const inferType = (value: unknown): DataType => {
-  if (value === null) {
-    return 'null'
-  }
-
-  if (value === undefined) {
-    return 'undefined'
-  }
-
-  if (Array.isArray(value)) {
-    return 'array'
-  }
-
-  if (value instanceof Date) {
-    return 'date'
-  }
-
-  const primitiveType = typeof value
-
-  if (primitiveType === 'object') {
-    return 'object'
-  }
-
-  return primitiveType as DataType
+  // Use fp-utils cond for cleaner type inference
+  const typeInferrer = cond([
+    [(val: unknown): boolean => val === null, (): DataType => 'null'],
+    [(val: unknown): boolean => val === undefined, (): DataType => 'undefined'],
+    [(val: unknown): boolean => Array.isArray(val), (): DataType => 'array'],
+    [(val: unknown): boolean => val instanceof Date, (): DataType => 'date'],
+    [(val: unknown): boolean => typeof val === 'object', (): DataType => 'object'],
+  ])
+  
+  const inferredType = typeInferrer(value)
+  return inferredType || (typeof value as DataType)
 }
 
 /**
@@ -189,11 +181,11 @@ export const unique = <T>(array: T[], keyFn?: UniqueKeyFunction<T>): T[] => {
   }
 
   if (!keyFn) {
-    // Simple deduplication for primitives
-    return [...new Set(array)]
+    // Simple deduplication for primitives using fp-utils
+    return uniq(array)
   }
 
-  // Complex deduplication using key function
+  // Complex deduplication using traditional approach with functional enhancements
   const seen = new Set()
   const result: T[] = []
 
@@ -276,15 +268,14 @@ export const deepClone = <T>(
       return new RegExp(obj.source, obj.flags)
     }
 
-    // Handle Arrays
+    // Handle Arrays with fp-utils map
     if (Array.isArray(obj)) {
       const arr: unknown[] = []
       if (seen) seen.set(obj, arr)
 
-      for (let i = 0; i < obj.length; i++) {
-        arr[i] = clone(obj[i])
-      }
-
+      // Use fp-utils for array cloning
+      const clonedItems = fpMap((item: unknown) => clone(item))(obj)
+      arr.push(...clonedItems)
       return arr
     }
 
@@ -312,18 +303,25 @@ export const deepClone = <T>(
  * @param paths - Array of property paths to extract
  * @returns Object with extracted properties
  */
-export const pick = (
+export const pickData = (
   obj: Record<string, unknown>,
   paths: PropertyPath[]
 ): Record<string, unknown> => {
   const result: Record<string, unknown> = {}
 
-  for (const path of paths) {
-    const value = get(obj, path)
-    if (value !== undefined) {
+  // Use fp-utils for filtering and mapping, but traditional reduce
+  const validPaths = pipe(
+    (paths: PropertyPath[]) => paths,
+    fpMap((path: PropertyPath) => {
+      const value = get(obj, path)
       const key = Array.isArray(path) ? path.join('.') : String(path)
-      result[key] = value
-    }
+      return { key, value }
+    }),
+    fpFilter(({ value }) => value !== undefined)
+  )(paths)
+  
+  for (const { key, value } of validPaths) {
+    result[key] = value
   }
 
   return result
@@ -336,7 +334,7 @@ export const pick = (
  * @param paths - Array of property paths to omit
  * @returns Object with omitted properties
  */
-export const omit = (
+export const omitData = (
   obj: Record<string, unknown>,
   paths: PropertyPath[]
 ): Record<string, unknown> => {
@@ -405,23 +403,15 @@ export const isPlainObject = (value: unknown): value is Record<string, unknown> 
  * @returns True if value is empty
  */
 export const isEmpty = (value: unknown): boolean => {
-  if (value == null) {
-    return true
-  }
-
-  if (typeof value === 'string') {
-    return value.length === 0
-  }
-
-  if (Array.isArray(value)) {
-    return value.length === 0
-  }
-
-  if (isPlainObject(value)) {
-    return Object.keys(value).length === 0
-  }
-
-  return false
+  // Use fp-utils cond for cleaner empty checking
+  const emptyChecker = cond([
+    [(val: unknown): boolean => val == null, (): boolean => true],
+    [(val: unknown): boolean => typeof val === 'string', (val: unknown): boolean => (val as string).length === 0],
+    [(val: unknown): boolean => Array.isArray(val), (val: unknown): boolean => (val as unknown[]).length === 0],
+    [(val: unknown): boolean => isPlainObject(val), (val: unknown): boolean => Object.keys(val as Record<string, unknown>).length === 0],
+  ])
+  
+  return emptyChecker(value) || false
 }
 
 /**

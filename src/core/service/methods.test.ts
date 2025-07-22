@@ -10,10 +10,11 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { get, post, put, patch, deleteMethod as del } from './methods'
+import { get, post, put, patch, deleteMethod as del, cache } from './methods'
 import { Result } from '../shared'
 import type { ServiceHttpError } from '../shared'
 import { ResultTestUtils, MockDataGenerator, HttpMockUtils } from '../../test-utils'
+
 
 describe('SERVICE Pillar Methods', () => {
   beforeEach(() => {
@@ -458,6 +459,211 @@ describe('SERVICE Pillar Methods', () => {
 
       // Should return Err Result, not throw
       expect(Result.isErr(result)).toBe(true)
+    })
+  })
+
+  describe('Advanced Service Cache Edge Cases - PHASE 5', () => {
+    describe('ServiceCache class edge cases', () => {
+      it('should handle cache clear operation (lines 600-601)', () => {
+        // Use the exported cache instance
+        const serviceCache = cache
+        
+        // Add some entries first
+        serviceCache.set('key1', 'value1', 10000)
+        serviceCache.set('key2', 'value2', 10000)
+        
+        expect(serviceCache.size()).toBe(2)
+        
+        // Clear cache
+        serviceCache.clear()
+        expect(serviceCache.size()).toBe(0)
+        
+        // Should return null for cleared keys
+        const result1 = serviceCache.get('key1')
+        const result2 = serviceCache.get('key2')
+        expect(result1).toBeNull()
+        expect(result2).toBeNull()
+      })
+
+      it('should handle cache size method (lines 604-605)', () => {
+        const serviceCache = cache
+        
+        // Clear cache first to ensure clean state
+        serviceCache.clear()
+        expect(serviceCache.size()).toBe(0)
+        
+        serviceCache.set('key1', 'value1', 10000)
+        expect(serviceCache.size()).toBe(1)
+        
+        serviceCache.set('key2', 'value2', 10000)
+        expect(serviceCache.size()).toBe(2)
+        
+        // Set same key should not increase size
+        serviceCache.set('key1', 'new-value1', 10000)
+        expect(serviceCache.size()).toBe(2)
+        
+        serviceCache.clear()
+        expect(serviceCache.size()).toBe(0)
+      })
+
+      it('should handle cache with expired entries affecting size', () => {
+        const serviceCache = cache
+        
+        // Clear cache first
+        serviceCache.clear()
+        
+        // Add entry that will expire immediately (use negative TTL)
+        serviceCache.set('expired-key', 'expired-value', -1000)
+        serviceCache.set('valid-key', 'valid-value', 10000)
+        
+        expect(serviceCache.size()).toBe(2) // Size includes expired entries
+        
+        // Getting expired key should return null but not affect size until cleanup
+        const expiredResult = serviceCache.get('expired-key')
+        expect(expiredResult).toBeNull()
+        
+        const validResult = serviceCache.get('valid-key')
+        expect(validResult).toBe('valid-value')
+      })
+    })
+
+    describe('Cache integration with service methods', () => {
+      it('should handle cache state during service operations', () => {
+        const serviceCache = cache
+        
+        // Clear cache to start fresh
+        serviceCache.clear()
+        expect(serviceCache.size()).toBe(0)
+        
+        // Manually test cache operations that service methods would use
+        const cacheKey = '/api/users'
+        const userData = { id: 1, name: 'Test User' }
+        
+        // Simulate what GET with caching would do
+        serviceCache.set(cacheKey, userData, 5000)
+        expect(serviceCache.size()).toBe(1)
+        
+        // Verify cached data retrieval
+        const cachedData = serviceCache.get(cacheKey)
+        expect(cachedData).toEqual(userData)
+        
+        // Simulate cache invalidation
+        serviceCache.clear()
+        expect(serviceCache.size()).toBe(0)
+        expect(serviceCache.get(cacheKey)).toBeNull()
+      })
+
+      it('should handle cache expiration scenarios', () => {
+        const serviceCache = cache
+        
+        // Clear cache first
+        serviceCache.clear()
+        
+        // Test valid cache entry first
+        serviceCache.set('valid-key', { data: 'valid' }, 10000) // 10 seconds
+        expect(serviceCache.get('valid-key')).toEqual({ data: 'valid' })
+        
+        // Size should show the valid entry
+        expect(serviceCache.size()).toBe(1)
+        
+        // Test immediate expiration - this will automatically clean up on get()
+        serviceCache.set('expired-key', { data: 'test' }, -1) // Already expired
+        
+        // Size temporarily shows 2 until we access the expired entry
+        expect(serviceCache.size()).toBe(2)
+        
+        // Accessing expired entry should return null and clean it up
+        expect(serviceCache.get('expired-key')).toBeNull()
+        
+        // After cleanup, size should be back to 1
+        expect(serviceCache.size()).toBe(1)
+      })
+
+      it('should handle cache size monitoring during multiple operations', () => {
+        const serviceCache = cache
+        
+        // Clear cache first
+        serviceCache.clear()
+        
+        // Simulate multiple cache operations
+        serviceCache.set('user:1', { id: 1, name: 'User 1' }, 5000)
+        serviceCache.set('user:2', { id: 2, name: 'User 2' }, 5000)
+        serviceCache.set('post:1', { id: 1, title: 'Post 1' }, 5000)
+        
+        expect(serviceCache.size()).toBe(3)
+        
+        // Add more entries
+        for (let i = 3; i <= 5; i++) {
+          serviceCache.set(`user:${i}`, { id: i, name: `User ${i}` }, 5000)
+        }
+        
+        expect(serviceCache.size()).toBe(6)
+        
+        // Clear and verify
+        serviceCache.clear()
+        expect(serviceCache.size()).toBe(0)
+      })
+    })
+
+    describe('Complex cache edge cases coverage', () => {
+      it('should handle cache operations with various data types', () => {
+        const serviceCache = cache
+        serviceCache.clear()
+        
+        // Test different data types
+        const testCases = [
+          { key: 'string', value: 'test string', ttl: 5000 },
+          { key: 'number', value: 42, ttl: 5000 },
+          { key: 'object', value: { nested: { data: true } }, ttl: 5000 },
+          { key: 'array', value: [1, 2, 3, 'mixed'], ttl: 5000 },
+          { key: 'null', value: null, ttl: 5000 },
+          { key: 'boolean', value: false, ttl: 5000 }
+        ]
+        
+        // Set all test cases
+        testCases.forEach(({ key, value, ttl }) => {
+          serviceCache.set(key, value, ttl)
+        })
+        
+        expect(serviceCache.size()).toBe(testCases.length)
+        
+        // Verify all values can be retrieved correctly
+        testCases.forEach(({ key, value }) => {
+          expect(serviceCache.get(key)).toEqual(value)
+        })
+        
+        // Clear and verify
+        serviceCache.clear()
+        expect(serviceCache.size()).toBe(0)
+        
+        testCases.forEach(({ key }) => {
+          expect(serviceCache.get(key)).toBeNull()
+        })
+      })
+      
+      it('should handle concurrent cache operations', () => {
+        const serviceCache = cache
+        serviceCache.clear()
+        
+        // Simulate concurrent cache operations
+        const operations = []
+        for (let i = 0; i < 10; i++) {
+          operations.push(() => {
+            serviceCache.set(`concurrent-${i}`, { index: i, data: `data-${i}` }, 5000)
+          })
+        }
+        
+        // Execute all operations
+        operations.forEach(op => op())
+        
+        expect(serviceCache.size()).toBe(10)
+        
+        // Verify all entries
+        for (let i = 0; i < 10; i++) {
+          const result = serviceCache.get(`concurrent-${i}`)
+          expect(result).toEqual({ index: i, data: `data-${i}` })
+        }
+      })
     })
   })
 })

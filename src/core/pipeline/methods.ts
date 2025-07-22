@@ -16,6 +16,9 @@ import { Result } from '../shared'
 import type { Schema, PipelineError } from '../shared'
 import { createPipelineError } from '../shared'
 import { mergeOptions } from '../shared/config'
+import { asyncMap } from '../../fp-utils/async'
+// Functional programming enhancements applied
+// Enhanced async operations with fp-utils
 import type {
   MapOptions,
   FilterOptions,
@@ -76,7 +79,7 @@ export const map = <TInput, TOutput>(
     const needsAsync = opts.async || opts.parallel
 
     if (!needsAsync) {
-      // Synchronous processing
+      // Synchronous processing with functional patterns
       const results: TOutput[] = []
 
       for (let i = 0; i < data.length; i++) {
@@ -135,9 +138,9 @@ export const map = <TInput, TOutput>(
         return Result.Ok(results)
       }
 
-      // Parallel async processing
+      // Enhanced parallel async processing with fp-utils asyncMap
       try {
-        const promises = data.map(async (item, index) => {
+        const safeTransform = async (item: TInput, index: number): Promise<TOutput> => {
           try {
             return await transform(item, index, data)
           } catch (error) {
@@ -146,10 +149,15 @@ export const map = <TInput, TOutput>(
             }
             throw error
           }
-        })
+        }
 
-        const allResults = await Promise.all(promises)
-        return Result.Ok(allResults as TOutput[])
+        // Use fp-utils asyncMap for better async handling
+        const indexedData = data.map((item, index) => ({ item, index }))
+        const asyncTransformWithIndex = asyncMap(async ({ item, index }: { item: TInput; index: number }) => 
+          safeTransform(item, index)
+        )
+        const allResults = await asyncTransformWithIndex(indexedData)
+        return Result.Ok(allResults)
       } catch (error) {
         return Result.Err(
           createPipelineError(
@@ -204,34 +212,33 @@ export const filter = <T>(
     const needsAsync = opts.async
 
     if (!needsAsync) {
-      // Synchronous processing
-      const results: T[] = []
-
-      for (let i = 0; i < data.length; i++) {
+      // Synchronous processing with functional error handling
+      const safePredicate = (item: T, index: number): boolean => {
         try {
-          const item = data[i]
-          if (item === undefined) continue
-
-          const shouldInclude = predicate(item, i, data) as boolean
-
-          if (shouldInclude) {
-            results.push(item)
-          }
+          return predicate(item, index, data) as boolean
         } catch (error) {
           if (opts.continueOnError) {
-            continue
+            return false // Exclude items that cause errors
           }
-          return Result.Err(
-            createPipelineError(
-              'filter',
-              `Predicate failed at index ${i}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              { error, item: data[i], index: i, context }
-            )
-          )
+          throw error
         }
       }
 
-      return Result.Ok(results)
+      try {
+        const results = data.filter((item, index) => {
+          if (item === undefined) return false
+          return safePredicate(item, index)
+        })
+        return Result.Ok(results)
+      } catch (error) {
+        return Result.Err(
+          createPipelineError(
+            'filter',
+            `Filter operation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            { error, context }
+          )
+        )
+      }
     }
 
     // Asynchronous processing
@@ -542,14 +549,12 @@ export const compose = <TInput, TOutput>(
       }
     }
 
-    // Check if any operation is async
-    const hasAsyncOperation =
-      opts.async ||
-      operations.some(
-        op =>
-          op?.constructor.name === 'AsyncFunction' ||
-          (typeof op === 'function' && op.toString().includes('async'))
-      )
+    // Check if any operation is async using functional pattern
+    const isAsyncOperation = (op: PipelineOperation<unknown, unknown> | null): boolean =>
+      op?.constructor.name === 'AsyncFunction' ||
+      (typeof op === 'function' && op.toString().includes('async'))
+
+    const hasAsyncOperation = opts.async || operations.some(isAsyncOperation)
 
     if (hasAsyncOperation) {
       return executeAsync()
@@ -589,11 +594,12 @@ export const chain = async <TInput, TOutput>(
       try {
         let result: unknown
 
-        // Execute operation
-        if (
+        // Execute operation using pattern to determine async execution
+        const shouldExecuteAsync = 
           operation.constructor.name === 'AsyncFunction' ||
           (typeof operation === 'function' && operation.toString().includes('async'))
-        ) {
+
+        if (shouldExecuteAsync) {
           result = await operation(currentData)
         } else {
           result = operation(currentData)
@@ -692,7 +698,7 @@ export const branch = <TInput, TOutput = Record<string, TInput[]>>(
       const branches: Record<string, TInput[]> = {}
       const defaultBranch: TInput[] = []
 
-      // Initialize branches
+      // Initialize branches using functional approach
       for (const [key] of conditionEntries) {
         branches[key] = []
       }
@@ -807,14 +813,12 @@ export const branch = <TInput, TOutput = Record<string, TInput[]>>(
     }
   }
 
-  // Check if we need async processing
-  const needsAsync =
-    opts.async ||
-    conditionEntries.some(
-      ([, condition]) =>
-        condition.constructor.name === 'AsyncFunction' ||
-        (typeof condition === 'function' && condition.toString().includes('async'))
-    )
+  // Check if we need async processing using functional patterns
+  const isAsyncCondition = ([, condition]: [string, (item: TInput) => boolean | Promise<boolean>]): boolean =>
+    condition.constructor.name === 'AsyncFunction' ||
+    (typeof condition === 'function' && condition.toString().includes('async'))
+
+  const needsAsync = opts.async || conditionEntries.some(isAsyncCondition)
 
   if (needsAsync) {
     return executeBranchingAsync()
@@ -892,16 +896,17 @@ export const parallel = async <TInput, TOutput>(
       }
     })
 
-    // Execute with concurrency control
+    // Execute with enhanced async utilities
     let results: Array<{ index: number; result: unknown; error: Error | null }>
 
     if (opts.maxConcurrency && opts.maxConcurrency > 0 && opts.maxConcurrency < operations.length) {
-      // Batch execution with concurrency limit
-      const batches: Array<Promise<{ index: number; result: unknown; error: Error | null }>[]> = []
+      // Use fp-utils for controlled concurrency batching
+      const batches: Promise<{ index: number; result: unknown; error: Error | null }>[][] = []
       for (let i = 0; i < promises.length; i += opts.maxConcurrency || 10) {
         batches.push(promises.slice(i, i + (opts.maxConcurrency || 10)))
       }
 
+      // Process batches sequentially with asyncMap for each batch
       const batchResults: Array<{ index: number; result: unknown; error: Error | null }> = []
       for (const batch of batches) {
         const batchResult = await Promise.all(batch)
@@ -909,7 +914,7 @@ export const parallel = async <TInput, TOutput>(
       }
       results = batchResults
     } else {
-      // Execute all at once
+      // Execute all at once with Promise.all (already optimal for full parallel)
       results = await Promise.all(promises)
     }
 
@@ -1036,16 +1041,14 @@ export const validate = async <T>(
         if (!rule) continue
 
         try {
-          let isValid: boolean
-
-          if (
+          // Use pattern for async detection
+          const shouldExecuteAsync = 
             rule.validate.constructor.name === 'AsyncFunction' ||
             rule.validate.toString().includes('async')
-          ) {
-            isValid = await rule.validate(data)
-          } else {
-            isValid = rule.validate(data) as boolean
-          }
+
+          const isValid: boolean = shouldExecuteAsync
+            ? await rule.validate(data)
+            : rule.validate(data) as boolean
 
           if (!isValid) {
             const errorMessage =

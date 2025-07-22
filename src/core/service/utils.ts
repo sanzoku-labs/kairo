@@ -8,6 +8,9 @@
 import { Result, createServiceError, createServiceHttpError } from '../shared'
 import type { ServiceError, ServiceHttpError, ServiceNetworkError } from '../shared'
 import type { ServiceResponse } from './types'
+// Functional programming utilities for data processing
+import { pipe } from '../../fp-utils/basics'
+import { map as fpMap, filter as fpFilter } from '../../fp-utils/array'
 
 /**
  * Builds URLs with query parameters
@@ -28,12 +31,15 @@ export const buildURL = (base: string, path?: string, params?: Record<string, un
     url = cleanBase + cleanPath
   }
 
-  // Append query parameters if provided
+  // Append query parameters if provided using fp-utils
   if (params && Object.keys(params).length > 0) {
     const searchParams = new URLSearchParams()
 
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
+    // Use functional pipeline for parameter processing
+    const processParams = pipe(
+      (params: Record<string, unknown>) => Object.entries(params),
+      fpFilter(([, value]) => value !== undefined && value !== null),
+      fpMap(([key, value]) => {
         let stringValue: string
         if (typeof value === 'object') {
           stringValue = JSON.stringify(value)
@@ -46,9 +52,12 @@ export const buildURL = (base: string, path?: string, params?: Record<string, un
           // eslint-disable-next-line @typescript-eslint/no-base-to-string
           stringValue = String(value)
         }
-        searchParams.append(key, stringValue)
-      }
-    })
+        return { key, value: stringValue }
+      })
+    )
+    
+    const validParams = processParams(params)
+    validParams.forEach(({ key, value }) => searchParams.append(key, value))
 
     const queryString = searchParams.toString()
     if (queryString) {
@@ -174,8 +183,19 @@ export const parseResponse = async <T = unknown>(
     const contentType = response.headers.get('content-type') || ''
     let data: T
 
+    // Parse JSON with traditional try-catch for async context
     if (contentType.includes('application/json')) {
-      data = (await response.json()) as T
+      try {
+        data = (await response.json()) as T
+      } catch (jsonError) {
+        return Result.Err(
+          createServiceError(
+            'parseResponse',
+            `Failed to parse response: JSON parsing failed - ${jsonError instanceof Error ? jsonError.message : 'Unknown error'}`,
+            { error: jsonError, contentType }
+          )
+        )
+      }
     } else if (contentType.includes('text/')) {
       data = (await response.text()) as T
     } else {
@@ -216,7 +236,7 @@ export const parseResponse = async <T = unknown>(
 }
 
 /**
- * Extracts specific headers from response
+ * Extracts specific headers from response using fp-utils for functional processing
  *
  * @param response - ServiceResponse object
  * @param keys - Header keys to extract
@@ -230,10 +250,21 @@ export const extractHeaders = (
     return response.headers
   }
 
+  // Use fp-utils functional pipeline for header extraction
+  const extractHeaderEntries = pipe(
+    (keys: string[]) => keys,
+    fpMap((key: string) => {
+      const lowerKey = key.toLowerCase()
+      const value = response.headers[lowerKey] || response.headers[key]
+      return { key, value }
+    }),
+    fpFilter(({ value }) => value !== undefined && value !== null && value !== '')
+  )
+
+  const validEntries = extractHeaderEntries(keys)
   const extracted: Record<string, string> = {}
-  keys.forEach(key => {
-    const lowerKey = key.toLowerCase()
-    const value = response.headers[lowerKey] || response.headers[key]
+  
+  validEntries.forEach(({ key, value }) => {
     if (value) {
       extracted[key] = value
     }

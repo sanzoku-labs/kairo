@@ -39,6 +39,7 @@
     "docs:api": "typedoc",
     "docs:api:single": "typedoc --options typedoc-single.json",
     "docs:api:onefile": "rm -rf temp-api-docs && typedoc --plugin typedoc-plugin-markdown --theme markdown --out temp-api-docs --name 'Kairo API Reference' && concat-md --toc --decrease-title-levels --dir-name-as-title temp-api-docs > kairo-api-reference.md && rm -rf temp-api-docs",
+    "docs:claude": "rm -rf temp-api-docs && typedoc --options typedoc-claude.json && concat-md --toc --decrease-title-levels --dir-name-as-title temp-api-docs > kairo-api-claude.md && node scripts/create-claude-api.js && rm -rf temp-api-docs",
     "docs:api:watch": "typedoc --watch",
     "docs:all": "bun run docs:api && bun run docs:build"
   },

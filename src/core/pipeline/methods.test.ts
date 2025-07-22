@@ -20,10 +20,10 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
-import { map, filter, reduce, compose, parallel, branch } from './methods'
+import { map, filter, reduce, compose, parallel, branch, chain, validate } from './methods'
 import { retry } from './utils'
 import { Result } from '../shared'
-import type { PipelineResult, PipelineOperation } from './types'
+import type { PipelineResult, PipelineOperation, ChainOperation, ValidationRule } from './types'
 import { ResultTestUtils, MockDataGenerator, PerformanceTestUtils } from '../../test-utils'
 
 describe('PIPELINE Pillar Methods', () => {
@@ -620,6 +620,303 @@ describe('PIPELINE Pillar Methods', () => {
       const error = ResultTestUtils.expectErrType(result, 'PIPELINE_ERROR')
       expect(error.message).toContain('VALIDATION_ERROR')
       expect(attempts).toBe(2)
+    })
+  })
+
+  describe('Advanced Async Edge Cases', () => {
+    it('should handle mixed sync/async operations in map with error value fallback', async () => {
+      const data = [1, 2, 3, 4]
+      const problematicTransform = (x: number, index: number) => {
+        if (index === 2) throw new Error('Transform failed at index 2')
+        return x * 10
+      }
+
+      const result = await map(data, problematicTransform, {
+        async: true,
+        parallel: true,
+        continueOnError: true,
+        errorValue: -999
+      })
+
+      const mapped = ResultTestUtils.expectOk(result)
+      expect(mapped).toEqual([10, 20, -999, 40])
+    })
+
+    it('should handle async filter with continue on error', async () => {
+      const data = [1, 2, 3, 4, 5]
+      const problematicPredicate = (x: number, index: number) => {
+        if (index === 2) throw new Error('Predicate failed')
+        return x % 2 === 0
+      }
+
+      const result = await filter(data, problematicPredicate, {
+        async: true,
+        continueOnError: true
+      })
+
+      const filtered = ResultTestUtils.expectOk(result)
+      expect(filtered).toEqual([2, 4]) // Item at index 2 excluded due to error
+    })
+
+    it('should handle reduce with checkpoints option', async () => {
+      const numbers = [1, 2, 3, 4, 5]
+      const asyncSum = async (acc: number, curr: number, index: number) => {
+        await new Promise(resolve => setTimeout(resolve, 1))
+        if (index === 3) throw new Error('Reducer failed at index 3')
+        return acc + curr
+      }
+
+      const result = await reduce(numbers, asyncSum, 0, {
+        async: true,
+        checkpoints: true
+      })
+
+      const error = ResultTestUtils.expectErrType(result, 'PIPELINE_ERROR')
+      expect(error.message).toContain('Reducer failed at index 3')
+      expect(error.context.accumulator).toBe(6) // 0 + 1 + 2 + 3 = 6
+    })
+
+    it('should handle compose with rollback on error', () => {
+      const step1 = (x: number) => x + 10
+      const step2 = (x: number) => {
+        if (x > 15) throw new Error('Value too large')
+        return x * 2
+      }
+      const step3 = (x: number) => x - 5
+
+      const pipeline = compose([step1, step2, step3] as PipelineOperation<unknown, unknown>[], {
+        rollback: true,
+        stopOnError: true
+      })
+
+      const result = pipeline(10) // 10 + 10 = 20, then fails at step2
+
+      const error = ResultTestUtils.expectErrType(result as PipelineResult<number>, 'PIPELINE_ERROR')
+      expect(error.message).toContain('Value too large')
+      expect(error.context.intermediateResults).toContain(20) // Rollback data captured
+    })
+
+    it('should handle async compose with mixed promise/non-promise operations', async () => {
+      const syncStep = (x: number) => x * 2
+      const asyncStep = async (x: number) => {
+        await new Promise(resolve => setTimeout(resolve, 1))
+        return x + 5
+      }
+      const resultStep = (x: number) => Result.Ok(x.toString())
+
+      const pipeline = compose<number, string>([syncStep, asyncStep, resultStep] as PipelineOperation<unknown, unknown>[], { async: true })
+      const result = await pipeline(10)
+
+      const computed = ResultTestUtils.expectOk(result)
+      expect(computed).toBe('25') // (10 * 2) + 5 = 25
+    })
+
+    it('should handle chain with collectResults option', async () => {
+      const step1 = async (x: number) => {
+        await Promise.resolve()
+        return x * 2
+      }
+      const step2 = async (x: number) => {
+        await Promise.resolve()
+        return x + 10
+      }
+      const step3 = async (x: number) => {
+        await Promise.resolve()
+        return x / 2
+      }
+
+      const result = await chain(5, [step1, step2, step3] as ChainOperation<unknown, unknown>[], {
+        collectResults: true,
+        stopOnError: true
+      })
+
+      const final = ResultTestUtils.expectOk(result)
+      expect(final).toBe(10) // ((5 * 2) + 10) / 2 = 10
+    })
+
+    it('should handle branch with cache and async conditions', async () => {
+      const data = [1, 2, 3, 4, 5, 6]
+      const conditions = {
+        small: async (x: number) => {
+          await new Promise(r => setTimeout(r, 1))
+          return x <= 2
+        },
+        medium: async (x: number) => {
+          await new Promise(r => setTimeout(r, 1))
+          return x > 2 && x <= 4
+        },
+        large: async (x: number) => {
+          await new Promise(r => setTimeout(r, 1))
+          return x > 4
+        }
+      }
+
+      const result = await branch(data, conditions, {
+        async: true,
+        cache: true,
+        cacheConditions: true
+      })
+
+      const branched = ResultTestUtils.expectOk(result)
+      expect(branched.small).toEqual([1, 2])
+      expect(branched.medium).toEqual([3, 4])
+      expect(branched.large).toEqual([5, 6])
+    })
+
+    it('should handle validate with complex rule-based async validation', async () => {
+      const userData = { name: 'John', age: 25, email: 'john@test.com' }
+      
+      const rules = [
+        {
+          name: 'name-length',
+          validate: async (data: typeof userData) => {
+            await new Promise(r => setTimeout(r, 1))
+            return data.name.length >= 2
+          },
+          message: (data: typeof userData) => `Name '${data.name}' too short`
+        },
+        {
+          name: 'age-check',
+          validate: async (data: typeof userData) => {
+            await new Promise(r => setTimeout(r, 1))
+            return data.age >= 18
+          },
+          message: 'Must be 18 or older'
+        },
+        {
+          name: 'email-format',
+          validate: (data: typeof userData) => data.email.includes('@'),
+          message: 'Invalid email format'
+        }
+      ]
+
+      const result = await validate(userData, rules, {
+        stopOnFirst: false,
+        collectErrors: true,
+        strict: true
+      })
+
+      const validated = ResultTestUtils.expectOk(result)
+      expect(validated).toEqual(userData)
+    })
+
+    it('should handle validate with failing async rules', async () => {
+      const invalidData = { name: 'A', age: 16, email: 'invalid' }
+      
+      const rules = [
+        {
+          name: 'name-length',
+          validate: async (data: typeof invalidData) => {
+            await new Promise(r => setTimeout(r, 1))
+            return data.name.length >= 2
+          },
+          message: 'Name too short'
+        },
+        {
+          name: 'age-check', 
+          validate: async (data: typeof invalidData) => {
+            await new Promise(r => setTimeout(r, 1))  
+            return data.age >= 18
+          },
+          message: 'Must be 18 or older'
+        }
+      ]
+
+      const result = await validate(invalidData, rules, {
+        stopOnFirst: false,
+        collectErrors: true
+      })
+
+      const error = ResultTestUtils.expectErrType(result, 'PIPELINE_ERROR')
+      expect(error.message).toContain('validation rule(s) failed')
+      expect(error.context.validationErrors).toHaveLength(2)
+    })
+
+    it('should handle parallel with controlled concurrency and batch processing', async () => {
+      const heavyOperations = Array.from({ length: 8 }, (_, i) => async () => {
+        await new Promise(r => setTimeout(r, 5))
+        return `result-${i}`
+      })
+
+      const result = await parallel(heavyOperations, {
+        maxConcurrency: 3,
+        preserveOrder: true,
+        failFast: false
+      })
+
+      const results = ResultTestUtils.expectOk(result) as string[]
+      expect(results).toHaveLength(8)
+      expect(results[0]).toBe('result-0')
+      expect(results[7]).toBe('result-7')
+    })
+
+    it('should handle parallel with custom combiner function', async () => {
+      const operations = [
+        async () => {
+          await Promise.resolve()
+          return { count: 5, sum: 15 }
+        },
+        async () => {
+          await Promise.resolve()
+          return { count: 3, sum: 9 }
+        },
+        async () => {
+          await Promise.resolve()
+          return { count: 2, sum: 6 }
+        }
+      ]
+
+      const result = await parallel(operations, {
+        combiner: (context: unknown, results: unknown[]) => {
+          const stats = results as Array<{ count: number; sum: number }>
+          return {
+            totalCount: stats.reduce((acc, s) => acc + s.count, 0),
+            totalSum: stats.reduce((acc, s) => acc + s.sum, 0),
+            average: stats.reduce((acc, s) => acc + s.sum, 0) / stats.reduce((acc, s) => acc + s.count, 0)
+          }
+        }
+      })
+
+      const combined = ResultTestUtils.expectOk(result) as { totalCount: number; totalSum: number; average: number }
+      expect(combined.totalCount).toBe(10)
+      expect(combined.totalSum).toBe(30)
+      expect(combined.average).toBe(3)
+    })
+
+    it('should handle null/undefined input validation edge cases', () => {
+      // Test null input to map
+      const nullResult = map(null as unknown as number[], x => x * 2)
+      const nullError = ResultTestUtils.expectErrType(nullResult as PipelineResult<number[]>, 'PIPELINE_ERROR')
+      expect(nullError.message).toContain('null or undefined')
+
+      // Test non-array input to filter  
+      const nonArrayResult = filter('not-array' as unknown as number[], x => x > 0)
+      const nonArrayError = ResultTestUtils.expectErrType(nonArrayResult as PipelineResult<number[]>, 'PIPELINE_ERROR')
+      expect(nonArrayError.message).toContain('must be an array')
+
+      // Test non-array input to reduce
+      const reduceResult = reduce({} as unknown as number[], (acc, curr) => acc + curr, 0)
+      const reduceError = ResultTestUtils.expectErrType(reduceResult as PipelineResult<number>, 'PIPELINE_ERROR')
+      expect(reduceError.message).toContain('must be an array')
+    })
+
+    it('should handle invalid operations in parallel', async () => {
+      const invalidOperations = 'not-an-array' as unknown as Array<() => unknown>
+      
+      const result = await parallel(invalidOperations)
+      
+      const error = ResultTestUtils.expectErrType(result, 'PIPELINE_ERROR')
+      expect(error.message).toContain('must be an array')
+    })
+
+    it('should handle validate with invalid schema types', async () => {
+      const data = { name: 'test' }
+      const invalidSchema = ('not-a-schema' as unknown) as ValidationRule<{ name: string }>[]
+      
+      const result = await validate<{ name: string }>(data, invalidSchema)
+      
+      const error = ResultTestUtils.expectErrType(result, 'PIPELINE_ERROR')
+      expect(error.message).toContain('Validation failed')
     })
   })
 

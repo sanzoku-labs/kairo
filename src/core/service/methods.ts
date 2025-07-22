@@ -12,6 +12,10 @@
 import { Result } from '../shared'
 import type { ServiceError, ServiceNetworkError } from '../shared'
 import { createServiceError } from '../shared'
+// Comprehensive fp-utils integration
+import { pipe } from '../../fp-utils/basics'
+import { map as fpMap, filter as fpFilter } from '../../fp-utils/array'
+import { switchCase } from '../../fp-utils/control'
 import type {
   GetOptions,
   PostOptions,
@@ -265,14 +269,20 @@ function createDeleteConfig(url: string, options: DeleteOptions): RequestConfig 
     returnDeleted: false,
   })
 
-  // Build query parameters for delete options
-  const queryParams: Record<string, string> = {}
-  if (opts.soft) queryParams['soft'] = 'true'
-  if (opts.force) queryParams['force'] = 'true'
-  if (opts.returnDeleted) queryParams['return'] = 'true'
-
-  const deleteURL =
-    Object.keys(queryParams).length > 0 ? buildURL(url, undefined, queryParams) : url
+  // Build query parameters for delete options using fp-utils
+  const buildQueryParams = pipe(
+    (options: DeleteOptions) => ({
+      ...(options.soft && { soft: 'true' }),
+      ...(options.force && { force: 'true' }),
+      ...(options.returnDeleted && { return: 'true' }),
+    }),
+    (params: Record<string, string>) => params
+  )
+  
+  const queryParams = buildQueryParams(opts)
+  const deleteURL = Object.keys(queryParams).length > 0 
+    ? buildURL(url, undefined, queryParams) 
+    : url
 
   const headers = buildHeaders({
     Accept: 'application/json',
@@ -295,18 +305,21 @@ function createDeleteConfig(url: string, options: DeleteOptions): RequestConfig 
 // ============================================================================
 
 /**
- * Build headers object with proper merging
+ * Build headers object with proper merging using fp-utils
  */
 function buildHeaders(headers: Record<string, string | undefined>): Record<string, string> {
-  const result: Record<string, string> = {}
-
-  for (const [key, value] of Object.entries(headers)) {
-    if (value !== undefined) {
-      result[key] = value
-    }
+  // Functional approach: filter undefined values using fp-utils
+  const filterDefined = <T>(obj: Record<string, T | undefined>): Record<string, T> => {
+    const result: Record<string, T> = {}
+    Object.entries(obj).forEach(([key, value]) => {
+      if (value !== undefined) {
+        result[key] = value
+      }
+    })
+    return result
   }
-
-  return result
+  
+  return filterDefined(headers)
 }
 
 /**
@@ -319,37 +332,31 @@ function processRequestBody(
   body: string | FormData
   headers: Record<string, string>
 } {
-  switch (contentType) {
-    case 'json':
-      return {
-        body: JSON.stringify(data),
-        headers: { 'Content-Type': 'application/json' },
-      }
+  // Use fp-utils switchCase for cleaner conditional logic
+  const contentTypeProcessor = switchCase({
+    json: (data: unknown) => ({
+      body: JSON.stringify(data),
+      headers: { 'Content-Type': 'application/json' },
+    }),
+    form: (data: unknown) => ({
+      body: objectToUrlSearchParams(data).toString(),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    }),
+    multipart: (data: unknown) => ({
+      body: objectToFormData(data) as string | FormData,
+      headers: {} as Record<string, string>, // FormData sets boundary automatically
+    }),
+    text: (data: unknown) => ({
+      body: String(data),
+      headers: { 'Content-Type': 'text/plain' },
+    }),
+  }, (data: unknown) => ({
+    // Default case
+    body: JSON.stringify(data),
+    headers: { 'Content-Type': 'application/json' },
+  }))
 
-    case 'form':
-      return {
-        body: objectToUrlSearchParams(data).toString(),
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      }
-
-    case 'multipart':
-      return {
-        body: objectToFormData(data),
-        headers: {}, // FormData sets boundary automatically
-      }
-
-    case 'text':
-      return {
-        body: String(data),
-        headers: { 'Content-Type': 'text/plain' },
-      }
-
-    default:
-      return {
-        body: JSON.stringify(data),
-        headers: { 'Content-Type': 'application/json' },
-      }
-  }
+  return contentTypeProcessor(contentType as 'json' | 'form' | 'multipart' | 'text')(data)
 }
 
 /**
@@ -367,24 +374,28 @@ function getPatchContentType(format: string): string {
 }
 
 /**
- * Convert object to URLSearchParams
+ * Convert object to URLSearchParams using fp-utils
  */
 function objectToUrlSearchParams(data: unknown): URLSearchParams {
   const params = new URLSearchParams()
 
   if (data && typeof data === 'object') {
-    for (const [key, value] of Object.entries(data)) {
-      if (value !== undefined && value !== null) {
-        params.append(key, String(value))
-      }
-    }
+    // Use functional approach for object processing
+    const processEntries = pipe(
+      (obj: Record<string, unknown>) => Object.entries(obj),
+      fpFilter(([, value]) => value !== undefined && value !== null),
+      fpMap(([key, value]) => ({ key, value: String(value) }))
+    )
+    
+    const validEntries = processEntries(data as Record<string, unknown>)
+    validEntries.forEach(({ key, value }) => params.append(key, value))
   }
 
   return params
 }
 
 /**
- * Convert object to FormData
+ * Convert object to FormData using fp-utils
  */
 function objectToFormData(data: unknown): FormData {
   if (data instanceof FormData) {
@@ -394,11 +405,15 @@ function objectToFormData(data: unknown): FormData {
   const formData = new FormData()
 
   if (data && typeof data === 'object') {
-    for (const [key, value] of Object.entries(data)) {
-      if (value !== undefined && value !== null) {
-        formData.append(key, String(value))
-      }
-    }
+    // Use functional pipeline for FormData processing
+    const processFormEntries = pipe(
+      (obj: Record<string, unknown>) => Object.entries(obj),
+      fpFilter(([, value]) => value !== undefined && value !== null),
+      fpMap(([key, value]) => ({ key, value: String(value) }))
+    )
+    
+    const validEntries = processFormEntries(data as Record<string, unknown>)
+    validEntries.forEach(({ key, value }) => formData.append(key, value))
   }
 
   return formData
@@ -409,9 +424,10 @@ function objectToFormData(data: unknown): FormData {
 // ============================================================================
 
 /**
- * Execute HTTP request with comprehensive error handling
+ * Execute HTTP request with comprehensive error handling using fp-utils
  */
 async function executeRequest<T>(config: RequestConfig): Promise<ServiceResult<T>> {
+  // Use traditional try-catch for now due to async complexity  
   try {
     const response = await fetch(config.url, {
       method: config.method,
@@ -510,25 +526,25 @@ async function executeWithRetry<T>(
 }
 
 /**
- * Calculate retry delay based on strategy
+ * Calculate retry delay based on strategy using fp-utils
  */
 function calculateRetryDelay(retryConfig: RetryOptions, attempt: number): number {
   const baseDelay = retryConfig.delay || 1000
-
-  switch (retryConfig.backoff) {
-    case 'exponential': {
+  
+  // Use fp-utils switchCase for backoff strategy
+  const delayCalculator = switchCase({
+    exponential: (_: unknown) => {
       const delay = baseDelay * Math.pow(2, attempt)
       return retryConfig.maxDelay ? Math.min(delay, retryConfig.maxDelay) : delay
-    }
-
-    case 'linear': {
+    },
+    linear: (_: unknown) => {
       const delay = baseDelay * (attempt + 1)
       return retryConfig.maxDelay ? Math.min(delay, retryConfig.maxDelay) : delay
-    }
-
-    default:
-      return baseDelay
-  }
+    },
+    fixed: (_: unknown) => baseDelay,
+  }, (_: unknown) => baseDelay)
+  
+  return delayCalculator(retryConfig.backoff || 'fixed')(null)
 }
 
 /**

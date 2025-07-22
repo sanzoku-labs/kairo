@@ -6,6 +6,10 @@
  */
 
 import type { Schema } from './schema'
+// Enhanced fp-utils integration for configuration utilities
+import { cond } from '../../fp-utils/control'
+import { merge } from '../../fp-utils/object'
+import { isNil } from '../../fp-utils/logic'
 
 /**
  * Base configuration options shared across all Kairo methods
@@ -90,13 +94,12 @@ export interface SchemaValidationOptions {
 }
 
 /**
- * Configuration utility functions
+ * Configuration utility functions with enhanced functional programming patterns
  */
-export const mergeOptions = <T>(defaults: T, userOptions: Partial<T> = {} as Partial<T>): T =>
-  ({
-    ...defaults,
-    ...userOptions,
-  }) as T
+export const mergeOptions = <T>(defaults: T, userOptions: Partial<T> = {} as Partial<T>): T => {
+  // Use fp-utils merge for functional approach
+  return merge(defaults as object, userOptions as object) as T
+}
 
 /**
  * Normalize timeout value to safe bounds
@@ -104,9 +107,15 @@ export const mergeOptions = <T>(defaults: T, userOptions: Partial<T> = {} as Par
  * @returns Normalized timeout between 0 and 300000ms
  */
 export const normalizeTimeout = (timeout?: number): number => {
-  if (timeout === undefined) return 30000 // 30 second default
-  if (timeout <= 0) return 30000
-  return Math.min(timeout, 300000) // 5 minute maximum
+  // Use functional approach with cond for cleaner logic
+  const timeoutNormalizer = cond([
+    [(val: number | undefined): boolean => isNil(val), (): number => 30000], // 30 second default
+    [(val: number | undefined): boolean => (val as number) <= 0, (): number => 30000],
+    [(val: number | undefined): boolean => (val as number) > 300000, (): number => 300000], // 5 minute maximum
+    [(): boolean => true, (val: number | undefined): number => val as number] // Return as-is if valid
+  ])
+  
+  return timeoutNormalizer(timeout) ?? 30000
 }
 
 /**
@@ -115,9 +124,15 @@ export const normalizeTimeout = (timeout?: number): number => {
  * @returns Normalized batch size between 1 and 10000
  */
 export const normalizeBatchSize = (batchSize?: number): number => {
-  if (batchSize === undefined) return 100 // Default batch size
-  if (batchSize <= 0) return 1
-  return Math.min(batchSize, 10000) // Maximum batch size
+  // Use functional approach with cond for cleaner normalization logic
+  const batchNormalizer = cond([
+    [(val: number | undefined): boolean => isNil(val), (): number => 100], // Default batch size
+    [(val: number | undefined): boolean => (val as number) <= 0, (): number => 1], // Minimum batch size
+    [(val: number | undefined): boolean => (val as number) > 10000, (): number => 10000], // Maximum batch size
+    [(): boolean => true, (val: number | undefined): number => val as number] // Return as-is if valid
+  ])
+  
+  return batchNormalizer(batchSize) ?? 100
 }
 
 /**
@@ -126,46 +141,54 @@ export const normalizeBatchSize = (batchSize?: number): number => {
  * @returns Normalized retry options
  */
 export const normalizeRetryOptions = (retry?: boolean | RetryOptions): RetryOptions => {
-  if (retry === false || retry === undefined) {
-    return { attempts: 0 }
-  }
-
-  if (retry === true) {
-    return {
-      attempts: 3,
-      delay: 1000,
-      backoff: 'exponential',
-      maxDelay: 10000,
-    }
-  }
-
-  return {
-    attempts: retry.attempts ?? 3,
-    delay: retry.delay ?? 1000, // Use provided delay or default to 1000ms
-    backoff: retry.backoff ?? 'exponential',
-    maxDelay: retry.maxDelay ?? 10000,
-    ...(retry.retryOn && { retryOn: retry.retryOn }),
-  }
+  // Use functional pattern matching for different retry configurations
+  const retryNormalizer = cond([
+    [(val: boolean | RetryOptions | undefined): boolean => val === false || isNil(val), 
+     (): RetryOptions => ({ attempts: 0 })],
+    [(val: boolean | RetryOptions | undefined): boolean => val === true,
+     (): RetryOptions => ({
+       attempts: 3,
+       delay: 1000,
+       backoff: 'exponential',
+       maxDelay: 10000,
+     })],
+    [(): boolean => true, (val: boolean | RetryOptions | undefined): RetryOptions => {
+      const retryOptions = val as RetryOptions
+      return {
+        attempts: retryOptions.attempts ?? 3,
+        delay: retryOptions.delay ?? 1000,
+        backoff: retryOptions.backoff ?? 'exponential',
+        maxDelay: retryOptions.maxDelay ?? 10000,
+        ...(retryOptions.retryOn && { retryOn: retryOptions.retryOn }),
+      }
+    }]
+  ])
+  
+  return retryNormalizer(retry) ?? { attempts: 0 }
 }
 
 export const normalizeCacheOptions = (cache?: boolean | CacheOptions): CacheOptions => {
-  if (cache === false || cache === undefined) {
-    return { enabled: false }
-  }
-
-  if (cache === true) {
-    return {
-      enabled: true,
-      ttl: 300000, // 5 minutes default
-      strategy: 'memory',
-    }
-  }
-
-  return {
-    enabled: cache.enabled ?? true,
-    ttl: Math.max(cache.ttl ?? 300000, 0), // Minimum TTL of 0
-    strategy: cache.strategy ?? 'memory',
-    ...(cache.key && { key: cache.key }),
-    ...(cache.tags && { tags: cache.tags }),
-  }
+  // Use functional pattern matching for cache configuration normalization
+  const cacheNormalizer = cond([
+    [(val: boolean | CacheOptions | undefined): boolean => val === false || isNil(val),
+     (): CacheOptions => ({ enabled: false })],
+    [(val: boolean | CacheOptions | undefined): boolean => val === true,
+     (): CacheOptions => ({
+       enabled: true,
+       ttl: 300000, // 5 minutes default
+       strategy: 'memory',
+     })],
+    [(): boolean => true, (val: boolean | CacheOptions | undefined): CacheOptions => {
+      const cacheOptions = val as CacheOptions
+      return {
+        enabled: cacheOptions.enabled ?? true,
+        ttl: Math.max(cacheOptions.ttl ?? 300000, 0), // Minimum TTL of 0
+        strategy: cacheOptions.strategy ?? 'memory',
+        ...(cacheOptions.key && { key: cacheOptions.key }),
+        ...(cacheOptions.tags && { tags: cacheOptions.tags }),
+      }
+    }]
+  ])
+  
+  return cacheNormalizer(cache) ?? { enabled: false }
 }

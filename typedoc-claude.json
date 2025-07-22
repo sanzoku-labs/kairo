@@ -1,0 +1,35 @@
+{
+  "entryPoints": ["src/index.ts"],
+  "out": "temp-api-docs",
+  "plugin": ["typedoc-plugin-markdown"],
+  "theme": "markdown",
+  "readme": "none",
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeExternals": true,
+  "excludeInternal": true,
+  "hideGenerator": true,
+  "disableSources": true,
+  "sourceLinkTemplate": "",
+  "sort": ["source-order"],
+  "kindSortOrder": ["Function", "Interface", "TypeAlias", "Variable"],
+  "categorizeByGroup": false,
+  "useCodeBlocks": true,
+  "hideBreadcrumbs": true,
+  "hidePageTitle": false,
+  "navigation": {
+    "includeCategories": false,
+    "includeGroups": false
+  },
+  "outputFileStrategy": "modules",
+  "flattenOutputFiles": true,
+  "fileExtension": ".md",
+  "publicPath": "",
+  "includeVersion": false,
+  "excludeNotDocumented": true,
+  "validation": {
+    "notExported": false,
+    "invalidLink": false,
+    "notDocumented": false
+  }
+}

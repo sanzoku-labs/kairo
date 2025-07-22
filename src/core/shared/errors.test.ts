@@ -17,7 +17,9 @@ import {
   createDataValidationError,
   createPipelineError,
   createPipelineCompositionError,
-  type KairoError
+  type KairoError,
+  type DataValidationError,
+  type PipelineCompositionError
 } from './errors'
 
 describe('Error Handling Functions', () => {
@@ -382,6 +384,277 @@ describe('Error Handling Functions', () => {
       
       expect(error1.message).toBe('')
       expect(error2.message).toBe(null)
+    })
+  })
+
+  describe('Advanced Error Handling Edge Cases', () => {
+    describe('Error trace propagation edge cases', () => {
+      it('should handle createError when cause has no trace property', () => {
+        // Create a cause without trace property (line 26 edge case)
+        const causeWithoutTrace: KairoError = {
+          code: 'CAUSE_ERROR',
+          message: 'Cause without trace',
+          timestamp: Date.now(),
+          context: {},
+          // No trace property
+        }
+
+        const newError = createError('NEW_ERROR', 'New error with cause', {}, causeWithoutTrace)
+        
+        expect(newError.trace).toEqual(['NEW_ERROR'])
+        expect(newError.cause).toBe(causeWithoutTrace)
+      })
+
+      it('should handle createError when cause has existing trace', () => {
+        // Create a cause with existing trace property (line 26 other branch)
+        const causeWithTrace: KairoError = {
+          code: 'CAUSE_ERROR',
+          message: 'Cause with trace',
+          timestamp: Date.now(),
+          context: {},
+          trace: ['ORIGINAL_ERROR', 'CAUSE_ERROR'],
+        }
+
+        const newError = createError('NEW_ERROR', 'New error with traced cause', {}, causeWithTrace)
+        
+        expect(newError.trace).toEqual(['ORIGINAL_ERROR', 'CAUSE_ERROR', 'NEW_ERROR'])
+        expect(newError.cause).toBe(causeWithTrace)
+      })
+
+      it('should handle chainError with undefined context (line 35)', () => {
+        const baseError = createError('BASE_ERROR', 'Base error')
+        const errorToChain: KairoError = {
+          code: 'CHAIN_ERROR',
+          message: 'Error to chain',
+          timestamp: Date.now(),
+          // context is undefined, should default to {} (line 35)
+        } as KairoError
+
+        const chainedError = chainError(errorToChain, baseError)
+        
+        expect(chainedError.context).toEqual({})
+        expect(chainedError.cause).toBe(baseError)
+        expect(chainedError.code).toBe('CHAIN_ERROR')
+      })
+
+      it('should handle chainError when cause has existing trace', () => {
+        const baseError = createError('BASE_ERROR', 'Base error')
+        baseError.trace = ['ORIGINAL', 'BASE_ERROR']
+
+        const newError: KairoError = {
+          code: 'CHAIN_ERROR',
+          message: 'Chain error',
+          timestamp: Date.now(),
+          context: { step: 'chain' },
+        }
+
+        const chainedError = chainError(newError, baseError)
+        
+        expect(chainedError.trace).toEqual(['ORIGINAL', 'BASE_ERROR', 'CHAIN_ERROR'])
+        expect(chainedError.context).toEqual({ step: 'chain' })
+      })
+    })
+
+    describe('Factory function default value edge cases', () => {
+      it('should handle createDataValidationError with undefined field (line 243)', () => {
+        // Pass undefined for field parameter to trigger line 243: field || ''
+        const error = createDataValidationError(
+          'validate',
+          'Validation error',
+          undefined, // field is undefined
+          { invalid: 'data' },
+          'REQUIRED'
+        )
+
+        expect(error.field).toBe('') // Should default to empty string
+        expect(error.code).toBe('DATA_VALIDATION_ERROR')
+        expect(error.pillar).toBe('DATA')
+        expect(error.operation).toBe('validate')
+        expect(error.value).toEqual({ invalid: 'data' })
+        expect(error.constraint).toBe('REQUIRED')
+      })
+
+      it('should handle createDataValidationError with null field', () => {
+        const error = createDataValidationError(
+          'validate',
+          'Validation error',
+          null as unknown as string, // field is null
+          { data: 'test' },
+          'TYPE_ERROR'
+        )
+
+        expect(error.field).toBe('') // Should default to empty string
+        expect(error.constraint).toBe('TYPE_ERROR')
+      })
+
+      it('should handle createDataValidationError with undefined constraint', () => {
+        const error = createDataValidationError(
+          'validate',
+          'Validation error',
+          'user.email',
+          'invalid-email',
+          undefined // constraint is undefined
+        )
+
+        expect(error.field).toBe('user.email')
+        expect(error.constraint).toBe('') // Should default to empty string
+      })
+
+      it('should handle createPipelineCompositionError with undefined step (line 274)', () => {
+        // Pass undefined for step parameter to trigger line 274: step || 0
+        const error = createPipelineCompositionError(
+          'compose',
+          'Composition failed',
+          undefined, // step is undefined
+          'transformStep'
+        )
+
+        expect(error.step).toBe(0) // Should default to 0
+        expect(error.stepName).toBe('transformStep')
+        expect(error.code).toBe('PIPELINE_COMPOSITION_ERROR')
+        expect(error.pillar).toBe('PIPELINE')
+      })
+
+      it('should handle createPipelineCompositionError with undefined stepName', () => {
+        const error = createPipelineCompositionError(
+          'compose',
+          'Composition failed',
+          5,
+          undefined // stepName is undefined
+        )
+
+        expect(error.step).toBe(5)
+        expect(error.stepName).toBe('') // Should default to empty string
+      })
+
+      it('should handle createPipelineCompositionError with both step and stepName undefined', () => {
+        const error = createPipelineCompositionError(
+          'compose',
+          'Composition failed',
+          undefined, // step is undefined
+          undefined  // stepName is undefined
+        )
+
+        expect(error.step).toBe(0) // Should default to 0
+        expect(error.stepName).toBe('') // Should default to empty string
+        expect(error.operation).toBe('compose')
+        expect(error.message).toBe('Composition failed')
+      })
+    })
+
+    describe('Complex error propagation scenarios', () => {
+      it('should handle deeply nested error chains with mixed trace states', () => {
+        // Create base error with no trace
+        const baseError: KairoError = {
+          code: 'BASE_ERROR',
+          message: 'Base error',
+          timestamp: Date.now(),
+          context: { level: 0 },
+        }
+
+        // Chain an error that will add trace
+        const level1Error = createError('LEVEL1_ERROR', 'Level 1 error', { level: 1 }, baseError)
+        expect(level1Error.trace).toEqual(['LEVEL1_ERROR'])
+
+        // Chain another error
+        const level2Error = chainError(
+          { code: 'LEVEL2_ERROR', message: 'Level 2', timestamp: Date.now(), context: { level: 2 } } as KairoError,
+          level1Error
+        )
+        expect(level2Error.trace).toEqual(['LEVEL1_ERROR', 'LEVEL2_ERROR'])
+
+        // Create final error with the chain
+        const finalError = createError('FINAL_ERROR', 'Final error', { level: 3 }, level2Error)
+        expect(finalError.trace).toEqual(['LEVEL1_ERROR', 'LEVEL2_ERROR', 'FINAL_ERROR'])
+      })
+
+      it('should preserve error context through chaining operations', () => {
+        const dataError = createDataValidationError('validate', 'Invalid data', 'email', 'invalid@', 'EMAIL_FORMAT')
+        const serviceError = createServiceError('fetchUser', 'Service failed', { userId: 123 })
+        
+        // Chain service error with data error as cause
+        const chainedServiceError = chainError(serviceError, dataError)
+        
+        expect(chainedServiceError.context).toEqual({ userId: 123 })
+        expect(chainedServiceError.cause?.code).toBe('DATA_VALIDATION_ERROR')
+        
+        // Create pipeline error and chain with service error
+        const pipelineError = createPipelineCompositionError('process', 'Pipeline failed', 2, 'validation')
+        const finalError = chainError(pipelineError, chainedServiceError)
+        
+        expect(finalError.step).toBe(2)
+        expect(finalError.stepName).toBe('validation')
+        expect(finalError.cause?.code).toBe('SERVICE_ERROR')
+        expect(finalError.cause?.cause?.code).toBe('DATA_VALIDATION_ERROR')
+      })
+
+      it('should handle error serialization with deep chains and undefined values', () => {
+        // Create chain with some undefined values
+        const baseError = createDataValidationError(
+          'validate',
+          'Base validation error',
+          undefined, // field will be ''
+          null,
+          undefined // constraint will be ''
+        )
+
+        const compositionError = createPipelineCompositionError(
+          'compose',
+          'Composition error',
+          undefined, // step will be 0
+          undefined  // stepName will be ''
+        )
+
+        const chainedError: PipelineCompositionError = chainError(compositionError, baseError)
+        const serialized = serializeError(chainedError)
+
+        expect(serialized.code).toBe('PIPELINE_COMPOSITION_ERROR')
+        expect(serialized.cause).toBeDefined()
+        expect((serialized.cause as KairoError).code).toBe('DATA_VALIDATION_ERROR')
+        
+        // Verify defaults were applied
+        expect(chainedError.step).toBe(0)
+        expect(chainedError.stepName).toBe('')
+        expect((chainedError.cause as DataValidationError)?.field).toBe('')
+        expect((chainedError.cause as DataValidationError)?.constraint).toBe('')
+      })
+    })
+
+    describe('Error factory comprehensive coverage', () => {
+      it('should create service HTTP errors with all parameters', () => {
+        const httpError = createServiceHttpError(
+          'GET',
+          'HTTP request failed',
+          404,
+          'Not Found',
+          '/api/users/123',
+          { requestId: 'abc123' }
+        )
+
+        expect(httpError.code).toBe('SERVICE_HTTP_ERROR')
+        expect(httpError.pillar).toBe('SERVICE')
+        expect(httpError.operation).toBe('GET')
+        expect(httpError.status).toBe(404)
+        expect(httpError.statusText).toBe('Not Found')
+        expect(httpError.url).toBe('/api/users/123')
+        expect(httpError.context.requestId).toBe('abc123')
+      })
+
+      it('should create service HTTP errors with minimal parameters', () => {
+        const httpError = createServiceHttpError(
+          'POST',
+          'Request failed',
+          500,
+          'Internal Server Error',
+          '/api/data'
+        )
+
+        expect(httpError.code).toBe('SERVICE_HTTP_ERROR')
+        expect(httpError.status).toBe(500)
+        expect(httpError.statusText).toBe('Internal Server Error')
+        expect(httpError.url).toBe('/api/data')
+        expect(httpError.context).toEqual({})
+      })
     })
   })
 })

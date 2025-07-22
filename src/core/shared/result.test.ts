@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { Result } from './result'
+import { Result, map, flatMap, mapError, match, chain } from './result'
 
 describe('Result Pattern', () => {
   describe('Result.Ok', () => {
@@ -387,6 +387,422 @@ describe('Result Pattern', () => {
       if (Result.isOk(backToNumber)) {
         expect(typeof backToNumber.value).toBe('number')
         expect(backToNumber.value).toBe(9) // "Value: 42".length = 9 characters
+      }
+    })
+  })
+
+  // Tests for exported utility functions (lines 437-463)
+  describe('Exported Utility Functions', () => {
+    describe('map() curried function', () => {
+      it('should create a curried map function', () => {
+        const double = map((x: number) => x * 2)
+        const result = Result.Ok(42)
+        const mapped = double(result)
+        
+        expect(Result.isOk(mapped)).toBe(true)
+        if (Result.isOk(mapped)) {
+          expect(mapped.value).toBe(84)
+        }
+      })
+
+      it('should pass through errors unchanged', () => {
+        const double = map((x: number) => x * 2)
+        const result = Result.Err('error')
+        const mapped = double(result)
+        
+        expect(Result.isErr(mapped)).toBe(true)
+        if (Result.isErr(mapped)) {
+          expect(mapped.error).toBe('error')
+        }
+      })
+
+      it('should work with different types', () => {
+        const toString = map((x: number) => `Value: ${x}`)
+        const result = Result.Ok(123)
+        const mapped = toString(result)
+        
+        expect(Result.isOk(mapped)).toBe(true)
+        if (Result.isOk(mapped)) {
+          expect(mapped.value).toBe('Value: 123')
+        }
+      })
+    })
+
+    describe('flatMap() curried function', () => {
+      it('should create a curried flatMap function', () => {
+        const divideBy = (divisor: number) => flatMap((x: number) => 
+          divisor === 0 ? Result.Err('Division by zero') : Result.Ok(x / divisor)
+        )
+        
+        const divideByTwo = divideBy(2)
+        const result = Result.Ok(42)
+        const mapped = divideByTwo(result)
+        
+        expect(Result.isOk(mapped)).toBe(true)
+        if (Result.isOk(mapped)) {
+          expect(mapped.value).toBe(21)
+        }
+      })
+
+      it('should handle chain failures', () => {
+        const alwaysFail = flatMap(() => Result.Err('Always fails'))
+        const result = Result.Ok(42)
+        const mapped = alwaysFail(result)
+        
+        expect(Result.isErr(mapped)).toBe(true)
+        if (Result.isErr(mapped)) {
+          expect(mapped.error).toBe('Always fails')
+        }
+      })
+
+      it('should pass through initial errors', () => {
+        const transform = flatMap((x: number) => Result.Ok(x * 2))
+        const result = Result.Err('initial error')
+        const mapped = transform(result)
+        
+        expect(Result.isErr(mapped)).toBe(true)
+        if (Result.isErr(mapped)) {
+          expect(mapped.error).toBe('initial error')
+        }
+      })
+    })
+
+    describe('mapError() curried function', () => {
+      it('should create a curried mapError function', () => {
+        const wrapError = mapError((err: string) => new Error(`Wrapped: ${err}`))
+        const result = Result.Err('original error')
+        const mapped = wrapError(result)
+        
+        expect(Result.isErr(mapped)).toBe(true)
+        if (Result.isErr(mapped)) {
+          expect(mapped.error).toBeInstanceOf(Error)
+          expect(mapped.error.message).toBe('Wrapped: original error')
+        }
+      })
+
+      it('should pass through Ok results unchanged', () => {
+        const wrapError = mapError((err: string) => new Error(err))
+        const result = Result.Ok(42)
+        const mapped = wrapError(result)
+        
+        expect(Result.isOk(mapped)).toBe(true)
+        if (Result.isOk(mapped)) {
+          expect(mapped.value).toBe(42)
+        }
+      })
+
+      it('should work with different error types', () => {
+        const stringifyError = mapError((err: number) => `Error code: ${err}`)
+        const result = Result.Err(404)
+        const mapped = stringifyError(result)
+        
+        expect(Result.isErr(mapped)).toBe(true)
+        if (Result.isErr(mapped)) {
+          expect(mapped.error).toBe('Error code: 404')
+        }
+      })
+    })
+
+    describe('match() curried function', () => {
+      it('should create a curried match function', () => {
+        const handleResult = match({
+          Ok: (value: number) => `Success: ${value}`,
+          Err: (error: string) => `Error: ${error}`
+        })
+        
+        const okResult = Result.Ok(42)
+        const errResult = Result.Err('test error')
+        
+        expect(handleResult(okResult)).toBe('Success: 42')
+        expect(handleResult(errResult)).toBe('Error: test error')
+      })
+
+      it('should handle different return types', () => {
+        const isPositive = match({
+          Ok: (value: number) => value > 0,
+          Err: () => false
+        })
+        
+        expect(isPositive(Result.Ok(5))).toBe(true)
+        expect(isPositive(Result.Ok(-5))).toBe(false)
+        expect(isPositive(Result.Err('error'))).toBe(false)
+      })
+
+      it('should work with complex handlers', () => {
+        interface User { id: number; name: string }
+        const formatUser = match({
+          Ok: (user: User) => ({ status: 'success', data: user }),
+          Err: (error: string) => ({ status: 'error' as const, data: { id: -1, name: error } })
+        })
+        
+        const userResult = Result.Ok({ id: 1, name: 'John' })
+        const errorResult = Result.Err('User not found')
+        
+        expect(formatUser(userResult)).toEqual({
+          status: 'success',
+          data: { id: 1, name: 'John' }
+        })
+        expect(formatUser(errorResult)).toEqual({
+          status: 'error',
+          data: { id: -1, name: 'User not found' }
+        })
+      })
+    })
+
+    describe('chain() function', () => {
+      it('should chain multiple operations successfully', () => {
+        const addOne = (result: Result<string, unknown>) => 
+          Result.isOk(result) && typeof result.value === 'number' ? Result.Ok(result.value + 1) : result
+        const double = (result: Result<string, unknown>) => 
+          Result.isOk(result) && typeof result.value === 'number' ? Result.Ok(result.value * 2) : result
+        const toString = (result: Result<string, unknown>) => 
+          Result.isOk(result) && typeof result.value === 'number' ? Result.Ok(result.value.toString()) : result
+        
+        const chained = chain(addOne, double, toString)
+        const result = chained(Result.Ok(5))
+        
+        expect(Result.isOk(result)).toBe(true)
+        if (Result.isOk(result)) {
+          expect(result.value).toBe('12') // (5 + 1) * 2 = 12
+        }
+      })
+
+      it('should stop at first error in chain', () => {
+        const addOne = (result: Result<string, unknown>) => 
+          Result.isOk(result) && typeof result.value === 'number' ? Result.Ok(result.value + 1) : result
+        const fail = () => Result.Err('Chain failed')
+        const double = (result: Result<string, unknown>) => 
+          Result.isOk(result) && typeof result.value === 'number' ? Result.Ok(result.value * 2) : result
+        
+        const chained = chain(addOne, fail, double)
+        const result = chained(Result.Ok(5) as Result<string, unknown>)
+        
+        expect(Result.isErr(result)).toBe(true)
+        if (Result.isErr(result)) {
+          expect(result.error).toBe('Chain failed')
+        }
+      })
+
+      it('should pass through initial error without calling chain functions', () => {
+        const addOne = (result: Result<string, unknown>) => 
+          Result.isOk(result) && typeof result.value === 'number' ? Result.Ok(result.value + 1) : result
+        const double = (result: Result<string, unknown>) => 
+          Result.isOk(result) && typeof result.value === 'number' ? Result.Ok(result.value * 2) : result
+        
+        const chained = chain(addOne, double)
+        const result = chained(Result.Err('Initial error') as Result<string, unknown>)
+        
+        expect(Result.isErr(result)).toBe(true)
+        if (Result.isErr(result)) {
+          expect(result.error).toBe('Initial error')
+        }
+      })
+
+      it('should handle empty chain (no operations)', () => {
+        const chained = chain()
+        const result = chained(Result.Ok(42))
+        
+        expect(Result.isOk(result)).toBe(true)
+        if (Result.isOk(result)) {
+          expect(result.value).toBe(42)
+        }
+      })
+
+      it('should handle single operation in chain', () => {
+        const double = (result: Result<string, unknown>) => 
+          Result.isOk(result) && typeof result.value === 'number' ? Result.Ok(result.value * 2) : result
+        
+        const chained = chain(double)
+        const result = chained(Result.Ok(21) as Result<string, unknown>)
+        
+        expect(Result.isOk(result)).toBe(true)
+        if (Result.isOk(result)) {
+          expect(result.value).toBe(42)
+        }
+      })
+    })
+  })
+
+  describe('Result.fromPromise', () => {
+    it('should convert resolved Promise to Ok result', async () => {
+      const promise = Promise.resolve(42)
+      const result = await Result.fromPromise(promise)
+      
+      expect(Result.isOk(result)).toBe(true)
+      if (Result.isOk(result)) {
+        expect(result.value).toBe(42)
+      }
+    })
+
+    it('should convert rejected Promise to Err result', async () => {
+      const promise = Promise.reject(new Error('Async error'))
+      const result = await Result.fromPromise(promise)
+      
+      expect(Result.isErr(result)).toBe(true)
+      if (Result.isErr(result)) {
+        expect(result.error).toBeInstanceOf(Error)
+        expect((result.error as Error).message).toBe('Async error')
+      }
+    })
+
+    it('should handle Promise that rejects with non-Error', async () => {
+      const promise = Promise.reject(new Error('String error'))
+      const result = await Result.fromPromise(promise)
+      
+      expect(Result.isErr(result)).toBe(true)
+      if (Result.isErr(result)) {
+        expect(result.error).toBeInstanceOf(Error)
+        expect((result.error as Error).message).toBe('String error')
+      }
+    })
+
+    it('should work with complex async operations', async () => {
+      const fetchData = () => 
+        new Promise<{ id: number; name: string }>(resolve => 
+          setTimeout(() => resolve({ id: 1, name: 'Alice' }), 10)
+        )
+      
+      const result = await Result.fromPromise(fetchData())
+      
+      expect(Result.isOk(result)).toBe(true)
+      if (Result.isOk(result)) {
+        expect(result.value).toEqual({ id: 1, name: 'Alice' })
+      }
+    })
+  })
+
+  describe('Result.fromTry', () => {
+    it('should convert successful function to Ok result', () => {
+      const result = Result.fromTry<{ name: string }>(() => {
+        const parsed = JSON.parse('{"name":"John"}') as { name: string }
+        return parsed
+      })
+      
+      expect(Result.isOk(result)).toBe(true)
+      if (Result.isOk(result)) {
+        expect(result.value).toEqual({ name: 'John' })
+      }
+    })
+
+    it('should convert throwing function to Err result', () => {
+      const result = Result.fromTry<unknown>(() => JSON.parse('invalid json'))
+      
+      expect(Result.isErr(result)).toBe(true)
+      if (Result.isErr(result)) {
+        expect(result.error).toBeInstanceOf(SyntaxError)
+      }
+    })
+
+    it('should handle functions that throw non-Error values', () => {
+      const result = Result.fromTry(() => {
+        throw new Error('Custom error')
+      })
+      
+      expect(Result.isErr(result)).toBe(true)
+      if (Result.isErr(result)) {
+        expect(result.error).toBeInstanceOf(Error)
+        expect((result.error as Error).message).toBe('Custom error')
+      }
+    })
+
+    it('should work with complex operations', () => {
+      const divide = (a: number, b: number) => Result.fromTry(() => {
+        if (b === 0) throw new Error('Division by zero')
+        return a / b
+      })
+      
+      const successResult = divide(10, 2)
+      expect(Result.isOk(successResult)).toBe(true)
+      if (Result.isOk(successResult)) {
+        expect(successResult.value).toBe(5)
+      }
+      
+      const errorResult = divide(10, 0)
+      expect(Result.isErr(errorResult)).toBe(true)
+      if (Result.isErr(errorResult)) {
+        expect((errorResult.error as Error).message).toBe('Division by zero')
+      }
+    })
+
+    it('should handle null and undefined return values', () => {
+      const nullResult = Result.fromTry(() => null)
+      const undefinedResult = Result.fromTry(() => undefined)
+      
+      expect(Result.isOk(nullResult)).toBe(true)
+      expect(Result.isOk(undefinedResult)).toBe(true)
+      
+      if (Result.isOk(nullResult)) {
+        expect(nullResult.value).toBe(null)
+      }
+      if (Result.isOk(undefinedResult)) {
+        expect(undefinedResult.value).toBe(undefined)
+      }
+    })
+  })
+
+  describe('Complex integration scenarios', () => {
+    it('should compose multiple utility functions', () => {
+      const processNumber = chain(
+        map((x: unknown) => typeof x === 'number' ? x + 10 : x) as (result: Result<unknown, unknown>) => Result<unknown, unknown>,
+        flatMap((x: unknown) => typeof x === 'number' && x > 0 ? Result.Ok(x) : Result.Err('Negative')) as (result: Result<unknown, unknown>) => Result<unknown, unknown>,
+        map((x: unknown) => typeof x === 'number' ? x.toString() : String(x)) as (result: Result<unknown, unknown>) => Result<unknown, unknown>
+      )
+      
+      const result = processNumber(Result.Ok(5))
+      
+      expect(Result.isOk(result)).toBe(true)
+      if (Result.isOk(result)) {
+        expect(result.value).toBe('15')
+      }
+    })
+
+    it('should handle error transformation in complex chains', () => {
+      // Test manual composition of Result utilities
+      let result: Result<unknown, unknown> = Result.Ok('invalid' as string)
+      
+      // Apply map to parse the string
+      result = map((x: unknown) => typeof x === 'string' ? parseInt(x) : NaN)(result)
+      
+      // Apply flatMap to validate the parsed number
+      if (Result.isOk(result)) {
+        result = flatMap((x: unknown) => typeof x === 'number' && isNaN(x) ? Result.Err('Parse error') : Result.Ok(x))(result)
+      }
+      
+      // Apply mapError to transform the error
+      if (Result.isErr(result)) {
+        result = mapError((err: unknown) => new Error(`Processing failed: ${String(err)}`))(result)
+      }
+      
+      expect(Result.isErr(result)).toBe(true)
+      if (Result.isErr(result)) {
+        expect(result.error).toBeInstanceOf(Error)
+        expect((result.error as Error).message).toBe('Processing failed: Parse error')
+      }
+    })
+
+    it('should work with async Result patterns', async () => {
+      const asyncProcess = async (value: number) => {
+        const step1 = await Result.fromPromise(Promise.resolve(value * 2))
+        if (Result.isErr(step1)) return step1
+        
+        const step2 = Result.fromTry(() => {
+          if (step1.value > 100) throw new Error('Too large')
+          return step1.value + 10
+        })
+        
+        return step2
+      }
+      
+      const smallResult = await asyncProcess(10)
+      expect(Result.isOk(smallResult)).toBe(true)
+      if (Result.isOk(smallResult)) {
+        expect(smallResult.value).toBe(30) // (10 * 2) + 10
+      }
+      
+      const largeResult = await asyncProcess(60)
+      expect(Result.isErr(largeResult)).toBe(true)
+      if (Result.isErr(largeResult)) {
+        expect((largeResult.error as Error).message).toBe('Too large')
       }
     })
   })

@@ -41,6 +41,10 @@ import type {
   GroupByKeyFunction,
 } from './types'
 import { get, has, deepClone, isPlainObject } from './utils'
+// Comprehensive fp-utils integration for enhanced data processing
+import { map as fpMap, filter as fpFilter, always, tryCatch, cond } from '../../fp-utils'
+import { path as lensPath, view } from '../../fp-utils/lens'
+import { pipe, identity } from '../../fp-utils/basics'
 
 /**
  * Create native schema for validation
@@ -58,29 +62,23 @@ export const schema = <T>(
     options
   )
 
-  try {
-    // Convert definition to native schema format
-    const schemaFields: Record<string, Schema<unknown>> = {}
+  const safeSchemaCreation = tryCatch(
+    () => {
+      // Convert definition to native schema format
+      const schemaFields: Record<string, Schema<unknown>> = {}
 
-    for (const [key, field] of Object.entries(definition)) {
+      for (const [key, field] of Object.entries(definition)) {
       if (typeof field === 'string') {
-        // Simple type definition - convert string to schema
-        switch (field) {
-          case 'string':
-            schemaFields[key] = nativeSchema.string()
-            break
-          case 'number':
-            schemaFields[key] = nativeSchema.number()
-            break
-          case 'boolean':
-            schemaFields[key] = nativeSchema.boolean()
-            break
-          case 'date':
-            schemaFields[key] = nativeSchema.string() // Convert to proper date schema when available
-            break
-          default:
-            schemaFields[key] = nativeSchema.any()
-        }
+        // Simple type definition - convert string to schema using functional pattern
+        const schemaCreator = cond([
+          [(type: string): boolean => type === 'string', (): Schema<string> => nativeSchema.string()],
+          [(type: string): boolean => type === 'number', (): Schema<number> => nativeSchema.number()],
+          [(type: string): boolean => type === 'boolean', (): Schema<boolean> => nativeSchema.boolean()],
+          [(type: string): boolean => type === 'date', (): Schema<string> => nativeSchema.string()], // Convert to proper date schema when available
+          [always(true), (): Schema<unknown> => nativeSchema.any()]
+        ])
+        
+        schemaFields[key] = schemaCreator(field) || nativeSchema.any()
       } else {
         // Full field definition - convert to appropriate schema
         const fieldDef = field as SchemaFieldDefinition
@@ -209,15 +207,22 @@ export const schema = <T>(
       schemaFields['updatedAt'] = nativeSchema.string()
     }
 
-    return nativeSchema.object(schemaFields) as unknown as Schema<T>
-  } catch (error: unknown) {
-    const dataError = createDataError(
-      'schema',
-      `Failed to create schema: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      { definition, error }
-    )
-    throw new Error(dataError.message)
-  }
+      return nativeSchema.object(schemaFields) as unknown as Schema<T>
+    },
+    (error: unknown) => {
+      const dataError = createDataError(
+        'schema',
+        `Failed to create schema: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        { definition, error }
+      )
+      throw new Error(dataError.message)
+    }
+  )
+
+  return Result.match(safeSchemaCreation, {
+    Ok: schema => schema,
+    Err: error => { throw new Error(String(error)) }
+  })
 }
 
 /**
@@ -288,9 +293,10 @@ export const transform = <TInput, TOutput>(
       ...opts.context,
     }
 
-    // Handle array input
+    // Handle array input with fp-utils
     if (Array.isArray(input)) {
-      const results = input.map(item => transformSingle(item, mapping, context, opts))
+      const mapTransform = fpMap((item: TInput) => transformSingle(item, mapping, context, opts))
+      const results = mapTransform(input)
       return Result.Ok(results as TOutput)
     }
 
@@ -319,13 +325,15 @@ const transformSingle = <TInput, TOutput>(
 ): Partial<TOutput> => {
   const result: Record<string, unknown> = {}
 
+  // Use traditional approach for transformation processing for now
   for (const [targetKey, transform] of Object.entries(mapping)) {
     try {
       let value: unknown
 
       if (typeof transform === 'string') {
         // Simple field mapping
-        value = get(input as Record<string, unknown>, transform)
+        const pathLens = lensPath(transform)
+        value = view(pathLens)(input)
       } else if (typeof transform === 'function') {
         // Transform function
         value = (transform as TransformFunction<TInput, unknown>)(input, context)
@@ -337,7 +345,8 @@ const transformSingle = <TInput, TOutput>(
           default?: unknown
         }
         const sourceKey = transformObj.source || targetKey
-        const sourceValue = get(input as Record<string, unknown>, sourceKey)
+        const sourceLens = lensPath(sourceKey)
+        const sourceValue = view(sourceLens)(input as Record<string, unknown>) as unknown
 
         if (transformObj.fn) {
           value = transformObj.fn(sourceValue, context)
@@ -405,7 +414,8 @@ export const convert = <TInput, TOutput>(
         convertedData[targetKey] = sourceKey(validationResult.value)
       } else {
         // String mapping - get value from source
-        convertedData[targetKey] = get(validationResult.value as Record<string, unknown>, sourceKey)
+        const sourceLens = lensPath(sourceKey)
+        convertedData[targetKey] = view(sourceLens)(validationResult.value as Record<string, unknown>)
       }
     }
 
@@ -460,6 +470,10 @@ export const aggregate = <T, R = AggregateResult>(
       return Result.Err(createDataError('aggregate', 'Input must be an array', { input }))
     }
 
+    // Optimize for large collections with batch processing
+    const isLargeCollection = input.length > 5000
+    const batchSize = isLargeCollection ? 1000 : input.length
+
     const result: AggregateResult = {
       groups: {},
       totals: {},
@@ -470,20 +484,80 @@ export const aggregate = <T, R = AggregateResult>(
       custom: {},
     }
 
-    // Group data if groupBy is specified
+    // Create chunk processor for large collections
+    const chunkArray = <T>(array: T[], size: number): T[][] => {
+      const chunks: T[][] = []
+      for (let i = 0; i < array.length; i += size) {
+        chunks.push(array.slice(i, i + size))
+      }
+      return chunks
+    }
+
+    // Group data if groupBy is specified with batch optimization
     if (operations.groupBy) {
       const groupKeys = Array.isArray(operations.groupBy)
         ? operations.groupBy
         : [operations.groupBy]
 
-      result.groups = groupByMultiple(input, groupKeys)
+      if (isLargeCollection) {
+        // Process in batches for large collections
+        const chunks = chunkArray(input, batchSize)
+        const allGroups: Record<string, T[]> = {}
+        
+        for (const chunk of chunks) {
+          const chunkGroups = groupByMultiple(chunk, groupKeys)
+          // Merge chunk groups into final result
+          for (const [key, items] of Object.entries(chunkGroups)) {
+            if (!allGroups[key]) {
+              allGroups[key] = []
+            }
+            allGroups[key].push(...items)
+          }
+        }
+        result.groups = allGroups
+      } else {
+        result.groups = groupByMultiple(input, groupKeys)
+      }
     } else {
       result.groups = { _all: input }
     }
 
-    // Process each group
+    // Create composable group processing pipeline
+    const processGroupOperations = (groupKey: string, groupData: T[]): void => {
+      // Process sums
+      if (operations.sum) {
+        const sumFields = Array.isArray(operations.sum) ? operations.sum : [operations.sum]
+        const sumProcessor = pipe(
+          (fields: string[]) => fields.map(field => ({ field, value: sumField(groupData, field) })),
+          (results: { field: string; value: number }[]) => 
+            results.reduce((acc, { field, value }) => ({ ...acc, [field]: value }), {} as Record<string, number>)
+        )
+        const sumResults = sumProcessor(sumFields)
+        for (const [field, value] of Object.entries(sumResults)) {
+          result.totals[`${groupKey}.${field}`] = value
+        }
+      }
+      
+      // Process averages
+      if (operations.avg) {
+        const avgFields = Array.isArray(operations.avg) ? operations.avg : [operations.avg]
+        const avgProcessor = pipe(
+          (fields: string[]) => fields.map(field => ({ field, value: averageField(groupData, field) })),
+          (results: { field: string; value: number }[]) => 
+            results.reduce((acc, { field, value }) => ({ ...acc, [field]: value }), {} as Record<string, number>)
+        )
+        const avgResults = avgProcessor(avgFields)
+        for (const [field, value] of Object.entries(avgResults)) {
+          result.averages[`${groupKey}.${field}`] = value
+        }
+      }
+    }
+
+    // Process each group with composable pipeline
     for (const [groupKey, groupData] of Object.entries(result.groups)) {
-      // Sum operations
+      processGroupOperations(groupKey, groupData as T[])
+      
+      // Continue with remaining operations
       if (operations.sum) {
         const sumFields = Array.isArray(operations.sum) ? operations.sum : [operations.sum]
         for (const field of sumFields) {
@@ -581,7 +655,7 @@ export const groupBy = <T, K extends keyof T>(
       keyFn = (item: T): string => String(item[keys])
     }
 
-    // Group items
+    // Group items using traditional loop for now
     for (const item of input) {
       const key = keyFn(item)
 
@@ -600,8 +674,9 @@ export const groupBy = <T, K extends keyof T>(
         }
       }
     }
-
+    
     return Result.Ok(groups)
+
   } catch (error: unknown) {
     return Result.Err(
       createDataError(
@@ -747,7 +822,11 @@ const groupByMultiple = <T>(input: T[], keys: string[]): Record<string, T[]> => 
   const groups: Record<string, T[]> = {}
 
   for (const item of input) {
-    const groupKey = keys.map(key => String(get(item as Record<string, unknown>, key))).join('-')
+    // Use lens for multi-key access
+    const groupKey = keys.map(key => {
+      const keyLens = lensPath(key)
+      return String(view(keyLens)(item))
+    }).join('-')
 
     if (!groups[groupKey]) {
       groups[groupKey] = []
@@ -761,54 +840,66 @@ const groupByMultiple = <T>(input: T[], keys: string[]): Record<string, T[]> => 
 
 const sumField = <T>(items: T[], field: string): number => {
   return items.reduce((sum, item) => {
-    const value = get(item as Record<string, unknown>, field)
+    // Use lens for field access
+    const fieldLens = lensPath(field)
+    const value = view(fieldLens)(item as Record<string, unknown>) as unknown
     return sum + (typeof value === 'number' ? value : 0)
   }, 0)
 }
 
-const averageField = <T>(items: T[], field: string): number => {
-  const values = items
-    .map(item => get(item as Record<string, unknown>, field))
-    .filter(v => typeof v === 'number')
-  return values.length > 0 ? values.reduce((sum, val) => sum + val, 0) / values.length : 0
-}
+const createFieldProcessor = <T>(operation: 'sum' | 'avg' | 'min' | 'max') => 
+  (items: T[], field: string): number => {
+    // Use lens for field mapping
+    const fieldLens = lensPath(field)
+    const mapToNumbers = fpMap((item: T) => view(fieldLens)(item as Record<string, unknown>) as unknown)
+    const filterNumbers = fpFilter((v): v is number => typeof v === 'number')
+    
+    const rawValues = mapToNumbers(items)
+    const values = filterNumbers(rawValues)
+    
+    if (values.length === 0) return operation === 'sum' ? 0 : (operation === 'avg' ? 0 : 0)
+    
+    switch (operation) {
+      case 'sum':
+        return (values as number[]).reduce((sum: number, val: number) => sum + val, 0)
+      case 'avg':
+        return (values as number[]).reduce((sum: number, val: number) => sum + val, 0) / values.length
+      case 'min':
+        return Math.min(...(values as number[]))
+      case 'max':
+        return Math.max(...(values as number[]))
+      default:
+        return 0
+    }
+  }
+
+const averageField = createFieldProcessor<unknown>('avg')
 
 const countField = <T>(items: T[], field: string): number => {
-  return items.filter(item => get(item as Record<string, unknown>, field) !== undefined).length
+  // Use lens for field checking
+  const fieldLens = lensPath(field)
+  const filterDefined = fpFilter((item: T) => view(fieldLens)(item) !== undefined)
+  return filterDefined(items).length
 }
 
-const minField = <T>(items: T[], field: string): unknown => {
-  const values = items
-    .map(item => get(item as Record<string, unknown>, field))
-    .filter(v => v !== undefined)
-  return values.length > 0 ? Math.min(...values.filter(v => typeof v === 'number')) : undefined
-}
-
-const maxField = <T>(items: T[], field: string): unknown => {
-  const values = items
-    .map(item => get(item as Record<string, unknown>, field))
-    .filter(v => v !== undefined)
-  return values.length > 0 ? Math.max(...values.filter(v => typeof v === 'number')) : undefined
-}
+const minField = createFieldProcessor<unknown>('min')
+const maxField = createFieldProcessor<unknown>('max')
 
 const serializeJSON = <T>(input: T, options: SerializeOptions): DataResult<string> => {
   try {
-    // Handle circular references
-    const seen = new WeakSet()
-    let hasCircular = false
-
-    const json = JSON.stringify(
-      input,
-      (_key, value) => {
+    // Create composable JSON processing pipeline
+    const createCircularHandler = (options: SerializeOptions) => {
+      const seen = new WeakSet()
+      
+      return (_key: string, value: unknown): unknown => {
         if (typeof value === 'object' && value !== null) {
-          if (seen.has(value as object)) {
-            hasCircular = true
-            if (options.handleCircular === false) {
+          if (seen.has(value)) {
+            if (options.handleCircular === false || options.handleCircular === undefined) {
               throw new Error('Converting circular structure to JSON')
             }
             return '[Circular]'
           }
-          seen.add(value as object)
+          seen.add(value)
         }
 
         // Handle encoding options
@@ -816,18 +907,19 @@ const serializeJSON = <T>(input: T, options: SerializeOptions): DataResult<strin
           return value
         }
 
-        return value as unknown
-      },
-      options.pretty ? 2 : undefined
-    )
-
-    // If circular reference found and not handled, throw error
-    if (hasCircular && options.handleCircular !== true) {
-      return Result.Err(
-        createDataError('serialize', 'JSON serialization failed: circular reference detected', {})
-      )
+        return value
+      }
     }
 
+    // Compose serialization pipeline
+    const serializationPipeline = pipe(
+      (input: T) => ({ input, handler: createCircularHandler(options) }),
+      ({ input, handler }) => JSON.stringify(input, handler, options.pretty ? 2 : undefined)
+    )
+
+    const json = serializationPipeline(input)
+
+    // JSON serialization successful
     return Result.Ok(json)
   } catch (error: unknown) {
     if (error instanceof Error && error.message.includes('circular')) {
@@ -868,20 +960,34 @@ const serializeCSV = <T>(input: T, options: SerializeOptions): DataResult<string
       csv += headers.join(delimiter) + '\n'
     }
 
-    for (const row of input) {
-      const values = headers.map(header => {
-        const value = get(row as Record<string, unknown>, header)
-        if (value === undefined) return ''
-        if (value === null) return 'null'
-        if (typeof value === 'object') return JSON.stringify(value)
-        if (typeof value === 'string') return value
-        if (typeof value === 'number') return value.toString()
-        if (typeof value === 'boolean') return value.toString()
-        // Fallback for any other type (symbol, function, etc.)
-        return `[${typeof value}]`
-      })
-      csv += values.join(delimiter) + '\n'
+    // Create composable CSV row processing pipeline
+    const createValueFormatter = () => (value: unknown): string => {
+      if (value === undefined) return ''
+      if (value === null) return 'null'
+      if (typeof value === 'object') return JSON.stringify(value)
+      if (typeof value === 'string') return value
+      if (typeof value === 'number') return value.toString()
+      if (typeof value === 'boolean') return value.toString()
+      return `[${typeof value}]`
     }
+
+    const formatValue = createValueFormatter()
+    
+    // Composable row processor
+    const processRow = pipe(
+      (row: Record<string, unknown>) => headers.map(header => get(row, header)),
+      fpMap(formatValue)
+    )
+
+    // Use fp-utils functional pipeline for CSV row processing
+    const processCsvRows = pipe(
+      (rows: typeof input) => rows,
+      fpMap((row: unknown) => processRow(row as Record<string, unknown>)),
+      fpMap((values: string[]) => values.join(delimiter) + '\n')
+    )
+    
+    const csvRows = processCsvRows(input)
+    csv += csvRows.join('')
 
     return Result.Ok(csv)
   } catch (error: unknown) {
@@ -961,23 +1067,22 @@ const deserializeCSV = (input: string | Buffer, options: DeserializeOptions): un
     dataLines = lines
   }
 
-  return dataLines.map(line => {
+  // Use fp-utils functional pipeline for CSV data processing
+  const processDataLine = (line: string): Record<string, unknown> => {
     const values = line.split(delimiter)
     const obj: Record<string, unknown> = {}
-
-    headers.forEach((header, index) => {
+    
+    const processHeader = ([header, index]: [string, number]): void => {
       const rawValue = values[index] || ''
-
-      if (options.coerceTypes) {
-        // Try to coerce to appropriate type
-        obj[header] = coerceValue(rawValue)
-      } else {
-        obj[header] = rawValue
-      }
-    })
-
+      const valueProcessor = options.coerceTypes ? coerceValue : identity
+      obj[header] = valueProcessor(rawValue)
+    }
+    
+    headers.map((header, index) => [header, index] as [string, number]).forEach(processHeader)
     return obj
-  })
+  }
+  
+  return fpMap(processDataLine)(dataLines)
 }
 
 const deserializeXML = (input: string | Buffer, options: DeserializeOptions): unknown => {
