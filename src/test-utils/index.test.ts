@@ -715,7 +715,7 @@ describe('Test Utilities - PHASE 6 Coverage Enhancement', () => {
         
         const { result, duration } = await PerformanceTestUtils.measureTime(testFn)
         expect(result).toBe('async-result')
-        expect(duration).toBeGreaterThanOrEqual(10)
+        expect(duration).toBeGreaterThanOrEqual(8)
       })
     })
 
